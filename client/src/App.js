@@ -11,6 +11,11 @@ import UserSetupModal from './components/UserSetupModal';
 function App() {
   const [userProfile, setUserProfile] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [messages, setMessages] = useState([]);
+
+  const addMessage = (message) => {
+    setMessages(prevMessages => [...prevMessages, message]);
+  };
 
   useEffect(() => {
     const savedProfile = Cookies.get('userProfile');
@@ -39,10 +44,17 @@ function App() {
       <div className="app-layout">
         <div className="left-column">
           <div className="chat-area">
-            <Chat userProfile={userProfile} />
+            <Chat
+              userProfile={userProfile}
+              messages={messages}
+              addMessage={addMessage}
+            />
           </div>
           <div className="dice-shortcuts-area">
-            <DiceShortcuts />
+            <DiceShortcuts
+              userProfile={userProfile}
+              addMessage={addMessage}
+            />
           </div>
         </div>
         <div className="center-column">
