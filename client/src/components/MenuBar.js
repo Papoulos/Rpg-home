@@ -1,14 +1,23 @@
 import React from 'react';
 
-const MenuBar = ({ onReset }) => {
+const MenuBar = ({ onReset, onPageChange }) => {
+    const buttonStyle = {
+        padding: '10px 20px',
+        margin: '0 5px',
+        borderRadius: '8px',
+        border: '1px solid #ccc',
+        cursor: 'pointer',
+        backgroundColor: 'white'
+    };
+
     return (
-        <>
-            {/* Menu items will go here */}
-            <button>Character Sheets</button>
-            <button>Scene</button>
-            <button>Whiteboard</button>
-            <button onClick={onReset} style={{ marginLeft: 'auto' }}>Reset Profile</button>
-        </>
+        <div style={{ display: 'flex', width: '100%' }}>
+            <button onClick={() => onPageChange('sheets')} style={buttonStyle}>Google Sheet</button>
+            <button onClick={() => onPageChange('image')} style={buttonStyle}>Image</button>
+            <button onClick={() => onPageChange('markdown')} style={buttonStyle}>Notes</button>
+            <button onClick={() => onPageChange('whiteboard')} style={buttonStyle}>Whiteboard</button>
+            <button onClick={onReset} style={{ ...buttonStyle, marginLeft: 'auto' }}>Reset Profile</button>
+        </div>
     );
 };
 

@@ -12,6 +12,11 @@ function App() {
   const [userProfile, setUserProfile] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [messages, setMessages] = useState([]);
+  const [activePage, setActivePage] = useState('sheets'); // 'sheets', 'image', 'markdown', 'whiteboard'
+
+  const handlePageChange = (page) => {
+    setActivePage(page);
+  };
 
   // Load initial state from storage on mount
   useEffect(() => {
@@ -101,10 +106,10 @@ function App() {
         </div>
         <div className="center-column">
           <div className="main-content-area">
-            <MainContent />
+            <MainContent activePage={activePage} />
           </div>
           <div className="menu-bar-area">
-            <MenuBar onReset={handleResetProfile} />
+            <MenuBar onReset={handleResetProfile} onPageChange={handlePageChange} />
           </div>
         </div>
         <div className="right-column">
