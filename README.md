@@ -65,6 +65,13 @@ This application includes a range of features designed to facilitate online RPG 
   - **Center Column**: The main content area, with a menu at the bottom for switching between different views (e.g., character sheets, scenes).
   - **Right Column**: Displays the video conference feeds.
 
+### Main Content Area
+The central part of the application is a flexible space that can switch between different views.
+- **Page Switching**: A menu bar at the bottom allows users to switch between different pages: Google Sheets, Image display, a notes editor, and a whiteboard.
+- **Markdown Notes Editor**: A simple but effective page for taking notes.
+  - **Edit/View Modes**: Users can toggle between an edit mode with a plain text area and a view mode that renders the formatted Markdown.
+  - **Persistent Notes**: All notes are automatically saved to the browser's local storage, so they are not lost between sessions.
+
 ### Video Conferencing
 - **Peer-to-Peer Video**: A WebRTC-based video calling feature allows users to see and hear each other.
 - **Signaling Server**: A Socket.IO server is used to facilitate the initial connection between peers.
