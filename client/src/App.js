@@ -13,18 +13,60 @@ function App() {
   const [showModal, setShowModal] = useState(false);
   const [messages, setMessages] = useState([]);
 
-  const addMessage = (message) => {
-    setMessages(prevMessages => [...prevMessages, message]);
-  };
-
+  // Load initial state from storage on mount
   useEffect(() => {
+    // Load user profile from cookies
     const savedProfile = Cookies.get('userProfile');
     if (savedProfile) {
-      setUserProfile(JSON.parse(savedProfile));
+      try {
+        setUserProfile(JSON.parse(savedProfile));
+      } catch (error) {
+        console.error("Failed to parse user profile from cookies", error);
+        Cookies.remove('userProfile');
+      }
     } else {
       setShowModal(true);
     }
+
+    // Load chat history from local storage
+    try {
+      const savedMessages = localStorage.getItem('chatMessages');
+      if (savedMessages) {
+        setMessages(JSON.parse(savedMessages));
+      }
+    } catch (error) {
+      console.error("Failed to load messages from local storage", error);
+      localStorage.removeItem('chatMessages');
+    }
   }, []);
+
+  // Save messages to local storage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem('chatMessages', JSON.stringify(messages));
+    } catch (error) {
+      console.error("Failed to save messages to local storage", error);
+    }
+  }, [messages]);
+
+  const addMessage = (message) => {
+    const updatedMessages = [...messages, message];
+
+    // Trim messages if storage exceeds ~4.5MB
+    try {
+      let jsonMessages = JSON.stringify(updatedMessages);
+      const MAX_SIZE_BYTES = 4.5 * 1024 * 1024;
+
+      while (new Blob([jsonMessages]).size > MAX_SIZE_BYTES && updatedMessages.length > 1) {
+        updatedMessages.shift(); // Remove the oldest message
+        jsonMessages = JSON.stringify(updatedMessages);
+      }
+    } catch (error) {
+      console.error("Error while trimming messages for storage", error);
+    }
+
+    setMessages(updatedMessages);
+  };
 
   const handleSaveProfile = (profile) => {
     Cookies.set('userProfile', JSON.stringify(profile), { expires: 365 });

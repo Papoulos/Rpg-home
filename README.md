@@ -49,3 +49,30 @@ You will need to run both the server and the client in separate terminal windows
     npm start --prefix client
     ```
     The client application will start on `http://localhost:3000` and should open automatically in your default web browser.
+
+## Features
+
+This application includes a range of features designed to facilitate online RPG sessions.
+
+### User Profiles
+- **Character Profile**: On first visit, users are prompted to create a character by setting a name and choosing an icon from a predefined list.
+- **Persistent Profiles**: User profiles are saved in browser cookies, so they are remembered across sessions.
+- **Profile Reset**: A "Reset Profile" option is available in the menu bar to allow users to change their name and icon.
+
+### Layout
+- **Three-Column Design**: The application uses a modern, three-column layout to organize the different tools:
+  - **Left Column**: Contains the chat and dice rolling shortcuts.
+  - **Center Column**: The main content area, with a menu at the bottom for switching between different views (e.g., character sheets, scenes).
+  - **Right Column**: Displays the video conference feeds.
+
+### Video Conferencing
+- **Peer-to-Peer Video**: A WebRTC-based video calling feature allows users to see and hear each other.
+- **Signaling Server**: A Socket.IO server is used to facilitate the initial connection between peers.
+
+### Interactive Chat
+- **Real-time Messaging**: Users can send and receive text messages in the chat panel.
+- **User Identification**: Each message is clearly marked with the sender's chosen character name and icon.
+- **Clickable Links**: Any web links (URLs) posted in the chat are automatically detected and made clickable.
+- **Dice Rolling**: A dedicated "Dice Shortcuts" panel allows users to roll various types of dice (d4, d6, d8, d10, d12, d20). The results are posted directly to the chat for all users to see.
+- **Image Sharing**: Users can upload and share images, which are displayed inline within the chat feed.
+- **Persistent History**: The chat history is saved to the browser's local storage, preserving messages between sessions. The history is automatically trimmed to stay within a 5MB limit.

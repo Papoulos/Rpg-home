@@ -1,23 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import Linkify from 'react-linkify';
 
 const Chat = ({ userProfile, messages, addMessage }) => {
     const [newMessage, setNewMessage] = useState('');
+    const imageInputRef = useRef(null);
 
     const handleSendMessage = () => {
         if (newMessage.trim() === '' || !userProfile) {
             return;
         }
-
         const message = {
             type: 'text',
             user: userProfile,
             text: newMessage,
             timestamp: new Date(),
         };
-
         addMessage(message);
         setNewMessage('');
+    };
+
+    const handleImageUpload = (e) => {
+        const file = e.target.files[0];
+        if (!file || !userProfile) return;
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            const message = {
+                type: 'image',
+                user: userProfile,
+                src: reader.result,
+                timestamp: new Date(),
+            };
+            addMessage(message);
+        };
+        reader.readAsDataURL(file);
+        e.target.value = null; // Reset file input
     };
 
     const componentDecorator = (href, text, key) => (
@@ -25,6 +42,16 @@ const Chat = ({ userProfile, messages, addMessage }) => {
             {text}
         </a>
     );
+
+    const buttonStyle = {
+        padding: '8px 16px',
+        marginLeft: '10px',
+        borderRadius: '8px',
+        border: 'none',
+        backgroundColor: '#007bff',
+        color: 'white',
+        cursor: 'pointer'
+    };
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -47,6 +74,17 @@ const Chat = ({ userProfile, messages, addMessage }) => {
                                 </div>
                             );
                         }
+                        if (msg.type === 'image') {
+                            return (
+                                <div key={index} style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '10px' }}>
+                                    <span style={{ fontSize: '1.5rem', marginRight: '8px' }}>{msg.user.icon}</span>
+                                    <div>
+                                        <strong>{msg.user.name}</strong>
+                                        <img src={msg.src} alt="uploaded by user" style={{ maxWidth: '100%', borderRadius: '8px', marginTop: '4px' }} />
+                                    </div>
+                                </div>
+                            );
+                        }
                         return (
                             <div key={index} style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '10px' }}>
                                 <span style={{ fontSize: '1.5rem', marginRight: '8px' }}>{msg.user.icon}</span>
@@ -61,17 +99,32 @@ const Chat = ({ userProfile, messages, addMessage }) => {
                     })}
                 </div>
             </div>
-            <div className="message-input" style={{ display: 'flex', padding: '10px' }}>
+            <div className="message-input" style={{ display: 'flex', alignItems: 'center', padding: '10px' }}>
+                <input
+                    type="file"
+                    ref={imageInputRef}
+                    onChange={handleImageUpload}
+                    style={{ display: 'none' }}
+                    accept="image/*"
+                />
+                <button
+                    onClick={() => imageInputRef.current.click()}
+                    disabled={!userProfile}
+                    style={{ ...buttonStyle, backgroundColor: '#6c757d', marginLeft: 0 }}
+                    title="Upload Image"
+                >
+                    📷
+                </button>
                 <input
                     type="text"
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                    style={{ flexGrow: 1, padding: '8px', borderRadius: '8px', border: '1px solid #ccc' }}
+                    style={{ flexGrow: 1, padding: '8px', borderRadius: '8px', border: '1px solid #ccc', marginLeft: '10px' }}
                     placeholder="Type a message..."
                     disabled={!userProfile}
                 />
-                <button onClick={handleSendMessage} disabled={!userProfile} style={{ padding: '8px 16px', marginLeft: '10px', borderRadius: '8px', border: 'none', backgroundColor: '#007bff', color: 'white', cursor: 'pointer' }}>Send</button>
+                <button onClick={handleSendMessage} disabled={!userProfile} style={buttonStyle}>Send</button>
             </div>
         </div>
     );
