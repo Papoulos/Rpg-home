@@ -1,15 +1,15 @@
 import React, { useEffect, useState, useRef } from 'react';
-import io from 'socket.io-client';
 import Peer from 'simple-peer';
 import styled from 'styled-components';
 
 const Container = styled.div`
     padding: 20px;
     display: flex;
-    height: 100vh;
-    width: 90%;
+    height: 100%;
+    width: 100%;
     margin: auto;
     flex-wrap: wrap;
+    box-sizing: border-box;
 `;
 
 const StyledVideo = styled.video`
@@ -17,7 +17,7 @@ const StyledVideo = styled.video`
     width: 50%;
 `;
 
-const VideoChat = () => {
+const VideoChat = ({ socket }) => {
     const [yourID, setYourID] = useState("");
     const [users, setUsers] = useState([]);
     const [stream, setStream] = useState();
@@ -29,30 +29,30 @@ const VideoChat = () => {
 
     const userVideo = useRef();
     const partnerVideo = useRef();
-    const socket = useRef();
 
     useEffect(() => {
-        socket.current = io.connect("http://localhost:5000");
-        navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
-            setStream(stream);
-            if (userVideo.current) {
-                userVideo.current.srcObject = stream;
-            }
-        })
+        if (socket) {
+            navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
+                setStream(stream);
+                if (userVideo.current) {
+                    userVideo.current.srcObject = stream;
+                }
+            });
 
-        socket.current.on("yourID", (id) => {
-            setYourID(id);
-        })
-        socket.current.on("allUsers", (users) => {
-            setUsers(users);
-        })
+            socket.on("yourID", (id) => {
+                setYourID(id);
+            });
+            socket.on("allUsers", (users) => {
+                setUsers(Object.keys(users)); // Ensure we handle the users object correctly
+            });
 
-        socket.current.on("hey", (data) => {
-            setReceivingCall(true);
-            setCaller(data.from);
-            setCallerSignal(data.signal);
-        })
-    }, []);
+            socket.on("hey", (data) => {
+                setReceivingCall(true);
+                setCaller(data.from);
+                setCallerSignal(data.signal);
+            });
+        }
+    }, [socket]);
 
     function callPeer(id) {
         const peer = new Peer({
@@ -62,8 +62,8 @@ const VideoChat = () => {
         });
 
         peer.on("signal", data => {
-            socket.current.emit("callUser", { userToCall: id, signalData: data, from: yourID })
-        })
+            socket.emit("callUser", { userToCall: id, signalData: data, from: yourID })
+        });
 
         peer.on("stream", stream => {
             if (partnerVideo.current) {
@@ -71,11 +71,10 @@ const VideoChat = () => {
             }
         });
 
-        socket.current.on("callAccepted", signal => {
+        socket.on("callAccepted", signal => {
             setCallAccepted(true);
             peer.signal(signal);
-        })
-
+        });
     }
 
     function acceptCall() {
@@ -86,8 +85,8 @@ const VideoChat = () => {
             stream: stream,
         });
         peer.on("signal", data => {
-            socket.current.emit("acceptCall", { signal: data, to: caller })
-        })
+            socket.emit("acceptCall", { signal: data, to: caller });
+        });
 
         peer.on("stream", stream => {
             partnerVideo.current.srcObject = stream;
@@ -102,6 +101,7 @@ const VideoChat = () => {
             <StyledVideo playsInline muted ref={userVideo} autoPlay />
         );
     }
+
     let PartnerVideo;
     if (callAccepted && !callEnded) {
         PartnerVideo = (
@@ -116,21 +116,17 @@ const VideoChat = () => {
                 <h1>{caller} is calling you</h1>
                 <button onClick={acceptCall}>Accept</button>
             </div>
-        )
+        );
     }
+
     return (
         <Container>
             {UserVideo}
             {PartnerVideo}
             <div>
-                {users.map(key => {
-                    if (key === yourID) {
-                        return null;
-                    }
-                    return (
-                        <button key={key} onClick={() => callPeer(key)}>Call {key}</button>
-                    );
-                })}
+                {users.filter(id => id !== yourID).map(id => (
+                    <button key={id} onClick={() => callPeer(id)}>Call {id}</button>
+                ))}
             </div>
             {incomingCall}
         </Container>
