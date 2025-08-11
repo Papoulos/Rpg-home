@@ -4,7 +4,7 @@ import ImagePage from './ImagePage';
 import MarkdownPage from './MarkdownPage';
 import WhiteboardPage from './WhiteboardPage';
 
-const MainContent = ({ activePage }) => {
+const MainContent = ({ activePage, socket }) => {
     const renderPage = () => {
         switch (activePage) {
             case 'sheets':
@@ -14,7 +14,7 @@ const MainContent = ({ activePage }) => {
             case 'markdown':
                 return <MarkdownPage />;
             case 'whiteboard':
-                return <WhiteboardPage />;
+                return <WhiteboardPage socket={socket} />;
             default:
                 return <GoogleSheetPage />;
         }

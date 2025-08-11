@@ -93,7 +93,7 @@ function App() {
         </div>
         <div className="center-column">
           <div className="main-content-area">
-            <MainContent activePage={activePage} />
+            <MainContent activePage={activePage} socket={socket.current} />
           </div>
           <div className="menu-bar-area">
             <MenuBar onReset={handleResetProfile} onPageChange={handlePageChange} />
