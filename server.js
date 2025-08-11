@@ -50,6 +50,34 @@ const writeChatHistory = (history) => {
     }
 };
 
+// --- Whiteboard Data Management ---
+
+const whiteboardDataPath = 'whiteboard_data.json';
+
+// Ensure whiteboard data file exists on startup
+if (!fs.existsSync(whiteboardDataPath)) {
+    fs.writeFileSync(whiteboardDataPath, JSON.stringify({ elements: [] }));
+}
+
+const readWhiteboardData = () => {
+    try {
+        const data = fs.readFileSync(whiteboardDataPath, 'utf8');
+        return JSON.parse(data);
+    } catch (error) {
+        console.error("Error reading whiteboard data:", error);
+        return { elements: [] };
+    }
+};
+
+const writeWhiteboardData = (data) => {
+    try {
+        const jsonData = JSON.stringify(data, null, 2);
+        fs.writeFileSync(whiteboardDataPath, jsonData);
+    } catch (error) {
+        console.error("Error writing whiteboard data:", error);
+    }
+};
+
 // --- Socket.IO Connection Handling ---
 
 io.on('connection', socket => {
@@ -76,6 +104,17 @@ io.on('connection', socket => {
 
         // Broadcast the new message to all clients
         io.emit('new message', message);
+    });
+
+    // --- Whiteboard Logic ---
+    // Send the current whiteboard data to the connecting client
+    socket.emit('whiteboard data', readWhiteboardData());
+
+    // Listen for changes from a client
+    socket.on('whiteboard change', (data) => {
+        writeWhiteboardData(data);
+        // Broadcast the changes to other clients
+        socket.broadcast.emit('whiteboard change', data);
     });
 
     // --- WebRTC Signaling Logic ---
