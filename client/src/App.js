@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Cookies from 'js-cookie';
+import io from 'socket.io-client';
 import './Layout.css';
 import Chat from './components/Chat';
 import MainContent from './components/MainContent';
@@ -12,14 +13,24 @@ function App() {
   const [userProfile, setUserProfile] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [messages, setMessages] = useState([]);
-  const [activePage, setActivePage] = useState('sheets'); // 'sheets', 'image', 'markdown', 'whiteboard'
+  const [activePage, setActivePage] = useState('sheets');
+  const socket = useRef(null);
 
-  const handlePageChange = (page) => {
-    setActivePage(page);
-  };
-
-  // Load initial state from storage on mount
+  // Setup socket connection and listeners
   useEffect(() => {
+    // Connect to the server
+    socket.current = io.connect("http://localhost:5000");
+
+    // Listen for initial chat history
+    socket.current.on('chat history', (history) => {
+      setMessages(history);
+    });
+
+    // Listen for new messages
+    socket.current.on('new message', (message) => {
+      setMessages(prevMessages => [...prevMessages, message]);
+    });
+
     // Load user profile from cookies
     const savedProfile = Cookies.get('userProfile');
     if (savedProfile) {
@@ -33,44 +44,20 @@ function App() {
       setShowModal(true);
     }
 
-    // Load chat history from local storage
-    try {
-      const savedMessages = localStorage.getItem('chatMessages');
-      if (savedMessages) {
-        setMessages(JSON.parse(savedMessages));
-      }
-    } catch (error) {
-      console.error("Failed to load messages from local storage", error);
-      localStorage.removeItem('chatMessages');
-    }
+    // Cleanup on unmount
+    return () => {
+      socket.current.disconnect();
+    };
   }, []);
 
-  // Save messages to local storage whenever they change
-  useEffect(() => {
-    try {
-      localStorage.setItem('chatMessages', JSON.stringify(messages));
-    } catch (error) {
-      console.error("Failed to save messages to local storage", error);
-    }
-  }, [messages]);
-
   const addMessage = (message) => {
-    const updatedMessages = [...messages, message];
-
-    // Trim messages if storage exceeds ~4.5MB
-    try {
-      let jsonMessages = JSON.stringify(updatedMessages);
-      const MAX_SIZE_BYTES = 4.5 * 1024 * 1024;
-
-      while (new Blob([jsonMessages]).size > MAX_SIZE_BYTES && updatedMessages.length > 1) {
-        updatedMessages.shift(); // Remove the oldest message
-        jsonMessages = JSON.stringify(updatedMessages);
-      }
-    } catch (error) {
-      console.error("Error while trimming messages for storage", error);
+    if (socket.current) {
+      socket.current.emit('new message', message);
     }
+  };
 
-    setMessages(updatedMessages);
+  const handlePageChange = (page) => {
+    setActivePage(page);
   };
 
   const handleSaveProfile = (profile) => {
@@ -114,7 +101,7 @@ function App() {
         </div>
         <div className="right-column">
           <div className="video-chat-area">
-            <VideoChat />
+            <VideoChat socket={socket.current} />
           </div>
         </div>
       </div>
