@@ -1,6 +1,6 @@
 import React from 'react';
 
-const MenuBar = ({ onReset, onPageChange }) => {
+const MenuBar = ({ onReset, onPageChange, onToggleChat, onToggleVideo }) => {
     const buttonStyle = {
         padding: '10px 20px',
         margin: '0 5px',
@@ -16,6 +16,8 @@ const MenuBar = ({ onReset, onPageChange }) => {
             <button onClick={() => onPageChange('image')} style={buttonStyle}>Image</button>
             <button onClick={() => onPageChange('markdown')} style={buttonStyle}>Notes</button>
             <button onClick={() => onPageChange('whiteboard')} style={buttonStyle}>Whiteboard</button>
+            <button onClick={onToggleChat} style={buttonStyle}>Toggle Chat</button>
+            <button onClick={onToggleVideo} style={buttonStyle}>Toggle Video</button>
             <button onClick={onReset} style={{ ...buttonStyle, marginLeft: 'auto' }}>Reset Profile</button>
         </div>
     );

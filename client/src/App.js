@@ -15,6 +15,8 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [activePage, setActivePage] = useState('sheets');
   const socket = useRef(null);
+  const [showChat, setShowChat] = useState(true);
+  const [showVideo, setShowVideo] = useState(true);
 
   // Setup socket connection and listeners
   useEffect(() => {
@@ -72,38 +74,62 @@ function App() {
     setShowModal(true);
   };
 
+  const toggleChat = () => setShowChat(!showChat);
+  const toggleVideo = () => setShowVideo(!showVideo);
+
+  const getGridLayout = () => {
+    if (showChat && showVideo) {
+      return '300px 1fr 300px';
+    } else if (showChat) {
+      return '300px 1fr 0';
+    } else if (showVideo) {
+      return '0 1fr 300px';
+    } else {
+      return '0 1fr 0';
+    }
+  };
+
   return (
     <>
       {showModal && <UserSetupModal onSave={handleSaveProfile} />}
-      <div className="app-layout">
-        <div className="left-column">
-          <div className="chat-area">
-            <Chat
-              userProfile={userProfile}
-              messages={messages}
-              addMessage={addMessage}
-            />
+      <div className="app-layout" style={{ gridTemplateColumns: getGridLayout() }}>
+        {showChat && (
+          <div className="left-column">
+            <div className="chat-area">
+              <Chat
+                userProfile={userProfile}
+                messages={messages}
+                addMessage={addMessage}
+              />
+            </div>
+            <div className="dice-shortcuts-area">
+              <DiceShortcuts
+                userProfile={userProfile}
+                addMessage={addMessage}
+              />
+            </div>
           </div>
-          <div className="dice-shortcuts-area">
-            <DiceShortcuts
-              userProfile={userProfile}
-              addMessage={addMessage}
-            />
-          </div>
-        </div>
+        )}
         <div className="center-column">
           <div className="main-content-area">
             <MainContent activePage={activePage} socket={socket.current} />
           </div>
           <div className="menu-bar-area">
-            <MenuBar onReset={handleResetProfile} onPageChange={handlePageChange} />
+            <MenuBar
+              onReset={handleResetProfile}
+              onPageChange={handlePageChange}
+              onToggleChat={toggleChat}
+              onToggleVideo={toggleVideo}
+            />
           </div>
         </div>
-        <div className="right-column">
-          <div className="video-chat-area">
-            <VideoChat socket={socket.current} />
+        {showVideo && (
+          <div className="right-column">
+            <div className="video-chat-area">
+              <VideoChat socket={socket.current} />
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </>
   );
