@@ -5,18 +5,62 @@ const Chat = ({ userProfile, messages, addMessage }) => {
     const [newMessage, setNewMessage] = useState('');
     const imageInputRef = useRef(null);
 
-    const handleSendMessage = () => {
+    const handleSendMessage = async () => {
         if (newMessage.trim() === '' || !userProfile) {
             return;
         }
-        const message = {
-            type: 'text',
-            user: userProfile,
-            text: newMessage,
-            timestamp: new Date(),
-        };
-        addMessage(message);
-        setNewMessage('');
+
+        if (newMessage.trim().startsWith('#askme')) {
+            const question = newMessage.trim().substring(6).trim();
+            if (question) {
+                // Display the user's question immediately
+                const userMessage = {
+                    type: 'text',
+                    user: userProfile,
+                    text: newMessage,
+                    timestamp: new Date(),
+                };
+                addMessage(userMessage);
+                setNewMessage('');
+
+                try {
+                    const response = await fetch('/api/chatbot', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ question }),
+                    });
+                    const data = await response.json();
+
+                    const chatbotMessage = {
+                        type: 'text',
+                        user: { name: 'Chatbot', icon: '🤖' },
+                        text: data.answer,
+                        timestamp: new Date(),
+                    };
+                    addMessage(chatbotMessage);
+                } catch (error) {
+                    console.error("Error fetching chatbot response:", error);
+                    const errorMessage = {
+                        type: 'text',
+                        user: { name: 'Chatbot', icon: '🤖' },
+                        text: 'Sorry, I encountered an error.',
+                        timestamp: new Date(),
+                    };
+                    addMessage(errorMessage);
+                }
+            }
+        } else {
+            const message = {
+                type: 'text',
+                user: userProfile,
+                text: newMessage,
+                timestamp: new Date(),
+            };
+            addMessage(message);
+            setNewMessage('');
+        }
     };
 
     const handleImageUpload = (e) => {
