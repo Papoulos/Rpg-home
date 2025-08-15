@@ -2,6 +2,7 @@ const express = require("express");
 const http = require("http");
 const fs = require("fs");
 const app = express();
+app.use(express.json()); // Middleware to parse JSON bodies
 const server = http.createServer(app);
 const socket = require("socket.io");
 const io = socket(server, {
@@ -132,6 +133,17 @@ io.on('connection', socket => {
 
 app.get('/api/hello', (req, res) => {
   res.send({ express: 'Hello From Express' });
+});
+
+app.post('/api/chatbot', (req, res) => {
+    const { question } = req.body;
+    console.log(`Received question for chatbot: ${question}`);
+
+    // Here you would integrate with a real AI model
+    // For now, we'll just send back a placeholder response
+    const placeholderAnswer = `This is a placeholder response to your question: "${question}". A real AI model will be integrated here in the future.`;
+
+    res.json({ answer: placeholderAnswer });
 });
 
 server.listen(5000, () => console.log('server is running on port 5000'));
