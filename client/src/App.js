@@ -13,7 +13,7 @@ function App() {
   const [userProfile, setUserProfile] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [messages, setMessages] = useState([]);
-  const [activePage, setActivePage] = useState('sheets');
+  const [activePage, setActivePage] = useState('carte');
   const socket = useRef(null);
   const [showChat, setShowChat] = useState(true);
   const [showVideo, setShowVideo] = useState(true);
@@ -79,11 +79,11 @@ function App() {
 
   const getGridLayout = () => {
     if (showChat && showVideo) {
-      return '300px 1fr 300px';
+      return '1fr 3fr 1fr';
     } else if (showChat) {
-      return '300px 1fr 0';
+      return '1fr 3fr 0';
     } else if (showVideo) {
-      return '0 1fr 300px';
+      return '0 3fr 1fr';
     } else {
       return '0 1fr 0';
     }

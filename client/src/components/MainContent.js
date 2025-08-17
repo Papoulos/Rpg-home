@@ -1,22 +1,19 @@
 import React from 'react';
 import GoogleSheetPage from './GoogleSheetPage';
 import ImagePage from './ImagePage';
-import MarkdownPage from './MarkdownPage';
 import WhiteboardPage from './WhiteboardPage';
 
 const MainContent = ({ activePage, socket }) => {
     const renderPage = () => {
         switch (activePage) {
-            case 'sheets':
-                return <GoogleSheetPage />;
-            case 'image':
-                return <ImagePage />;
-            case 'markdown':
-                return <MarkdownPage />;
-            case 'whiteboard':
+            case 'carte':
                 return <WhiteboardPage socket={socket} />;
-            default:
+            case 'pj':
                 return <GoogleSheetPage />;
+            case 'prez':
+                return <ImagePage />;
+            default:
+                return <WhiteboardPage socket={socket} />;
         }
     };
 
