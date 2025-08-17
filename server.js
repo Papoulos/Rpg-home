@@ -3,9 +3,13 @@ const http = require("http");
 const fs = require("fs");
 const axios = require("axios");
 const apiConfig = require("./api.config.js");
+const path = require("path");
 
 const app = express();
 app.use(express.json()); // Middleware to parse JSON bodies
+
+// Serve static files from the React app build directory
+app.use(express.static(path.join(__dirname, 'client/build')));
 const server = http.createServer(app);
 const socket = require("socket.io");
 const io = socket(server, {
@@ -183,6 +187,12 @@ app.post('/api/chatbot', async (req, res) => {
         console.error(`Error with ${keyword} API:`, error.message);
         res.status(500).json({ error: `An error occurred while processing your request.` });
     }
+});
+
+// The "catchall" handler: for any request that doesn't
+// match one above, send back React's index.html file.
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
 });
 
 server.listen(5000, () => console.log('server is running on port 5000'));
