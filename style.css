@@ -43,9 +43,14 @@ body, html {
     padding: 40px;
     display: flex;
     flex-direction: column;
+    justify-content: space-between; /* Pousse le menu en bas */
     align-items: center;
-    justify-content: center;
     background-color: #1e1e1e;
+}
+
+.main-display {
+    width: 100%;
+    text-align: center;
 }
 
 /* Menu de navigation */
