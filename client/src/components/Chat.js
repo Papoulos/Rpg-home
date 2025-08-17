@@ -1,17 +1,35 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Linkify from 'react-linkify';
 
 const Chat = ({ userProfile, messages, addMessage }) => {
     const [newMessage, setNewMessage] = useState('');
+    const [keywords, setKeywords] = useState([]);
     const imageInputRef = useRef(null);
+
+    useEffect(() => {
+        // Fetch keywords from the backend
+        const fetchKeywords = async () => {
+            try {
+                const response = await fetch('/api/chatbot-keywords');
+                const data = await response.json();
+                setKeywords(data);
+            } catch (error) {
+                console.error("Error fetching keywords:", error);
+            }
+        };
+        fetchKeywords();
+    }, []);
 
     const handleSendMessage = async () => {
         if (newMessage.trim() === '' || !userProfile) {
             return;
         }
 
-        if (newMessage.trim().startsWith('#askme')) {
-            const question = newMessage.trim().substring(6).trim();
+        const trimmedMessage = newMessage.trim();
+        const keyword = keywords.find(kw => trimmedMessage.startsWith(kw));
+
+        if (keyword) {
+            const question = trimmedMessage.substring(keyword.length).trim();
             if (question) {
                 // Display the user's question immediately
                 const userMessage = {
@@ -29,7 +47,7 @@ const Chat = ({ userProfile, messages, addMessage }) => {
                         headers: {
                             'Content-Type': 'application/json',
                         },
-                        body: JSON.stringify({ question }),
+                        body: JSON.stringify({ keyword, question }),
                     });
                     const data = await response.json();
 
