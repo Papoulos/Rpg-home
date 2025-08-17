@@ -83,3 +83,14 @@ The central part of the application is a flexible space that can switch between 
 - **Dice Rolling**: A dedicated "Dice Shortcuts" panel allows users to roll various types of dice (d4, d6, d8, d10, d12, d20). The results are posted directly to the chat for all users to see.
 - **Image Sharing**: Users can upload and share images, which are displayed inline within the chat feed.
 - **Persistent History**: The chat history is saved to the browser's local storage, preserving messages between sessions. The history is automatically trimmed to stay within a 5MB limit.
+
+#### Configurable Chatbot
+
+The application includes a chatbot feature that can be configured to use different APIs. This allows you to integrate with various AI models and services.
+
+- **Keyword Triggers**: You can trigger the chatbot by starting a message with a specific keyword (e.g., `#askme`).
+- **Configuration File**: The chatbot is configured in the `api.config.js` file in the root directory. You can define multiple APIs and associate them with different keywords.
+- **API Types**: The configuration supports two types of APIs:
+  - `'url'`: For APIs that can be accessed via a simple POST request to a URL.
+  - `'paid'`: For services like OpenAI, Mistral, or Gemini. You will need to add your own logic to `server.js` to handle these services.
+- **Examples**: The `api.config.js` file includes commented-out examples to help you get started with configuring new APIs.
