@@ -30,8 +30,8 @@
         if (savedHistory) {
             chatHistory = JSON.parse(savedHistory);
             chatHistory.forEach(msg => {
-                // Pass 'false' to avoid re-saving history while loading
-                addMessage(msg.sender, msg.message, false);
+                // Load history by APPENDING, so it's in chronological order.
+                addMessage(msg.sender, msg.message, { save: false, prepend: false });
             });
         }
     }
@@ -50,15 +50,18 @@
         });
     }
 
-    function addMessage(sender, message, save = true) {
+    function addMessage(sender, message, { save = true, prepend = false } = {}) {
         const messageElement = document.createElement('div');
         messageElement.classList.add('chat-message');
 
         const richMessage = parseForRichContent(message);
         messageElement.innerHTML = `<strong>${sender}:</strong> ${richMessage}`;
 
-        chatMessages.appendChild(messageElement);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+        if (prepend) {
+            chatMessages.prepend(messageElement);
+        } else {
+            chatMessages.appendChild(messageElement);
+        }
 
         if (save) {
             chatHistory.push({ sender, message });
@@ -69,13 +72,13 @@
     function rollDice(dieType) {
         const roll = Math.floor(Math.random() * dieType) + 1;
         const message = `lance un dé ${dieType} et obtient : <strong>${roll}</strong>`;
-        addMessage(getUsername(), message);
+        addMessage(getUsername(), message, { prepend: true });
     }
 
     function handleSendMessage() {
         const message = chatInput.value.trim();
         if (message) {
-            addMessage(getUsername(), message);
+            addMessage(getUsername(), message, { prepend: true });
             chatInput.value = '';
         }
     }
@@ -109,9 +112,10 @@
         askForUsername();
 
         if (chatHistory.length === 0) {
-            addMessage('System', `Bienvenue, ${getUsername()}!`);
+            addMessage('System', `Bienvenue, ${getUsername()}!`, { prepend: true });
         } else {
-            addMessage('System', `${getUsername()} a rejoint la session.`);
+            // Also prepend the re-join message
+            addMessage('System', `${getUsername()} a rejoint la session.`, { prepend: true });
         }
 
         setupEventListeners();
