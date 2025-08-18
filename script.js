@@ -35,6 +35,11 @@
 
     // --- DOM Manipulation ---
     function addMessage({ sender, message, prepend = false }) {
+        // Defensive check for malformed messages from history
+        if (!sender || !message) {
+            console.warn('[UI] Ignoring malformed message object:', { sender, message });
+            return;
+        }
         const messageElement = document.createElement('div');
         messageElement.classList.add('chat-message');
         const userColor = stringToHslColor(sender, 70, 75);
@@ -108,7 +113,9 @@
         const pc = new RTCPeerConnection(iceServers);
         peerConnections[peerUsername] = pc;
 
-        localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+        if (localStream) {
+            localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+        }
 
         pc.onicecandidate = event => {
             if (event.candidate) {
@@ -130,16 +137,21 @@
         };
     }
 
-    function handleUserList(users) {
+    async function handleUserList(users) {
         console.log('[DEBUG] Received user list:', users);
         const myUsername = getUsername();
 
-        // Connect to new users
-        users.forEach(user => {
+        // Create connections for new users and send offers
+        for (const user of users) {
             if (user !== myUsername && !peerConnections[user]) {
-                createPeerConnection(user);
+                await createPeerConnection(user);
+                const pc = peerConnections[user];
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+                sendMessage({ type: 'offer', target: user, message: pc.localDescription });
+                console.log(`[DEBUG] Sent offer to new user: ${user}`);
             }
-        });
+        }
 
         // Remove disconnected users
         Object.keys(peerConnections).forEach(peerName => {
@@ -158,26 +170,33 @@
 
         switch (data.type) {
             case 'history':
-                data.messages.forEach(msg => addMessage({ ...msg, prepend: false }));
+                data.messages.forEach(msg => {
+                    if (msg.type === 'chat' || msg.type === 'dice') {
+                        addMessage({ ...msg, prepend: false });
+                    }
+                });
                 break;
             case 'user-list':
-                handleUserList(data.users);
+                await handleUserList(data.users);
                 break;
             case 'chat':
             case 'dice':
                 addMessage({ ...data, prepend: true });
                 break;
             case 'offer':
+                await createPeerConnection(data.sender);
                 const pc = peerConnections[data.sender];
                 if (pc) {
                     await pc.setRemoteDescription(new RTCSessionDescription(data.message));
                     const answer = await pc.createAnswer();
                     await pc.setLocalDescription(answer);
                     sendMessage({ type: 'answer', target: data.sender, message: pc.localDescription });
+                    console.log(`[DEBUG] Sent answer to ${data.sender}`);
                 }
                 break;
             case 'answer':
                 await peerConnections[data.sender]?.setRemoteDescription(new RTCSessionDescription(data.message));
+                console.log(`[DEBUG] Processed answer from ${data.sender}`);
                 break;
             case 'ice-candidate':
                 await peerConnections[data.sender]?.addIceCandidate(new RTCIceCandidate(data.message));

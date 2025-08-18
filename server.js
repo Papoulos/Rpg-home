@@ -29,7 +29,7 @@ function broadcastUserList() {
             client.ws.send(message);
         }
     });
-    console.log('[BROADCAST] Sent user list:', userList);
+    console.log('[DEBUG] Broadcast user list:', userList);
 }
 
 // --- Chat History Functions ---
@@ -37,17 +37,26 @@ function loadChatHistory() {
     if (fs.existsSync(CHAT_LOG_FILE)) {
         const fileContent = fs.readFileSync(CHAT_LOG_FILE, 'utf-8');
         const lines = fileContent.split('\n').filter(line => line.trim() !== '');
-        chatHistory = lines.map(line => JSON.parse(line));
-        console.log(`[HISTORY] Loaded ${chatHistory.length} messages.`);
+        chatHistory = lines.map(line => {
+            try {
+                return JSON.parse(line);
+            } catch {
+                console.warn('[HISTORY] Ignoring malformed line in chat history:', line);
+                return null;
+            }
+        }).filter(Boolean); // Filter out nulls from failed parsing
+        console.log(`[HISTORY] Loaded ${chatHistory.length} valid messages.`);
     }
 }
 
 function appendToHistory(message) {
-    console.log('[HISTORY] Appending message...');
+    console.log('[HISTORY] Attempting to append message:', message);
     try {
-        chatHistory.push(message);
-        fs.appendFileSync(CHAT_LOG_FILE, JSON.stringify(message) + '\n');
-        console.log('[HISTORY] Append successful.');
+        // Only save message types that should be persisted
+        if (message.type === 'chat' || message.type === 'dice') {
+            fs.appendFileSync(CHAT_LOG_FILE, JSON.stringify(message) + '\n');
+            console.log('[HISTORY] Append successful.');
+        }
     } catch (error) {
         console.error('[HISTORY] FAILED to append message:', error);
     }
@@ -55,14 +64,14 @@ function appendToHistory(message) {
 
 // --- WebSocket Server ---
 wss.on('connection', (ws) => {
-    console.log('Client connected');
+    console.log('[DEBUG] Client connected');
 
     ws.on('message', (message) => {
         const data = JSON.parse(message);
+        console.log(`[DEBUG] Received message type: ${data.type} from ${data.sender}`);
 
         switch (data.type) {
             case 'register':
-                console.log(`User registered: ${data.username}`);
                 clients.set(ws, { username: data.username, ws: ws });
                 ws.send(JSON.stringify({ type: 'history', messages: chatHistory }));
                 broadcastUserList();
@@ -71,7 +80,8 @@ wss.on('connection', (ws) => {
             case 'chat':
             case 'dice':
                 data.timestamp = new Date().toISOString();
-                appendToHistory(data);
+                chatHistory.push(data); // Add to in-memory history for the session
+                appendToHistory(data); // Attempt to persist to file
                 clients.forEach(client => {
                     if (client.ws.readyState === WebSocket.OPEN) {
                         client.ws.send(JSON.stringify(data));
@@ -84,8 +94,10 @@ wss.on('connection', (ws) => {
             case 'ice-candidate':
                 const targetClient = Array.from(clients.values()).find(c => c.username === data.target);
                 if (targetClient) {
-                    console.log(`[SIGNAL] Relaying ${data.type} from ${data.sender} to ${data.target}`);
+                    console.log(`[DEBUG] Relaying ${data.type} from ${data.sender} to ${data.target}`);
                     targetClient.ws.send(JSON.stringify(data));
+                } else {
+                    console.warn(`[DEBUG] Could not find target for signaling message: ${data.target}`);
                 }
                 break;
         }
@@ -94,11 +106,11 @@ wss.on('connection', (ws) => {
     ws.on('close', () => {
         const clientInfo = clients.get(ws);
         if (clientInfo) {
-            console.log(`User disconnected: ${clientInfo.username}`);
+            console.log(`[DEBUG] User disconnected: ${clientInfo.username}`);
             clients.delete(ws);
             broadcastUserList();
         } else {
-            console.log('An unregistered client disconnected.');
+            console.log('[DEBUG] An unregistered client disconnected.');
         }
     });
 });
