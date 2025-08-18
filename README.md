@@ -39,9 +39,10 @@ The application is built around a three-column layout designed for a typical RPG
 
 ### 1. Layout
 - **Three-Column Design**: The application uses a modern, three-column layout to organize the different tools:
-  - **Left Column (1/5 screen)**: Contains the interactive chat and dice roller. This panel can be collapsed to maximize the central viewing area.
+  - **Left Column (1/5 screen)**: Contains the interactive chat and dice roller.
   - **Center Column (3/5 screen)**: The main content area for displaying maps, character sheets, or presentations.
-  - **Right Column (1/5 screen)**: A placeholder for a future video conferencing feature.
+  - **Right Column (1/5 screen)**: Contains the video conference streams.
+- **Collapsible Panels**: Both the left (Chat) and right (Video) panels can be collapsed and expanded using toggle buttons, allowing users to maximize the central viewing area.
 
 ### 2. Interactive Chat
 The chat is the core feature of the application, powered by a WebSocket backend for real-time communication between all connected users.
