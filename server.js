@@ -38,14 +38,7 @@ function broadcastUserList() {
 }
 
 // --- Chatbot Functions ---
-async function handleChatbotRequest(prompt, apiName = 'default') {
-    const config = chatbotConfig.apis[apiName];
-
-    if (!config) {
-        broadcast({ type: 'chat', sender: 'Chatbot', message: `Le service de chatbot '${apiName}' n'est pas configuré.` });
-        return;
-    }
-
+async function handleChatbotRequest(prompt, config) {
     let chatbotMessage;
 
     try {
@@ -79,16 +72,18 @@ async function handleChatbotRequest(prompt, apiName = 'default') {
             throw new Error(`The API type '${config.type}' or service '${config.service}' is not implemented.`);
         }
     } catch (error) {
-        console.error(`[CHATBOT] Error calling ${apiName} API:`, error);
-        chatbotMessage = { message: `Désolé, une erreur est survenue en contactant l'IA (${apiName}).` };
+        console.error(`[CHATBOT] Error calling API:`, error);
+        chatbotMessage = { message: `Désolé, une erreur est survenue en contactant l'IA.` };
     }
 
-    broadcast({
+    const finalMessage = {
         type: 'chat',
         sender: 'Chatbot',
         timestamp: new Date().toISOString(),
         ...chatbotMessage
-    });
+    };
+    broadcast(finalMessage);
+    appendToHistory(finalMessage);
 }
 
 
@@ -119,17 +114,14 @@ wss.on('connection', (ws) => {
     ws.on('message', (message) => {
         const data = JSON.parse(message);
 
-        if (data.type === 'chat' && data.message.startsWith(chatbotConfig.triggerKeyword)) {
-            const fullPrompt = data.message.substring(chatbotConfig.triggerKeyword.length).trim();
-            const [apiName, ...promptParts] = fullPrompt.split(':');
-            const prompt = promptParts.join(':').trim();
-
-            if (prompt) { // e.g., #askme:gemini what is...
-                handleChatbotRequest(prompt, apiName);
-            } else { // e.g., #askme what is...
-                handleChatbotRequest(apiName); // The full prompt is the apiName here
+        // Check for chatbot trigger
+        if (data.type === 'chat') {
+            const trigger = Object.keys(chatbotConfig).find(key => data.message.startsWith(key));
+            if (trigger) {
+                const prompt = data.message.substring(trigger.length).trim();
+                handleChatbotRequest(prompt, chatbotConfig[trigger]);
+                return; // Stop further processing
             }
-            return;
         }
 
         switch (data.type) {
