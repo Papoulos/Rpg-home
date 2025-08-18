@@ -143,7 +143,20 @@
     }
 
     // --- DOM Elements ---
-    let chatMessages, chatInput, sendButton, diceButtons;
+    let chatMessages, chatInput, sendButton, diceButtons, leftPanel, toggleChatBtn;
+
+    function setupToggle() {
+        toggleChatBtn.addEventListener('click', () => {
+            leftPanel.classList.toggle('chat-hidden');
+            if (leftPanel.classList.contains('chat-hidden')) {
+                toggleChatBtn.textContent = '»';
+                toggleChatBtn.title = "Afficher le panneau de chat";
+            } else {
+                toggleChatBtn.textContent = '«';
+                toggleChatBtn.title = "Cacher le panneau de chat";
+            }
+        });
+    }
 
     // Execute when the DOM is fully loaded
     document.addEventListener('DOMContentLoaded', () => {
@@ -151,6 +164,8 @@
         chatInput = document.getElementById('chat-input');
         sendButton = document.getElementById('send-button');
         diceButtons = document.querySelectorAll('.dice-button');
+        leftPanel = document.querySelector('.left-panel');
+        toggleChatBtn = document.getElementById('toggle-chat-btn');
 
         askForUsername();
 
@@ -160,5 +175,6 @@
         });
 
         setupEventListeners();
+        setupToggle();
     });
 })();
