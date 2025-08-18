@@ -1,26 +1,36 @@
 const express = require('express');
-const https = require('https'); // Use https module
+const https = require('https');
 const WebSocket = require('ws');
 const path = require('path');
 const fs = require('fs');
 
 const app = express();
 
-// Read SSL certificate and key
 const options = {
     key: fs.readFileSync(path.join(__dirname, 'certs/key.pem')),
     cert: fs.readFileSync(path.join(__dirname, 'certs/cert.pem'))
 };
 
-const server = https.createServer(options, app); // Create HTTPS server
+const server = https.createServer(options, app);
 const wss = new WebSocket.Server({ server });
 
 const PORT = process.env.PORT || 3000;
 const CHAT_LOG_FILE = path.join(__dirname, 'chat_history.log');
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
 let chatHistory = [];
-let users = {}; // Store users by their WebSocket connection
+const clients = new Map(); // Use a map to store clients with metadata
+
+// --- Utility Functions ---
+function broadcastUserList() {
+    const userList = Array.from(clients.values()).map(c => c.username).filter(Boolean);
+    const message = JSON.stringify({ type: 'user-list', users: userList });
+    clients.forEach(client => {
+        if (client.ws.readyState === WebSocket.OPEN) {
+            client.ws.send(message);
+        }
+    });
+    console.log('[BROADCAST] Sent user list:', userList);
+}
 
 // --- Chat History Functions ---
 function loadChatHistory() {
@@ -28,14 +38,19 @@ function loadChatHistory() {
         const fileContent = fs.readFileSync(CHAT_LOG_FILE, 'utf-8');
         const lines = fileContent.split('\n').filter(line => line.trim() !== '');
         chatHistory = lines.map(line => JSON.parse(line));
-        console.log(`Loaded ${chatHistory.length} messages from history.`);
+        console.log(`[HISTORY] Loaded ${chatHistory.length} messages.`);
     }
 }
 
 function appendToHistory(message) {
-    chatHistory.push(message);
-    fs.appendFileSync(CHAT_LOG_FILE, JSON.stringify(message) + '\n');
-    // Trimming logic can be added here if needed
+    console.log('[HISTORY] Appending message...');
+    try {
+        chatHistory.push(message);
+        fs.appendFileSync(CHAT_LOG_FILE, JSON.stringify(message) + '\n');
+        console.log('[HISTORY] Append successful.');
+    } catch (error) {
+        console.error('[HISTORY] FAILED to append message:', error);
+    }
 }
 
 // --- WebSocket Server ---
@@ -48,52 +63,42 @@ wss.on('connection', (ws) => {
         switch (data.type) {
             case 'register':
                 console.log(`User registered: ${data.username}`);
-                ws.username = data.username;
-                users[data.username] = ws;
-                // Announce new user to all others
-                Object.values(users).forEach(userWs => {
-                    if (userWs !== ws) {
-                        userWs.send(JSON.stringify({ type: 'new-user', username: data.username }));
-                    }
-                });
-                // Send list of existing users to the new user
-                ws.send(JSON.stringify({ type: 'existing-users', usernames: Object.keys(users).filter(u => u !== data.username) }));
-                // Send chat history
+                clients.set(ws, { username: data.username, ws: ws });
                 ws.send(JSON.stringify({ type: 'history', messages: chatHistory }));
+                broadcastUserList();
                 break;
 
             case 'chat':
             case 'dice':
                 data.timestamp = new Date().toISOString();
                 appendToHistory(data);
-                // Broadcast chat messages to all
-                Object.values(users).forEach(userWs => {
-                    userWs.send(JSON.stringify(data));
+                clients.forEach(client => {
+                    if (client.ws.readyState === WebSocket.OPEN) {
+                        client.ws.send(JSON.stringify(data));
+                    }
                 });
                 break;
 
             case 'offer':
             case 'answer':
             case 'ice-candidate':
-                // Relay signaling messages to the target user
-                const targetWs = users[data.target];
-                if (targetWs) {
-                    console.log(`Relaying ${data.type} from ${data.sender} to ${data.target}`);
-                    targetWs.send(JSON.stringify(data));
+                const targetClient = Array.from(clients.values()).find(c => c.username === data.target);
+                if (targetClient) {
+                    console.log(`[SIGNAL] Relaying ${data.type} from ${data.sender} to ${data.target}`);
+                    targetClient.ws.send(JSON.stringify(data));
                 }
                 break;
         }
     });
 
     ws.on('close', () => {
-        const username = ws.username;
-        if (username) {
-            console.log(`User disconnected: ${username}`);
-            delete users[username];
-            // Announce user departure to all others
-            Object.values(users).forEach(userWs => {
-                userWs.send(JSON.stringify({ type: 'user-left', username }));
-            });
+        const clientInfo = clients.get(ws);
+        if (clientInfo) {
+            console.log(`User disconnected: ${clientInfo.username}`);
+            clients.delete(ws);
+            broadcastUserList();
+        } else {
+            console.log('An unregistered client disconnected.');
         }
     });
 });

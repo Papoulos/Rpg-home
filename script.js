@@ -34,7 +34,7 @@
     }
 
     // --- DOM Manipulation ---
-    function addMessage({ sender, message, color, type, prepend = false }) {
+    function addMessage({ sender, message, prepend = false }) {
         const messageElement = document.createElement('div');
         messageElement.classList.add('chat-message');
         const userColor = stringToHslColor(sender, 70, 75);
@@ -101,9 +101,10 @@
     }
 
     // --- WebRTC Logic ---
-    async function createPeerConnection(peerUsername, isInitiator) {
-        if (peerConnections[peerUsername]) return;
+    async function createPeerConnection(peerUsername) {
+        if (peerConnections[peerUsername] || peerUsername === getUsername()) return;
 
+        console.log(`[DEBUG] Creating peer connection for: ${peerUsername}`);
         const pc = new RTCPeerConnection(iceServers);
         peerConnections[peerUsername] = pc;
 
@@ -116,53 +117,64 @@
         };
 
         pc.ontrack = event => {
+            console.log(`[DEBUG] Received remote track from ${peerUsername}`);
             addVideoStream(event.streams[0], peerUsername);
         };
 
         pc.onconnectionstatechange = () => {
+            console.log(`[DEBUG] Connection state change for ${peerUsername}: ${pc.connectionState}`);
             if (pc.connectionState === 'disconnected' || pc.connectionState === 'closed' || pc.connectionState === 'failed') {
                 removeVideoStream(peerUsername);
                 delete peerConnections[peerUsername];
             }
         };
+    }
 
-        if (isInitiator) {
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            sendMessage({ type: 'offer', target: peerUsername, message: pc.localDescription });
-        }
+    function handleUserList(users) {
+        console.log('[DEBUG] Received user list:', users);
+        const myUsername = getUsername();
+
+        // Connect to new users
+        users.forEach(user => {
+            if (user !== myUsername && !peerConnections[user]) {
+                createPeerConnection(user);
+            }
+        });
+
+        // Remove disconnected users
+        Object.keys(peerConnections).forEach(peerName => {
+            if (!users.includes(peerName)) {
+                peerConnections[peerName].close();
+                delete peerConnections[peerName];
+                removeVideoStream(peerName);
+            }
+        });
     }
 
     // --- WebSocket Event Listeners ---
     socket.onmessage = async (event) => {
         const data = JSON.parse(event.data);
+        console.log('[DEBUG] Received message from server:', data.type);
+
         switch (data.type) {
             case 'history':
                 data.messages.forEach(msg => addMessage({ ...msg, prepend: false }));
                 break;
-            case 'existing-users':
-                for (const user of data.usernames) {
-                    await createPeerConnection(user, true);
-                }
-                break;
-            case 'new-user':
-                await createPeerConnection(data.username, false);
-                break;
-            case 'user-left':
-                if (peerConnections[data.username]) {
-                    peerConnections[data.username].close();
-                }
+            case 'user-list':
+                handleUserList(data.users);
                 break;
             case 'chat':
             case 'dice':
                 addMessage({ ...data, prepend: true });
                 break;
             case 'offer':
-                const pc = await createPeerConnection(data.sender, false);
-                await pc.setRemoteDescription(new RTCSessionDescription(data.message));
-                const answer = await pc.createAnswer();
-                await pc.setLocalDescription(answer);
-                sendMessage({ type: 'answer', target: data.sender, message: pc.localDescription });
+                const pc = peerConnections[data.sender];
+                if (pc) {
+                    await pc.setRemoteDescription(new RTCSessionDescription(data.message));
+                    const answer = await pc.createAnswer();
+                    await pc.setLocalDescription(answer);
+                    sendMessage({ type: 'answer', target: data.sender, message: pc.localDescription });
+                }
                 break;
             case 'answer':
                 await peerConnections[data.sender]?.setRemoteDescription(new RTCSessionDescription(data.message));
@@ -228,7 +240,6 @@
         await setupLocalMedia();
 
         const registerUser = () => sendMessage({ type: 'register', username: getUsername() });
-
         if (socket.readyState === WebSocket.OPEN) {
             registerUser();
         } else {
