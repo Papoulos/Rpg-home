@@ -53,24 +53,31 @@ body, html {
     text-align: center;
 }
 
-/* Menu de navigation */
+/* Menu de navigation (style barre macOS) */
 .main-menu {
     display: flex;
-    gap: 30px;
+    justify-content: center;
+    gap: 20px;
+    width: 80%; /* Barre plus large */
+    padding: 8px 0; /* Plus fin verticalement */
+    background-color: #2c2c2c; /* Couleur de la barre */
+    border-radius: 10px; /* Coins arrondis */
+    border: 1px solid #3a3a3a;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
 .menu-item {
-    color: #f0f0f0;
+    color: #e0e0e0;
     text-decoration: none;
-    font-size: 24px;
-    padding: 15px 30px;
-    border: 2px solid #4CAF50;
-    border-radius: 50px;
-    transition: background-color 0.3s, color 0.3s;
+    font-size: 15px; /* Texte plus petit */
+    padding: 5px 15px; /* Espacement plus petit */
+    border: none; /* Plus de bordure de type bouton */
+    border-radius: 6px;
+    transition: background-color 0.2s, color 0.2s;
 }
 
 .menu-item:hover {
-    background-color: #4CAF50;
+    background-color: #4a4a4a;
     color: #ffffff;
 }
 
