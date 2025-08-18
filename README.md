@@ -1,4 +1,3 @@
-# RPG Web Application
 
 This is a web application for playing tabletop role-playing games (RPGs) with friends online. It provides a set of tools to facilitate remote gameplay, built with a Node.js backend and a vanilla JavaScript frontend.
 
@@ -58,3 +57,4 @@ Integrated directly into the chat panel for convenience.
 ### 4. Main Display & Menu
 The central area is designed for displaying primary content.
 - **macOS-style Menu Bar**: At the bottom of the central panel, a sleek menu bar provides navigation options for "Carte", "PJ", and "Prez" (currently placeholders for future features).
+=======
