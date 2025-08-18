@@ -1,3 +1,4 @@
+# RPG Web Application
 
 This is a web application for playing tabletop role-playing games (RPGs) with friends online. It provides a set of tools to facilitate remote gameplay, built with a Node.js backend and a vanilla JavaScript frontend.
 
@@ -36,7 +37,7 @@ The application is built around a three-column layout designed for a typical RPG
 
 ### 1. Layout
 - **Three-Column Design**: The application uses a modern, three-column layout to organize the different tools:
-  - **Left Column (1/5 screen)**: Contains the interactive chat and dice roller.
+  - **Left Column (1/5 screen)**: Contains the interactive chat and dice roller. This panel can be collapsed to maximize the central viewing area.
   - **Center Column (3/5 screen)**: The main content area for displaying maps, character sheets, or presentations.
   - **Right Column (1/5 screen)**: A placeholder for a future video conferencing feature.
 
@@ -57,4 +58,3 @@ Integrated directly into the chat panel for convenience.
 ### 4. Main Display & Menu
 The central area is designed for displaying primary content.
 - **macOS-style Menu Bar**: At the bottom of the central panel, a sleek menu bar provides navigation options for "Carte", "PJ", and "Prez" (currently placeholders for future features).
-=======

@@ -12,6 +12,7 @@ body, html {
 .container {
     display: flex;
     height: 100vh;
+    position: relative; /* Contexte de positionnement pour le bouton */
 }
 
 /* Panneaux latéraux */
@@ -23,6 +24,47 @@ body, html {
     display: flex;
     flex-direction: column;
     border-right: 1px solid #333;
+    transition: all 0.3s ease-in-out; /* Animation pour le volet */
+    min-width: 0; /* Permet au flex item de rétrécir complètement */
+}
+
+#toggle-chat-btn {
+    position: absolute;
+    top: 50%;
+    /* 20% is the width of the left panel */
+    left: 20%;
+    transform: translate(-50%, -50%);
+    z-index: 10; /* S'assurer qu'il est au-dessus des autres éléments */
+
+    background: #333;
+    color: #eee;
+    border: 1px solid #555;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    line-height: 28px;
+    text-align: center;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+    transition: left 0.3s ease-in-out, background-color 0.2s;
+}
+
+#toggle-chat-btn:hover {
+    background: #444;
+}
+
+/* Ancien sélecteur en double, supprimé pour la propreté */
+
+.left-panel.chat-hidden + #toggle-chat-btn {
+    left: 0;
+}
+
+.left-panel.chat-hidden {
+    flex-basis: 0;
+    flex-grow: 0;
+    padding-left: 0;
+    padding-right: 0;
+    overflow: hidden;
 }
 
 .right-panel {
