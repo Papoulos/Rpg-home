@@ -35,58 +35,60 @@ function broadcast(message) {
 function broadcastUserList() {
     const userList = Array.from(clients.values()).map(c => c.username).filter(Boolean);
     broadcast({ type: 'user-list', users: userList });
-    console.log('[DEBUG] Broadcast user list:', userList);
 }
 
 // --- Chatbot Functions ---
-async function handleChatbotRequest(prompt) {
-    const config = chatbotConfig.apis.default; // For now, only use the default
+async function handleChatbotRequest(prompt, apiName = 'default') {
+    const config = chatbotConfig.apis[apiName];
 
-    if (config.type === 'url') {
-        try {
-            console.log(`[CHATBOT] Sending prompt to URL: ${config.endpoint}`);
+    if (!config) {
+        broadcast({ type: 'chat', sender: 'Chatbot', message: `Le service de chatbot '${apiName}' n'est pas configuré.` });
+        return;
+    }
+
+    let chatbotMessage;
+
+    try {
+        if (config.type === 'url') {
             const response = await fetch(config.endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt: prompt })
+                body: JSON.stringify({ prompt })
             });
-
-            if (!response.ok) {
-                throw new Error(`API request failed with status ${response.status}`);
-            }
-
+            if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
             const data = await response.json();
-            const chatbotMessage = {
-                type: 'chat',
-                sender: 'Chatbot',
-                message: data.response || 'Le chatbot n\'a pas pu répondre.',
-                timestamp: new Date().toISOString()
-            };
-            broadcast(chatbotMessage);
-            appendToHistory(chatbotMessage);
+            chatbotMessage = { message: data.response || 'Le chatbot n\'a pas pu répondre.' };
 
-        } catch (error) {
-            console.error('[CHATBOT] Error calling URL API:', error);
-            const errorMessage = {
-                type: 'chat',
-                sender: 'Chatbot',
-                message: 'Désolé, une erreur est survenue en contactant l\'IA.',
-                timestamp: new Date().toISOString()
+        } else if (config.type === 'paid' && config.service === 'gemini') {
+            if (!config.apiKey) throw new Error('API key for Gemini is missing.');
+
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent?key=${config.apiKey}`;
+            const body = {
+                contents: [{ parts: [{ text: prompt }] }]
             };
-            broadcast(errorMessage);
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            if (!response.ok) throw new Error(`Gemini API request failed with status ${response.status}`);
+            const data = await response.json();
+            chatbotMessage = { message: data.candidates[0].content.parts[0].text || 'Gemini n\'a pas pu répondre.' };
+
+        } else {
+            throw new Error(`The API type '${config.type}' or service '${config.service}' is not implemented.`);
         }
+    } catch (error) {
+        console.error(`[CHATBOT] Error calling ${apiName} API:`, error);
+        chatbotMessage = { message: `Désolé, une erreur est survenue en contactant l'IA (${apiName}).` };
     }
-    // Placeholder for other API types
-    else if (config.type === 'paid') {
-        console.log(`[CHATBOT] '${config.service}' API is configured but not implemented yet.`);
-        const notImplementedMessage = {
-            type: 'chat',
-            sender: 'Chatbot',
-            message: `La logique pour le service '${config.service}' n'est pas encore implémentée.`,
-            timestamp: new Date().toISOString()
-        };
-        broadcast(notImplementedMessage);
-    }
+
+    broadcast({
+        type: 'chat',
+        sender: 'Chatbot',
+        timestamp: new Date().toISOString(),
+        ...chatbotMessage
+    });
 }
 
 
@@ -94,7 +96,7 @@ async function handleChatbotRequest(prompt) {
 function loadChatHistory() {
     if (fs.existsSync(CHAT_LOG_FILE)) {
         const fileContent = fs.readFileSync(CHAT_LOG_FILE, 'utf-8');
-        const lines = fileContent.split('\n').filter(line => line.trim() !== '');
+        const lines = fileContent.split('\n').filter(Boolean);
         chatHistory = lines.map(line => {
             try { return JSON.parse(line); } catch { return null; }
         }).filter(Boolean);
@@ -117,11 +119,17 @@ wss.on('connection', (ws) => {
     ws.on('message', (message) => {
         const data = JSON.parse(message);
 
-        // Check for chatbot trigger first
         if (data.type === 'chat' && data.message.startsWith(chatbotConfig.triggerKeyword)) {
-            const prompt = data.message.substring(chatbotConfig.triggerKeyword.length).trim();
-            handleChatbotRequest(prompt);
-            return; // Stop further processing of this message
+            const fullPrompt = data.message.substring(chatbotConfig.triggerKeyword.length).trim();
+            const [apiName, ...promptParts] = fullPrompt.split(':');
+            const prompt = promptParts.join(':').trim();
+
+            if (prompt) { // e.g., #askme:gemini what is...
+                handleChatbotRequest(prompt, apiName);
+            } else { // e.g., #askme what is...
+                handleChatbotRequest(apiName); // The full prompt is the apiName here
+            }
+            return;
         }
 
         switch (data.type) {
@@ -130,7 +138,6 @@ wss.on('connection', (ws) => {
                 ws.send(JSON.stringify({ type: 'history', messages: chatHistory }));
                 broadcastUserList();
                 break;
-
             case 'chat':
             case 'dice':
                 data.timestamp = new Date().toISOString();
@@ -138,7 +145,6 @@ wss.on('connection', (ws) => {
                 appendToHistory(data);
                 broadcast(data);
                 break;
-
             case 'offer':
             case 'answer':
             case 'ice-candidate':

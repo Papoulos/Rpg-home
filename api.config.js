@@ -36,11 +36,13 @@ const chatbotConfig = {
 
         // --- Example for Google Gemini ---
         // To enable this, you would uncomment it and provide your API key in 'apikeys.js'.
-        // You would also need to add the logic to handle the 'gemini' type in server.js.
+        // The server now has the logic to handle the 'gemini' type.
         /*
         'gemini': {
-            type: 'paid', // Indicates a service that requires a key
+            type: 'paid',
             service: 'gemini',
+            // The model to use. 'gemini-1.5-flash' is a fast, multimodal model.
+            model: 'gemini-1.5-flash',
             apiKey: apiKeys.gemini
         },
         */
