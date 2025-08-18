@@ -214,7 +214,13 @@
         askForUsername();
         await setupLocalMedia();
 
-        socket.addEventListener('open', () => sendMessage({ type: 'register', username: getUsername() }));
+        const registerUser = () => sendMessage({ type: 'register', username: getUsername() });
+
+        if (socket.readyState === WebSocket.OPEN) {
+            registerUser();
+        } else {
+            socket.addEventListener('open', registerUser);
+        }
 
         setupEventListeners();
         setupToggle();
