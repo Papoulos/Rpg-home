@@ -1,96 +1,60 @@
 # RPG Web Application
 
-This is a web application for playing tabletop role-playing games (RPGs) with friends online. It provides a set of tools to facilitate remote gameplay, including video calling, chat, and more.
+This is a web application for playing tabletop role-playing games (RPGs) with friends online. It provides a set of tools to facilitate remote gameplay, built with a Node.js backend and a vanilla JavaScript frontend.
 
 ## Getting Started
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
+These instructions will get you a copy of the project up and running on your local machine.
 
 ### Prerequisites
 
 You need to have [Node.js](https://nodejs.org/) and [npm](https://www.npmjs.com/) installed on your machine.
 
-### Installation
+### How to Launch
 
-1.  **Clone the repository**
+1.  **Install Dependencies**
 
-    If you haven't already, clone the repository to your local machine.
-
-2.  **Install server dependencies**
-
-    From the root directory of the project, run the following command to install the dependencies for the Express server:
+    From the root directory of the project, run the following command to install the server dependencies:
     ```sh
     npm install
     ```
 
-3.  **Install client dependencies**
+2.  **Start the Server**
 
-    Navigate to the `client` directory and install the dependencies for the React application:
+    Also from the root directory, run this command to start the server:
     ```sh
-    npm install --prefix client
+    node server.js
     ```
+    The server will start and be accessible at `http://localhost:3000`.
 
-## Running the application
+3.  **Open the Application**
 
-You will need to run both the server and the client in separate terminal windows.
-
-1.  **Start the server**
-
-    From the root directory, run the following command to start the Express server:
-    ```sh
-    npm start
-    ```
-    The server will start on `http://localhost:5000`.
-
-2.  **Start the client**
-
-    In a new terminal, from the root directory, run the following command to start the React development server:
-    ```sh
-    npm start --prefix client
-    ```
-    The client application will start on `http://localhost:3000` and should open automatically in your default web browser.
+    Open your web browser and navigate to `http://localhost:3000`. The application should load, and you will be prompted to enter a username for the chat.
 
 ## Features
 
-This application includes a range of features designed to facilitate online RPG sessions.
+The application is built around a three-column layout designed for a typical RPG session.
 
-### User Profiles
-- **Character Profile**: On first visit, users are prompted to create a character by setting a name and choosing an icon from a predefined list.
-- **Persistent Profiles**: User profiles are saved in browser cookies, so they are remembered across sessions.
-- **Profile Reset**: A "Reset Profile" option is available in the menu bar to allow users to change their name and icon.
-
-### Layout
+### 1. Layout
 - **Three-Column Design**: The application uses a modern, three-column layout to organize the different tools:
-  - **Left Column**: Contains the chat and dice rolling shortcuts.
-  - **Center Column**: The main content area, with a menu at the bottom for switching between different views (e.g., character sheets, scenes).
-  - **Right Column**: Displays the video conference feeds.
+  - **Left Column (1/5 screen)**: Contains the interactive chat and dice roller.
+  - **Center Column (3/5 screen)**: The main content area for displaying maps, character sheets, or presentations.
+  - **Right Column (1/5 screen)**: A placeholder for a future video conferencing feature.
 
-### Main Content Area
-The central part of the application is a flexible space that can switch between different views.
-- **Page Switching**: A menu bar at the bottom allows users to switch between different pages: Google Sheets, Image display, a notes editor, and a whiteboard.
-- **Markdown Notes Editor**: A simple but effective page for taking notes.
-  - **Edit/View Modes**: Users can toggle between an edit mode with a plain text area and a view mode that renders the formatted Markdown.
-  - **Persistent Notes**: All notes are automatically saved to the browser's local storage, so they are not lost between sessions.
+### 2. Interactive Chat
+The chat is the core feature of the application, powered by a WebSocket backend for real-time communication between all connected users.
+- **Real-time Messaging**: All messages are broadcast to every user instantly.
+- **User-Specific Colors**: Each user is automatically assigned a unique color for their username, making it easy to follow the conversation.
+- **Clickable Links & Images**: URLs posted in the chat are automatically converted into clickable links. Image URLs are rendered as inline images.
+- **Persistent History**: The entire chat history is saved to a `chat_history.log` file on the server. When a new user joins, the existing history is loaded.
+- **History Management**: The chat history file is automatically trimmed if it grows larger than 10 MB to manage disk space.
 
-### Video Conferencing
-- **Peer-to-Peer Video**: A WebRTC-based video calling feature allows users to see and hear each other.
-- **Signaling Server**: A Socket.IO server is used to facilitate the initial connection between peers.
+### 3. Dice Roller
+Integrated directly into the chat panel for convenience.
+- **Dice Buttons**: Buttons for rolling 4, 6, 10, 20, and 100-sided dice.
+- **Public Results**: The dice roll result is posted to the chat for all users to see.
+- **Critical Roll Styling**: Dice rolls for the minimum (1) or maximum possible value are highlighted in green and red, respectively, to easily spot critical successes and failures.
 
-### Interactive Chat
-- **Real-time Messaging**: Users can send and receive text messages in the chat panel.
-- **User Identification**: Each message is clearly marked with the sender's chosen character name and icon.
-- **Clickable Links**: Any web links (URLs) posted in the chat are automatically detected and made clickable.
-- **Dice Rolling**: A dedicated "Dice Shortcuts" panel allows users to roll various types of dice (d4, d6, d8, d10, d12, d20). The results are posted directly to the chat for all users to see.
-- **Image Sharing**: Users can upload and share images, which are displayed inline within the chat feed.
-- **Persistent History**: The chat history is saved to the browser's local storage, preserving messages between sessions. The history is automatically trimmed to stay within a 5MB limit.
-
-#### Configurable Chatbot
-
-The application includes a chatbot feature that can be configured to use different APIs. This allows you to integrate with various AI models and services.
-
-- **Keyword Triggers**: You can trigger the chatbot by starting a message with a specific keyword (e.g., `#askme`).
-- **Configuration File**: The chatbot is configured in the `api.config.js` file in the root directory. You can define multiple APIs and associate them with different keywords.
-- **API Types**: The configuration supports two types of APIs:
-  - `'url'`: For APIs that can be accessed via a simple POST request to a URL.
-  - `'paid'`: For services like OpenAI, Mistral, or Gemini. You will need to add your own logic to `server.js` to handle these services.
-- **Examples**: The `api.config.js` file includes commented-out examples to help you get started with configuring new APIs.
+### 4. Main Display & Menu
+The central area is designed for displaying primary content.
+- **macOS-style Menu Bar**: At the bottom of the central panel, a sleek menu bar provides navigation options for "Carte", "PJ", and "Prez" (currently placeholders for future features).
