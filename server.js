@@ -1,14 +1,21 @@
 const express = require('express');
-const http = require('http');
+const https = require('https'); // Use https module
 const WebSocket = require('ws');
 const path = require('path');
 const fs = require('fs');
 
 const app = express();
-const server = http.createServer(app);
+
+// Read SSL certificate and key
+const options = {
+    key: fs.readFileSync(path.join(__dirname, 'certs/key.pem')),
+    cert: fs.readFileSync(path.join(__dirname, 'certs/cert.pem'))
+};
+
+const server = https.createServer(options, app); // Create HTTPS server
 const wss = new WebSocket.Server({ server });
 
-const PORT = process.env.PORT || 3000; // Revert to 3000 for the final version
+const PORT = process.env.PORT || 3000;
 const CHAT_LOG_FILE = path.join(__dirname, 'chat_history.log');
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 

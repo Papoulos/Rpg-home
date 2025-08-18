@@ -25,11 +25,13 @@ You need to have [Node.js](https://nodejs.org/) and [npm](https://www.npmjs.com/
     ```sh
     node server.js
     ```
-    The server will start and be accessible at `http://localhost:3000`.
+    The server will start and be accessible at `https://localhost:3000`.
 
 3.  **Open the Application**
 
-    Open your web browser and navigate to `http://localhost:3000`. The application should load, and you will be prompted to enter a username for the chat.
+    Open your web browser and navigate to `https://localhost:3000`.
+
+    **Note:** Since this uses a self-signed SSL certificate, your browser will show a security warning. You must click "Advanced" and "Proceed to localhost" (or similar) to continue. This is expected and safe in this local development context.
 
 ## Features
 
