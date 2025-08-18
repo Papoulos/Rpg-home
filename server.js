@@ -38,11 +38,13 @@ function broadcastUserList() {
 }
 
 // --- Chatbot Functions ---
-async function handleChatbotRequest(prompt, config) {
+async function handleChatbotRequest(prompt, config, trigger) {
+    console.log(`[DEBUG] Chatbot triggered by '${trigger}'. Prompt: '${prompt}'`);
     let chatbotMessage;
 
     try {
         if (config.type === 'url') {
+            console.log(`[DEBUG] Calling URL API at: ${config.endpoint}`);
             const response = await fetch(config.endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -53,27 +55,37 @@ async function handleChatbotRequest(prompt, config) {
             chatbotMessage = { message: data.response || 'Le chatbot n\'a pas pu répondre.' };
 
         } else if (config.type === 'paid' && config.service === 'gemini') {
-            if (!config.apiKey) throw new Error('API key for Gemini is missing.');
+            if (!config.apiKey || config.apiKey === 'PASTE_YOUR_GOOGLE_GEMINI_API_KEY_HERE') {
+                throw new Error('API key for Gemini is missing or is a placeholder.');
+            }
 
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent?key=${config.apiKey}`;
             const body = {
                 contents: [{ parts: [{ text: prompt }] }]
             };
+            console.log(`[DEBUG] Sending request to Gemini URL: ${url}`);
+            console.log(`[DEBUG] Request body: ${JSON.stringify(body)}`);
+
             const response = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
             });
-            if (!response.ok) throw new Error(`Gemini API request failed with status ${response.status}`);
-            const data = await response.json();
+
+            const responseText = await response.text();
+            console.log(`[DEBUG] Gemini raw response: ${responseText}`);
+
+            if (!response.ok) throw new Error(`Gemini API request failed with status ${response.status}: ${responseText}`);
+
+            const data = JSON.parse(responseText);
             chatbotMessage = { message: data.candidates[0].content.parts[0].text || 'Gemini n\'a pas pu répondre.' };
 
         } else {
             throw new Error(`The API type '${config.type}' or service '${config.service}' is not implemented.`);
         }
     } catch (error) {
-        console.error(`[CHATBOT] Error calling API:`, error);
-        chatbotMessage = { message: `Désolé, une erreur est survenue en contactant l'IA.` };
+        console.error(`[DEBUG] Chatbot request failed:`, error);
+        chatbotMessage = { message: `Désolé, une erreur est survenue en contactant l'IA. (${error.message})` };
     }
 
     const finalMessage = {
@@ -83,7 +95,7 @@ async function handleChatbotRequest(prompt, config) {
         ...chatbotMessage
     };
     broadcast(finalMessage);
-    appendToHistory(finalMessage);
+    // We don't save chatbot responses to the main history to avoid clutter.
 }
 
 
@@ -114,13 +126,12 @@ wss.on('connection', (ws) => {
     ws.on('message', (message) => {
         const data = JSON.parse(message);
 
-        // Check for chatbot trigger
         if (data.type === 'chat') {
             const trigger = Object.keys(chatbotConfig).find(key => data.message.startsWith(key));
             if (trigger) {
                 const prompt = data.message.substring(trigger.length).trim();
-                handleChatbotRequest(prompt, chatbotConfig[trigger]);
-                return; // Stop further processing
+                handleChatbotRequest(prompt, chatbotConfig[trigger], trigger);
+                return;
             }
         }
 
