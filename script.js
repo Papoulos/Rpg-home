@@ -3,16 +3,11 @@
     let username = '';
     let userColor = '#ffffff'; // Default color
 
+    const socket = new WebSocket(`ws://${window.location.host}`);
+
     // --- Utility Functions ---
-    /**
-     * Generates a consistent, visually appealing color from a string.
-     * @param {string} str - The input string (e.g., username).
-     * @param {number} s - Saturation (0-100).
-     * @param {number} l - Lightness (0-100).
-     * @returns {string} HSL color string.
-     */
     function stringToHslColor(str, s, l) {
-        if (!str) return '#ffffff'; // Return default for empty strings
+        if (!str) return '#ffffff';
         let hash = 0;
         for (let i = 0; i < str.length; i++) {
             hash = str.charCodeAt(i) + ((hash << 5) - hash);
@@ -26,29 +21,11 @@
         while (!username || username.trim() === '') {
             username = prompt("Veuillez entrer votre nom pour le chat :");
         }
-        userColor = stringToHslColor(username, 70, 75); // Lighter color for better readability
+        userColor = stringToHslColor(username, 70, 75);
     }
 
     function getUsername() {
         return username;
-    }
-
-    // --- Chat History ---
-    let chatHistory = [];
-
-    function saveHistory() {
-        localStorage.setItem('rpg-chat-history', JSON.stringify(chatHistory));
-    }
-
-    function loadHistory() {
-        const savedHistory = localStorage.getItem('rpg-chat-history');
-        if (savedHistory) {
-            chatHistory = JSON.parse(savedHistory);
-            chatHistory.forEach(msg => {
-                const color = stringToHslColor(msg.sender, 70, 75);
-                addMessage(msg.sender, msg.message, { save: false, prepend: false, color: color });
-            });
-        }
     }
 
     // --- Core Functions ---
@@ -63,7 +40,7 @@
         });
     }
 
-    function addMessage(sender, message, { save = true, prepend = false, color = null } = {}) {
+    function addMessage({ sender, message, color, type }) {
         const messageElement = document.createElement('div');
         messageElement.classList.add('chat-message');
 
@@ -76,23 +53,24 @@
 
         messageElement.innerHTML = `${coloredSender} ${richMessage}`;
 
-        if (prepend) {
-            chatMessages.prepend(messageElement);
-        } else {
-            chatMessages.appendChild(messageElement);
-        }
+        // New messages are always prepended now
+        chatMessages.prepend(messageElement);
+    }
 
-        if (save) {
-            chatHistory.push({ sender, message });
-            saveHistory();
-        }
+    function sendMessage(type, messageContent) {
+        const message = {
+            type: type,
+            sender: getUsername(),
+            color: userColor,
+            message: messageContent,
+        };
+        socket.send(JSON.stringify(message));
     }
 
     function rollDice(dieType) {
         const roll = Math.floor(Math.random() * dieType) + 1;
         let resultDisplay;
 
-        // User wants GREEN for 1 (crit success in some systems) and RED for max (crit fail in some systems)
         if (roll === 1) {
             resultDisplay = `<span class="crit-success">${roll}</span>`;
         } else if (roll === dieType) {
@@ -102,18 +80,52 @@
         }
 
         const message = `lance un dé ${dieType} : ${resultDisplay}`;
-        addMessage(getUsername(), message, { prepend: true });
+        sendMessage('dice', message);
     }
 
     function handleSendMessage() {
         const message = chatInput.value.trim();
         if (message) {
-            addMessage(getUsername(), message, { prepend: true });
+            sendMessage('chat', message);
             chatInput.value = '';
         }
     }
 
-    // --- Event Listeners ---
+    // --- WebSocket Event Listeners ---
+    socket.onopen = () => {
+        console.log('WebSocket connection established');
+    };
+
+    socket.onmessage = (event) => {
+        try {
+            const data = JSON.parse(event.data);
+
+            if (data.type === 'history') {
+                // Handle the initial history dump
+                data.messages.forEach(msg => {
+                    // Append historical messages
+                    addMessage({ ...msg, prepend: false });
+                });
+            } else {
+                // Handle a single, live message
+                addMessage({ ...data, prepend: true });
+            }
+        } catch (error) {
+            // Handle non-JSON messages if any (e.g. simple welcome strings)
+            console.log('Received non-JSON message:', event.data);
+        }
+    };
+
+    socket.onclose = () => {
+        console.log('WebSocket connection closed');
+        addMessage({ sender: 'System', message: 'Connection lost. Please refresh the page.' });
+    };
+
+    socket.onerror = (error) => {
+        console.error('WebSocket error:', error);
+    };
+
+    // --- DOM Event Listeners ---
     function setupEventListeners() {
         sendButton.addEventListener('click', handleSendMessage);
         chatInput.addEventListener('keydown', (event) => {
@@ -140,10 +152,12 @@
         sendButton = document.getElementById('send-button');
         diceButtons = document.querySelectorAll('.dice-button');
 
-        loadHistory();
         askForUsername();
 
-        addMessage('System', `${getUsername()} a rejoint la session.`, { prepend: true });
+        // Announce that the user has joined once the connection is open
+        socket.addEventListener('open', () => {
+             sendMessage('user-join', `${getUsername()} a rejoint la session.`);
+        });
 
         setupEventListeners();
     });
