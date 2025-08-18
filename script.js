@@ -259,7 +259,7 @@
     }
 
     // --- DOM Elements ---
-    let chatMessages, chatInput, sendButton, diceButtons, leftPanel, toggleChatBtn, videoGrid, muteMicBtn, toggleVideoBtn;
+    let chatMessages, chatInput, sendButton, diceButtons, leftPanel, toggleChatBtn, videoGrid, muteMicBtn, toggleVideoBtn, rightPanel, toggleVideoPanelBtn;
 
     // --- Local Media Controls ---
     function setupGlobalControls() {
@@ -291,6 +291,8 @@
         diceButtons = document.querySelectorAll('.dice-button');
         leftPanel = document.querySelector('.left-panel');
         toggleChatBtn = document.getElementById('toggle-chat-btn');
+        rightPanel = document.querySelector('.right-panel');
+        toggleVideoPanelBtn = document.getElementById('toggle-video-panel-btn');
         videoGrid = document.getElementById('video-grid');
         muteMicBtn = document.getElementById('mute-mic-btn');
         toggleVideoBtn = document.getElementById('toggle-video-btn');
@@ -309,5 +311,16 @@
         setupEventListeners();
         setupToggle();
         setupGlobalControls();
+        // Add the new toggle setup
+        toggleVideoPanelBtn.addEventListener('click', () => {
+            rightPanel.classList.toggle('video-hidden');
+            if (rightPanel.classList.contains('video-hidden')) {
+                toggleVideoPanelBtn.textContent = '«';
+                toggleVideoPanelBtn.title = "Afficher le panneau de vidéo";
+            } else {
+                toggleVideoPanelBtn.textContent = '»';
+                toggleVideoPanelBtn.title = "Cacher le panneau de vidéo";
+            }
+        });
     });
 })();

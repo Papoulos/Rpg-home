@@ -59,6 +59,43 @@ body, html {
     left: 0;
 }
 
+#toggle-video-panel-btn {
+    position: absolute;
+    top: 50%;
+    /* 80% is the start of the right panel (20% left + 60% main) */
+    left: 80%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+
+    background: #333;
+    color: #eee;
+    border: 1px solid #555;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    line-height: 28px;
+    text-align: center;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+    transition: left 0.3s ease-in-out, background-color 0.2s;
+}
+
+#toggle-video-panel-btn:hover {
+    background: #444;
+}
+
+.right-panel.video-hidden {
+    flex-basis: 0;
+    flex-grow: 0;
+    padding-left: 0;
+    padding-right: 0;
+    overflow: hidden;
+}
+
+.right-panel.video-hidden + #toggle-video-panel-btn {
+    left: 100%;
+}
+
 .left-panel.chat-hidden {
     flex-basis: 0;
     flex-grow: 0;
