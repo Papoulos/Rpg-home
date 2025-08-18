@@ -72,26 +72,10 @@
         videoContainer.appendChild(nameTag);
 
         if (name === getUsername()) {
-            video.muted = true;
+            video.muted = true; // Local video is always muted
             video.style.transform = 'scaleX(-1)';
-
-            const controlsContainer = document.createElement('div');
-            controlsContainer.classList.add('video-controls');
-
-            const toggleVideoButton = document.createElement('button');
-            toggleVideoButton.innerHTML = '&#128249;'; // Camera emoji
-            toggleVideoButton.title = "Désactiver la caméra";
-            toggleVideoButton.onclick = () => {
-                const videoTrack = localStream.getVideoTracks()[0];
-                videoTrack.enabled = !videoTrack.enabled;
-                toggleVideoButton.innerHTML = videoTrack.enabled ? '&#128249;' : '&#128249;&#xFE0E;&#x20E0;'; // Camera with slash
-                toggleVideoButton.title = videoTrack.enabled ? "Désactiver la caméra" : "Activer la caméra";
-            };
-            controlsContainer.appendChild(toggleVideoButton);
-            videoContainer.appendChild(controlsContainer);
-
         } else {
-            video.muted = true; // Remote videos start muted
+            // For remote videos, add the unmute overlay
             const unmuteOverlay = document.createElement('div');
             unmuteOverlay.classList.add('unmute-overlay');
             unmuteOverlay.innerHTML = '&#128264; Cliquez pour activer le son'; // Speaker emoji
@@ -275,7 +259,29 @@
     }
 
     // --- DOM Elements ---
-    let chatMessages, chatInput, sendButton, diceButtons, leftPanel, toggleChatBtn, videoGrid;
+    let chatMessages, chatInput, sendButton, diceButtons, leftPanel, toggleChatBtn, videoGrid, muteMicBtn, toggleVideoBtn;
+
+    // --- Local Media Controls ---
+    function setupGlobalControls() {
+        muteMicBtn.addEventListener('click', () => {
+            const audioTrack = localStream.getAudioTracks()[0];
+            if (audioTrack) {
+                audioTrack.enabled = !audioTrack.enabled;
+                muteMicBtn.classList.toggle('muted', !audioTrack.enabled);
+                muteMicBtn.title = audioTrack.enabled ? "Couper le micro" : "Activer le micro";
+            }
+        });
+
+        toggleVideoBtn.addEventListener('click', () => {
+            const videoTrack = localStream.getVideoTracks()[0];
+            if (videoTrack) {
+                videoTrack.enabled = !videoTrack.enabled;
+                toggleVideoBtn.classList.toggle('muted', !videoTrack.enabled);
+                toggleVideoBtn.title = videoTrack.enabled ? "Désactiver la caméra" : "Activer la caméra";
+            }
+        });
+    }
+
 
     // Execute when the DOM is fully loaded
     document.addEventListener('DOMContentLoaded', async () => {
@@ -286,6 +292,9 @@
         leftPanel = document.querySelector('.left-panel');
         toggleChatBtn = document.getElementById('toggle-chat-btn');
         videoGrid = document.getElementById('video-grid');
+        muteMicBtn = document.getElementById('mute-mic-btn');
+        toggleVideoBtn = document.getElementById('toggle-video-btn');
+
 
         askForUsername();
         await setupLocalMedia();
@@ -299,5 +308,6 @@
 
         setupEventListeners();
         setupToggle();
+        setupGlobalControls();
     });
 })();

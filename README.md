@@ -62,7 +62,7 @@ The right-hand panel contains a multi-user video conference feature powered by W
 - **Peer-to-Peer Connections**: Establishes direct video and audio connections between all participants for low latency.
 - **NAT Traversal**: Uses STUN and TURN servers to ensure connections can be made even across restrictive firewalls.
 - **Audio Control**: Remote video streams start muted. Users can click on a video to enable the audio for that specific person.
-- **Video Control**: Users can toggle their own camera on and off using a control button on their local video preview.
+- **Global Media Controls**: A dedicated control bar on the right side of the screen allows users to toggle their own microphone and camera on or off. The buttons turn red to indicate when a device is muted or disabled.
 - **Dice Buttons**: Buttons for rolling 4, 6, 10, 20, and 100-sided dice.
 - **Public Results**: The dice roll result is posted to the chat for all users to see.
 - **Critical Roll Styling**: Dice rolls for the minimum (1) or maximum possible value are highlighted in green and red, respectively, to easily spot critical successes and failures.
