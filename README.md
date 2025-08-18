@@ -57,6 +57,16 @@ Integrated directly into the chat panel for convenience.
 - **Public Results**: The dice roll result is posted to the chat for all users to see.
 - **Critical Roll Styling**: Dice rolls for the minimum (1) or maximum possible value are highlighted in green and red, respectively, to easily spot critical successes and failures.
 
+### 4. Video Conferencing
+The right-hand panel contains a multi-user video conference feature powered by WebRTC.
+- **Peer-to-Peer Connections**: Establishes direct video and audio connections between all participants for low latency.
+- **NAT Traversal**: Uses STUN and TURN servers to ensure connections can be made even across restrictive firewalls.
+- **Audio Control**: Remote video streams start muted. Users can click on a video to enable the audio for that specific person.
+- **Video Control**: Users can toggle their own camera on and off using a control button on their local video preview.
+- **Dice Buttons**: Buttons for rolling 4, 6, 10, 20, and 100-sided dice.
+- **Public Results**: The dice roll result is posted to the chat for all users to see.
+- **Critical Roll Styling**: Dice rolls for the minimum (1) or maximum possible value are highlighted in green and red, respectively, to easily spot critical successes and failures.
+
 ### 4. Main Display & Menu
 The central area is designed for displaying primary content.
 - **macOS-style Menu Bar**: At the bottom of the central panel, a sleek menu bar provides navigation options for "Carte", "PJ", and "Prez" (currently placeholders for future features).

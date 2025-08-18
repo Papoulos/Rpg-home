@@ -58,19 +58,50 @@
         const videoContainer = document.createElement('div');
         videoContainer.id = `video-${name}`;
         videoContainer.classList.add('video-container');
+
         const video = document.createElement('video');
         video.srcObject = stream;
         video.autoplay = true;
         video.playsInline = true;
-        video.muted = true; // Mute all streams by default to ensure autoplay
-        if (name === getUsername()) {
-            video.style.transform = 'scaleX(-1)';
-        }
+
         const nameTag = document.createElement('div');
         nameTag.classList.add('name-tag');
         nameTag.textContent = name;
+
         videoContainer.appendChild(video);
         videoContainer.appendChild(nameTag);
+
+        if (name === getUsername()) {
+            video.muted = true;
+            video.style.transform = 'scaleX(-1)';
+
+            const controlsContainer = document.createElement('div');
+            controlsContainer.classList.add('video-controls');
+
+            const toggleVideoButton = document.createElement('button');
+            toggleVideoButton.innerHTML = '&#128249;'; // Camera emoji
+            toggleVideoButton.title = "Désactiver la caméra";
+            toggleVideoButton.onclick = () => {
+                const videoTrack = localStream.getVideoTracks()[0];
+                videoTrack.enabled = !videoTrack.enabled;
+                toggleVideoButton.innerHTML = videoTrack.enabled ? '&#128249;' : '&#128249;&#xFE0E;&#x20E0;'; // Camera with slash
+                toggleVideoButton.title = videoTrack.enabled ? "Désactiver la caméra" : "Activer la caméra";
+            };
+            controlsContainer.appendChild(toggleVideoButton);
+            videoContainer.appendChild(controlsContainer);
+
+        } else {
+            video.muted = true; // Remote videos start muted
+            const unmuteOverlay = document.createElement('div');
+            unmuteOverlay.classList.add('unmute-overlay');
+            unmuteOverlay.innerHTML = '&#128264; Cliquez pour activer le son'; // Speaker emoji
+            unmuteOverlay.onclick = () => {
+                video.muted = false;
+                unmuteOverlay.style.display = 'none';
+            };
+            videoContainer.appendChild(unmuteOverlay);
+        }
+
         videoGrid.appendChild(videoContainer);
     }
 
