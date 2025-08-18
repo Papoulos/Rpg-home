@@ -18,6 +18,7 @@ const chatbotConfig = {
     // To use, a user would type: "#ask <your prompt>"
     '#ask': {
         type: 'url',
+        displayName: 'Assistant', // Custom name for this bot
         endpoint: 'YOUR_CUSTOM_API_ENDPOINT_HERE' // e.g., 'https://api.your-service.com/chat'
     },
 

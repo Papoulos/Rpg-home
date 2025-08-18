@@ -38,13 +38,12 @@ function broadcastUserList() {
 }
 
 // --- Chatbot Functions ---
-async function handleChatbotRequest(prompt, config, trigger) {
-    console.log(`[DEBUG] Chatbot triggered by '${trigger}'. Prompt: '${prompt}'`);
-    let chatbotMessage;
+async function handleChatbotRequest(prompt, config) {
+    const chatbotName = config.displayName || config.service || 'Chatbot';
+    let responseMessage;
 
     try {
         if (config.type === 'url') {
-            console.log(`[DEBUG] Calling URL API at: ${config.endpoint}`);
             const response = await fetch(config.endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -52,50 +51,50 @@ async function handleChatbotRequest(prompt, config, trigger) {
             });
             if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
             const data = await response.json();
-            chatbotMessage = { message: data.response || 'Le chatbot n\'a pas pu répondre.' };
+            responseMessage = data.response || 'Le chatbot n\'a pas pu répondre.';
 
         } else if (config.type === 'paid' && config.service === 'gemini') {
-            if (!config.apiKey || config.apiKey === 'PASTE_YOUR_GOOGLE_GEMINI_API_KEY_HERE') {
+            if (!config.apiKey || config.apiKey.includes('PASTE_YOUR')) {
                 throw new Error('API key for Gemini is missing or is a placeholder.');
             }
 
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent?key=${config.apiKey}`;
-            const body = {
-                contents: [{ parts: [{ text: prompt }] }]
-            };
-            console.log(`[DEBUG] Sending request to Gemini URL: ${url}`);
-            console.log(`[DEBUG] Request body: ${JSON.stringify(body)}`);
-
+            const body = { contents: [{ parts: [{ text: prompt }] }] };
             const response = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
             });
 
-            const responseText = await response.text();
-            console.log(`[DEBUG] Gemini raw response: ${responseText}`);
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Gemini API request failed with status ${response.status}: ${errorText}`);
+            }
 
-            if (!response.ok) throw new Error(`Gemini API request failed with status ${response.status}: ${responseText}`);
-
-            const data = JSON.parse(responseText);
-            chatbotMessage = { message: data.candidates[0].content.parts[0].text || 'Gemini n\'a pas pu répondre.' };
+            const data = await response.json();
+            responseMessage = data.candidates[0].content.parts[0].text || 'Gemini n\'a pas pu répondre.';
 
         } else {
             throw new Error(`The API type '${config.type}' or service '${config.service}' is not implemented.`);
         }
     } catch (error) {
-        console.error(`[DEBUG] Chatbot request failed:`, error);
-        chatbotMessage = { message: `Désolé, une erreur est survenue en contactant l'IA. (${error.message})` };
+        console.error(`[CHATBOT] Error calling API:`, error);
+        responseMessage = `Désolé, une erreur est survenue en contactant l'IA. (${error.message})`;
+    }
+
+    // Truncate the response if it's too long
+    if (responseMessage.length > 900) {
+        responseMessage = responseMessage.substring(0, 900) + '...';
     }
 
     const finalMessage = {
         type: 'chat',
-        sender: 'Chatbot',
+        sender: chatbotName,
         timestamp: new Date().toISOString(),
-        ...chatbotMessage
+        message: responseMessage
     };
     broadcast(finalMessage);
-    // We don't save chatbot responses to the main history to avoid clutter.
+    appendToHistory(finalMessage); // Also save chatbot responses
 }
 
 
@@ -130,7 +129,7 @@ wss.on('connection', (ws) => {
             const trigger = Object.keys(chatbotConfig).find(key => data.message.startsWith(key));
             if (trigger) {
                 const prompt = data.message.substring(trigger.length).trim();
-                handleChatbotRequest(prompt, chatbotConfig[trigger], trigger);
+                handleChatbotRequest(prompt, chatbotConfig[trigger]);
                 return;
             }
         }

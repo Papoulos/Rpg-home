@@ -68,6 +68,8 @@ The right-hand panel contains a multi-user video conference feature powered by W
 The chat is integrated with a configurable AI chatbot.
 - **Command-based Triggers**: Users can activate the chatbot by starting a message with a configured command (e.g., `#ask` or `#gemini`).
 - **Configurable Commands**: You can define multiple commands in the `api.config.js` file. Each command word is a key that maps to a specific API configuration.
+- **Custom Naming**: You can set a `displayName` in the configuration for each bot. If not set, the service name (e.g., "gemini") will be used.
+- **Response Limiting**: Chatbot responses are automatically truncated to 900 characters to keep the chat tidy.
 - **API Support**: The configuration file includes examples for:
   - A custom URL endpoint (triggered by `#ask`).
   - Google Gemini (triggered by `#gemini`, requires a `model` name).
