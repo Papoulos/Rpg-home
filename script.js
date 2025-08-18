@@ -35,7 +35,6 @@
 
     // --- DOM Manipulation ---
     function addMessage({ sender, message, prepend = false }) {
-        // Defensive check for malformed messages from history
         if (!sender || !message) {
             console.warn('[UI] Ignoring malformed message object:', { sender, message });
             return;
@@ -58,34 +57,22 @@
         const videoContainer = document.createElement('div');
         videoContainer.id = `video-${name}`;
         videoContainer.classList.add('video-container');
-
         const video = document.createElement('video');
         video.srcObject = stream;
         video.autoplay = true;
         video.playsInline = true;
 
+        if (name === getUsername()) {
+            video.muted = true; // Local video is always muted to prevent feedback
+            video.style.transform = 'scaleX(-1)';
+        }
+        // Remote streams are NOT muted by default, relying on browser autoplay policy
+
         const nameTag = document.createElement('div');
         nameTag.classList.add('name-tag');
         nameTag.textContent = name;
-
         videoContainer.appendChild(video);
         videoContainer.appendChild(nameTag);
-
-        if (name === getUsername()) {
-            video.muted = true; // Local video is always muted
-            video.style.transform = 'scaleX(-1)';
-        } else {
-            // For remote videos, add the unmute overlay
-            const unmuteOverlay = document.createElement('div');
-            unmuteOverlay.classList.add('unmute-overlay');
-            unmuteOverlay.innerHTML = '&#128264; Cliquez pour activer le son'; // Speaker emoji
-            unmuteOverlay.onclick = () => {
-                video.muted = false;
-                unmuteOverlay.style.display = 'none';
-            };
-            videoContainer.appendChild(unmuteOverlay);
-        }
-
         videoGrid.appendChild(videoContainer);
     }
 
@@ -124,7 +111,6 @@
     async function createPeerConnection(peerUsername) {
         if (peerConnections[peerUsername] || peerUsername === getUsername()) return;
 
-        console.log(`[DEBUG] Creating peer connection for: ${peerUsername}`);
         const pc = new RTCPeerConnection(iceServers);
         peerConnections[peerUsername] = pc;
 
@@ -139,12 +125,10 @@
         };
 
         pc.ontrack = event => {
-            console.log(`[DEBUG] Received remote track from ${peerUsername}`);
             addVideoStream(event.streams[0], peerUsername);
         };
 
         pc.onconnectionstatechange = () => {
-            console.log(`[DEBUG] Connection state change for ${peerUsername}: ${pc.connectionState}`);
             if (pc.connectionState === 'disconnected' || pc.connectionState === 'closed' || pc.connectionState === 'failed') {
                 removeVideoStream(peerUsername);
                 delete peerConnections[peerUsername];
@@ -153,7 +137,6 @@
     }
 
     async function handleUserList(users) {
-        console.log('[DEBUG] Received user list:', users);
         const myUsername = getUsername();
 
         // Create connections for new users and send offers
@@ -164,7 +147,6 @@
                 const offer = await pc.createOffer();
                 await pc.setLocalDescription(offer);
                 sendMessage({ type: 'offer', target: user, message: pc.localDescription });
-                console.log(`[DEBUG] Sent offer to new user: ${user}`);
             }
         }
 
@@ -181,11 +163,10 @@
     // --- WebSocket Event Listeners ---
     socket.onmessage = async (event) => {
         const data = JSON.parse(event.data);
-        console.log('[DEBUG] Received message from server:', data.type);
 
         switch (data.type) {
             case 'history':
-                // Iterate and prepend each message to maintain order but show newest first
+                // Prepend history messages so they appear in the correct order
                 data.messages.forEach(msg => {
                     if (msg.type === 'chat' || msg.type === 'dice') {
                         addMessage({ ...msg, prepend: true });
@@ -207,12 +188,10 @@
                     const answer = await pc.createAnswer();
                     await pc.setLocalDescription(answer);
                     sendMessage({ type: 'answer', target: data.sender, message: pc.localDescription });
-                    console.log(`[DEBUG] Sent answer to ${data.sender}`);
                 }
                 break;
             case 'answer':
                 await peerConnections[data.sender]?.setRemoteDescription(new RTCSessionDescription(data.message));
-                console.log(`[DEBUG] Processed answer from ${data.sender}`);
                 break;
             case 'ice-candidate':
                 await peerConnections[data.sender]?.addIceCandidate(new RTCIceCandidate(data.message));
@@ -235,10 +214,25 @@
     }
 
     function setupToggle() {
-        toggleChatBtn.addEventListener('click', () => {
-            leftPanel.classList.toggle('chat-hidden');
-            toggleChatBtn.textContent = leftPanel.classList.contains('chat-hidden') ? '»' : '«';
-            toggleChatBtn.title = leftPanel.classList.contains('chat-hidden') ? "Afficher le panneau de chat" : "Cacher le panneau de chat";
+        // This function now handles both toggle buttons
+        const toggleButtons = [
+            { btn: document.getElementById('toggle-chat-btn'), panel: document.querySelector('.left-panel'), class: 'chat-hidden' },
+            { btn: document.getElementById('toggle-video-panel-btn'), panel: document.querySelector('.right-panel'), class: 'video-hidden' }
+        ];
+
+        toggleButtons.forEach(item => {
+            if (item.btn && item.panel) {
+                item.btn.addEventListener('click', () => {
+                    item.panel.classList.toggle(item.class);
+                    // Update button text/icon based on state
+                    const isHidden = item.panel.classList.contains(item.class);
+                    if (item.btn.id === 'toggle-chat-btn') {
+                        item.btn.textContent = isHidden ? '»' : '«';
+                    } else {
+                        item.btn.textContent = isHidden ? '«' : '»';
+                    }
+                });
+            }
         });
     }
 
@@ -246,23 +240,11 @@
         sendButton.addEventListener('click', handleSendMessage);
         chatInput.addEventListener('keydown', e => e.key === 'Enter' && handleSendMessage());
         diceButtons.forEach(button => button.addEventListener('click', () => rollDice(parseInt(button.dataset.die, 10))));
-    }
 
-    function stringToHslColor(str, s, l) {
-        if (!str) return '#ffffff';
-        let hash = 0;
-        for (let i = 0; i < str.length; i++) {
-            hash = str.charCodeAt(i) + ((hash << 5) - hash);
-        }
-        const h = hash % 360;
-        return `hsl(${h}, ${s}%, ${l}%)`;
-    }
+        // Global media controls
+        const muteMicBtn = document.getElementById('mute-mic-btn');
+        const toggleVideoBtn = document.getElementById('toggle-video-btn');
 
-    // --- DOM Elements ---
-    let chatMessages, chatInput, sendButton, diceButtons, leftPanel, toggleChatBtn, videoGrid, muteMicBtn, toggleVideoBtn, rightPanel, toggleVideoPanelBtn;
-
-    // --- Local Media Controls ---
-    function setupGlobalControls() {
         muteMicBtn.addEventListener('click', () => {
             const audioTrack = localStream.getAudioTracks()[0];
             if (audioTrack) {
@@ -282,9 +264,22 @@
         });
     }
 
+    function stringToHslColor(str, s, l) {
+        if (!str) return '#ffffff';
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const h = hash % 360;
+        return `hsl(${h}, ${s}%, ${l}%)`;
+    }
+
+    // --- DOM Elements ---
+    let chatMessages, chatInput, sendButton, diceButtons, leftPanel, toggleChatBtn, videoGrid, rightPanel, toggleVideoPanelBtn;
 
     // Execute when the DOM is fully loaded
     document.addEventListener('DOMContentLoaded', async () => {
+        // Define all DOM elements
         chatMessages = document.getElementById('chat-messages');
         chatInput = document.getElementById('chat-input');
         sendButton = document.getElementById('send-button');
@@ -294,9 +289,6 @@
         rightPanel = document.querySelector('.right-panel');
         toggleVideoPanelBtn = document.getElementById('toggle-video-panel-btn');
         videoGrid = document.getElementById('video-grid');
-        muteMicBtn = document.getElementById('mute-mic-btn');
-        toggleVideoBtn = document.getElementById('toggle-video-btn');
-
 
         askForUsername();
         await setupLocalMedia();
@@ -310,17 +302,5 @@
 
         setupEventListeners();
         setupToggle();
-        setupGlobalControls();
-        // Add the new toggle setup
-        toggleVideoPanelBtn.addEventListener('click', () => {
-            rightPanel.classList.toggle('video-hidden');
-            if (rightPanel.classList.contains('video-hidden')) {
-                toggleVideoPanelBtn.textContent = '«';
-                toggleVideoPanelBtn.title = "Afficher le panneau de vidéo";
-            } else {
-                toggleVideoPanelBtn.textContent = '»';
-                toggleVideoPanelBtn.title = "Cacher le panneau de vidéo";
-            }
-        });
     });
 })();
