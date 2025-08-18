@@ -1,22 +1,37 @@
 // IIFE to avoid polluting the global scope
 (() => {
     let username = '';
+    let userColor = '#ffffff'; // Default color
 
+    // --- Utility Functions ---
+    /**
+     * Generates a consistent, visually appealing color from a string.
+     * @param {string} str - The input string (e.g., username).
+     * @param {number} s - Saturation (0-100).
+     * @param {number} l - Lightness (0-100).
+     * @returns {string} HSL color string.
+     */
+    function stringToHslColor(str, s, l) {
+        if (!str) return '#ffffff'; // Return default for empty strings
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const h = hash % 360;
+        return `hsl(${h}, ${s}%, ${l}%)`;
+    }
+
+    // --- User and Chat Management ---
     function askForUsername() {
-        // Prompt the user for their name
-        // Loop until a valid name is entered
         while (!username || username.trim() === '') {
             username = prompt("Veuillez entrer votre nom pour le chat :");
         }
+        userColor = stringToHslColor(username, 70, 75); // Lighter color for better readability
     }
 
-    // Function to get the current username
     function getUsername() {
         return username;
     }
-
-    // --- DOM Elements ---
-    let chatMessages, chatInput, sendButton, diceButtons;
 
     // --- Chat History ---
     let chatHistory = [];
@@ -30,18 +45,16 @@
         if (savedHistory) {
             chatHistory = JSON.parse(savedHistory);
             chatHistory.forEach(msg => {
-                // Load history by APPENDING, so it's in chronological order.
-                addMessage(msg.sender, msg.message, { save: false, prepend: false });
+                const color = stringToHslColor(msg.sender, 70, 75);
+                addMessage(msg.sender, msg.message, { save: false, prepend: false, color: color });
             });
         }
     }
 
     // --- Core Functions ---
     function parseForRichContent(message) {
-        // Regex to find URLs
         const urlRegex = /(https?:\/\/[^\s]+)/g;
         return message.replace(urlRegex, (url) => {
-            // Check if the URL is an image
             if (/\.(jpeg|jpg|gif|png)$/i.test(url)) {
                 return `<a href="${url}" target="_blank"><img src="${url}" alt="Image" style="max-width: 100%; max-height: 150px;" /></a>`;
             } else {
@@ -50,12 +63,18 @@
         });
     }
 
-    function addMessage(sender, message, { save = true, prepend = false } = {}) {
+    function addMessage(sender, message, { save = true, prepend = false, color = null } = {}) {
         const messageElement = document.createElement('div');
         messageElement.classList.add('chat-message');
 
+        const senderColor = color || userColor;
         const richMessage = parseForRichContent(message);
-        messageElement.innerHTML = `<strong>${sender}:</strong> ${richMessage}`;
+
+        const coloredSender = sender === 'System'
+            ? `<strong style="color: #aaa;">${sender}:</strong>`
+            : `<strong style="color: ${senderColor};">${sender}:</strong>`;
+
+        messageElement.innerHTML = `${coloredSender} ${richMessage}`;
 
         if (prepend) {
             chatMessages.prepend(messageElement);
@@ -71,7 +90,18 @@
 
     function rollDice(dieType) {
         const roll = Math.floor(Math.random() * dieType) + 1;
-        const message = `lance un dé ${dieType} et obtient : <strong>${roll}</strong>`;
+        let resultDisplay;
+
+        // User wants GREEN for 1 (crit success in some systems) and RED for max (crit fail in some systems)
+        if (roll === 1) {
+            resultDisplay = `<span class="crit-success">${roll}</span>`;
+        } else if (roll === dieType) {
+            resultDisplay = `<span class="crit-fail">${roll}</span>`;
+        } else {
+            resultDisplay = `<strong>${roll}</strong>`;
+        }
+
+        const message = `lance un dé ${dieType} : ${resultDisplay}`;
         addMessage(getUsername(), message, { prepend: true });
     }
 
@@ -100,9 +130,11 @@
         });
     }
 
+    // --- DOM Elements ---
+    let chatMessages, chatInput, sendButton, diceButtons;
+
     // Execute when the DOM is fully loaded
     document.addEventListener('DOMContentLoaded', () => {
-        // Assign DOM elements
         chatMessages = document.getElementById('chat-messages');
         chatInput = document.getElementById('chat-input');
         sendButton = document.getElementById('send-button');
@@ -111,12 +143,7 @@
         loadHistory();
         askForUsername();
 
-        if (chatHistory.length === 0) {
-            addMessage('System', `Bienvenue, ${getUsername()}!`, { prepend: true });
-        } else {
-            // Also prepend the re-join message
-            addMessage('System', `${getUsername()} a rejoint la session.`, { prepend: true });
-        }
+        addMessage('System', `${getUsername()} a rejoint la session.`, { prepend: true });
 
         setupEventListeners();
     });

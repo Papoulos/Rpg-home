@@ -100,6 +100,8 @@ body, html {
     background-color: #2c2c2c;
     border-radius: 4px;
     border-left: 3px solid #4CAF50;
+    font-size: 14px; /* Smaller font size for chat text */
+    word-wrap: break-word; /* Ensure long words don't overflow */
 }
 
 .chat-input-area {
@@ -161,4 +163,15 @@ body, html {
 .dice-roller .dice-button:active {
     transform: translateY(2px) translateX(1px);
     box-shadow: 1px 1px 2px rgba(0,0,0,0.4);
+}
+
+/* Styles for critical dice rolls */
+.crit-success {
+    color: #4CAF50; /* Green */
+    font-weight: bold;
+}
+
+.crit-fail {
+    color: #f44336; /* Red */
+    font-weight: bold;
 }
