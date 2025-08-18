@@ -224,3 +224,36 @@ body, html {
     color: #f44336; /* Red */
     font-weight: bold;
 }
+
+/* --- Styles pour le panneau Vidéo --- */
+#video-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+.video-container {
+    background: #111;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+}
+
+.video-container video {
+    width: 100%;
+    display: block;
+    transform: scaleX(-1); /* Effet miroir pour la vue locale */
+}
+
+.video-container .name-tag {
+    position: absolute;
+    bottom: 5px;
+    left: 5px;
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 13px;
+}

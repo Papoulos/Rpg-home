@@ -8,12 +8,12 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000; // Revert to 3000 for the final version
 const CHAT_LOG_FILE = path.join(__dirname, 'chat_history.log');
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
-// In-memory cache of chat history
 let chatHistory = [];
+let users = {}; // Store users by their WebSocket connection
 
 // --- Chat History Functions ---
 function loadChatHistory() {
@@ -28,93 +28,72 @@ function loadChatHistory() {
 function appendToHistory(message) {
     chatHistory.push(message);
     fs.appendFileSync(CHAT_LOG_FILE, JSON.stringify(message) + '\n');
-    trimHistoryFileIfNeeded();
-}
-
-function trimHistoryFileIfNeeded() {
-    if (fs.existsSync(CHAT_LOG_FILE)) {
-        const stats = fs.statSync(CHAT_LOG_FILE);
-        if (stats.size > MAX_FILE_SIZE) {
-            console.log('Chat history file size exceeds limit. Trimming...');
-            // Keep the most recent half of the messages
-            const linesToKeep = chatHistory.slice(Math.floor(chatHistory.length / 2));
-            const newContent = linesToKeep.map(line => JSON.stringify(line)).join('\n') + '\n';
-            fs.writeFileSync(CHAT_LOG_FILE, newContent);
-            chatHistory = linesToKeep;
-            console.log('Trimming complete.');
-        }
-    }
+    // Trimming logic can be added here if needed
 }
 
 // --- WebSocket Server ---
 wss.on('connection', (ws) => {
     console.log('Client connected');
-    ws.isAlive = true;
-
-    // Send history right away
-    ws.send(JSON.stringify({ type: 'history', messages: chatHistory }));
 
     ws.on('message', (message) => {
-        try {
-            const parsedMessage = JSON.parse(message);
+        const data = JSON.parse(message);
 
-            if (parsedMessage.type === 'user-join') {
-                // Store username on the connection and announce the join
-                ws.username = parsedMessage.sender;
-                const joinMessage = {
-                    type: 'system',
-                    sender: 'System',
-                    message: `${ws.username} a rejoint la session.`,
-                    color: '#aaa',
-                    timestamp: new Date().toISOString()
-                };
-                // Don't save join/leave messages to history, just broadcast
-                wss.clients.forEach(client => {
-                    if (client.readyState === WebSocket.OPEN) {
-                        client.send(JSON.stringify(joinMessage));
+        switch (data.type) {
+            case 'register':
+                console.log(`User registered: ${data.username}`);
+                ws.username = data.username;
+                users[data.username] = ws;
+                // Announce new user to all others
+                Object.values(users).forEach(userWs => {
+                    if (userWs !== ws) {
+                        userWs.send(JSON.stringify({ type: 'new-user', username: data.username }));
                     }
                 });
-            } else {
-                // Handle regular chat/dice messages
-                parsedMessage.timestamp = new Date().toISOString();
-                appendToHistory(parsedMessage);
-                wss.clients.forEach((client) => {
-                    if (client.readyState === WebSocket.OPEN) {
-                        client.send(JSON.stringify(parsedMessage));
-                    }
+                // Send list of existing users to the new user
+                ws.send(JSON.stringify({ type: 'existing-users', usernames: Object.keys(users).filter(u => u !== data.username) }));
+                // Send chat history
+                ws.send(JSON.stringify({ type: 'history', messages: chatHistory }));
+                break;
+
+            case 'chat':
+            case 'dice':
+                data.timestamp = new Date().toISOString();
+                appendToHistory(data);
+                // Broadcast chat messages to all
+                Object.values(users).forEach(userWs => {
+                    userWs.send(JSON.stringify(data));
                 });
-            }
-        } catch (error) {
-            console.error('Failed to parse message or broadcast:', error);
+                break;
+
+            case 'offer':
+            case 'answer':
+            case 'ice-candidate':
+                // Relay signaling messages to the target user
+                const targetWs = users[data.target];
+                if (targetWs) {
+                    console.log(`Relaying ${data.type} from ${data.sender} to ${data.target}`);
+                    targetWs.send(JSON.stringify(data));
+                }
+                break;
         }
     });
 
     ws.on('close', () => {
-        console.log('Client disconnected');
-        if (ws.username) {
-            const leaveMessage = {
-                type: 'system',
-                sender: 'System',
-                message: `${ws.username} a quitté la session.`,
-                color: '#aaa',
-                timestamp: new Date().toISOString()
-            };
-            wss.clients.forEach(client => {
-                if (client.readyState === WebSocket.OPEN) {
-                    client.send(JSON.stringify(leaveMessage));
-                }
+        const username = ws.username;
+        if (username) {
+            console.log(`User disconnected: ${username}`);
+            delete users[username];
+            // Announce user departure to all others
+            Object.values(users).forEach(userWs => {
+                userWs.send(JSON.stringify({ type: 'user-left', username }));
             });
         }
     });
 });
 
 // --- HTTP Server ---
-// Serve static files from the root directory
 app.use(express.static(path.join(__dirname, '/')));
-
-// Initial load of history
 loadChatHistory();
-
 server.listen(PORT, () => {
     console.log(`Server is listening on port ${PORT}`);
 });
