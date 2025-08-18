@@ -126,11 +126,19 @@ wss.on('connection', (ws) => {
         const data = JSON.parse(message);
 
         if (data.type === 'chat') {
-            const trigger = Object.keys(chatbotConfig).find(key => data.message.startsWith(key));
+            console.log(`[DEBUG] Checking for chatbot trigger in message: "${data.message}"`);
+            const knownTriggers = Object.keys(chatbotConfig);
+            console.log(`[DEBUG] Known triggers: [${knownTriggers.join(", ")}]`);
+
+            const trigger = knownTriggers.find(key => data.message.startsWith(key));
+
             if (trigger) {
+                console.log(`[DEBUG] Trigger '${trigger}' found!`);
                 const prompt = data.message.substring(trigger.length).trim();
                 handleChatbotRequest(prompt, chatbotConfig[trigger]);
                 return;
+            } else {
+                console.log(`[DEBUG] No trigger found. Treating as regular chat message.`);
             }
         }
 
