@@ -1,0 +1,18 @@
+// apikeys.js.example
+
+/**
+ * This is an example file for your API keys.
+ * To use the chatbot feature with paid services, you must:
+ * 1. Copy this file and rename it to `apikeys.js`.
+ * 2. Add your secret API keys to the appropriate fields below.
+ *
+ * IMPORTANT: The `apikeys.js` file is listed in `.gitignore`, so it will
+ * NOT be committed to your repository. This keeps your secrets safe.
+ */
+
+const apiKeys = {
+    gemini: 'PASTE_YOUR_GOOGLE_GEMINI_API_KEY_HERE',
+    mistral: 'PASTE_YOUR_MISTRAL_API_KEY_HERE'
+};
+
+module.exports = apiKeys;
