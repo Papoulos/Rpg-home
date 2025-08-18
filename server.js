@@ -3,6 +3,8 @@ const https = require('https');
 const WebSocket = require('ws');
 const path = require('path');
 const fs = require('fs');
+const fetch = require('node-fetch');
+const chatbotConfig = require('./api.config.js');
 
 const app = express();
 
@@ -18,19 +20,75 @@ const PORT = process.env.PORT || 3000;
 const CHAT_LOG_FILE = path.join(__dirname, 'chat_history.log');
 
 let chatHistory = [];
-const clients = new Map(); // Use a map to store clients with metadata
+const clients = new Map();
 
 // --- Utility Functions ---
-function broadcastUserList() {
-    const userList = Array.from(clients.values()).map(c => c.username).filter(Boolean);
-    const message = JSON.stringify({ type: 'user-list', users: userList });
+function broadcast(message) {
+    const data = JSON.stringify(message);
     clients.forEach(client => {
         if (client.ws.readyState === WebSocket.OPEN) {
-            client.ws.send(message);
+            client.ws.send(data);
         }
     });
+}
+
+function broadcastUserList() {
+    const userList = Array.from(clients.values()).map(c => c.username).filter(Boolean);
+    broadcast({ type: 'user-list', users: userList });
     console.log('[DEBUG] Broadcast user list:', userList);
 }
+
+// --- Chatbot Functions ---
+async function handleChatbotRequest(prompt) {
+    const config = chatbotConfig.apis.default; // For now, only use the default
+
+    if (config.type === 'url') {
+        try {
+            console.log(`[CHATBOT] Sending prompt to URL: ${config.endpoint}`);
+            const response = await fetch(config.endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: prompt })
+            });
+
+            if (!response.ok) {
+                throw new Error(`API request failed with status ${response.status}`);
+            }
+
+            const data = await response.json();
+            const chatbotMessage = {
+                type: 'chat',
+                sender: 'Chatbot',
+                message: data.response || 'Le chatbot n\'a pas pu répondre.',
+                timestamp: new Date().toISOString()
+            };
+            broadcast(chatbotMessage);
+            appendToHistory(chatbotMessage);
+
+        } catch (error) {
+            console.error('[CHATBOT] Error calling URL API:', error);
+            const errorMessage = {
+                type: 'chat',
+                sender: 'Chatbot',
+                message: 'Désolé, une erreur est survenue en contactant l\'IA.',
+                timestamp: new Date().toISOString()
+            };
+            broadcast(errorMessage);
+        }
+    }
+    // Placeholder for other API types
+    else if (config.type === 'paid') {
+        console.log(`[CHATBOT] '${config.service}' API is configured but not implemented yet.`);
+        const notImplementedMessage = {
+            type: 'chat',
+            sender: 'Chatbot',
+            message: `La logique pour le service '${config.service}' n'est pas encore implémentée.`,
+            timestamp: new Date().toISOString()
+        };
+        broadcast(notImplementedMessage);
+    }
+}
+
 
 // --- Chat History Functions ---
 function loadChatHistory() {
@@ -38,24 +96,16 @@ function loadChatHistory() {
         const fileContent = fs.readFileSync(CHAT_LOG_FILE, 'utf-8');
         const lines = fileContent.split('\n').filter(line => line.trim() !== '');
         chatHistory = lines.map(line => {
-            try {
-                return JSON.parse(line);
-            } catch {
-                console.warn('[HISTORY] Ignoring malformed line in chat history:', line);
-                return null;
-            }
-        }).filter(Boolean); // Filter out nulls from failed parsing
+            try { return JSON.parse(line); } catch { return null; }
+        }).filter(Boolean);
         console.log(`[HISTORY] Loaded ${chatHistory.length} valid messages.`);
     }
 }
 
 function appendToHistory(message) {
-    console.log('[HISTORY] Attempting to append message:', message);
     try {
-        // Only save message types that should be persisted
         if (message.type === 'chat' || message.type === 'dice') {
             fs.appendFileSync(CHAT_LOG_FILE, JSON.stringify(message) + '\n');
-            console.log('[HISTORY] Append successful.');
         }
     } catch (error) {
         console.error('[HISTORY] FAILED to append message:', error);
@@ -64,11 +114,15 @@ function appendToHistory(message) {
 
 // --- WebSocket Server ---
 wss.on('connection', (ws) => {
-    console.log('[DEBUG] Client connected');
-
     ws.on('message', (message) => {
         const data = JSON.parse(message);
-        console.log(`[DEBUG] Received message type: ${data.type} from ${data.sender}`);
+
+        // Check for chatbot trigger first
+        if (data.type === 'chat' && data.message.startsWith(chatbotConfig.triggerKeyword)) {
+            const prompt = data.message.substring(chatbotConfig.triggerKeyword.length).trim();
+            handleChatbotRequest(prompt);
+            return; // Stop further processing of this message
+        }
 
         switch (data.type) {
             case 'register':
@@ -80,13 +134,9 @@ wss.on('connection', (ws) => {
             case 'chat':
             case 'dice':
                 data.timestamp = new Date().toISOString();
-                chatHistory.push(data); // Add to in-memory history for the session
-                appendToHistory(data); // Attempt to persist to file
-                clients.forEach(client => {
-                    if (client.ws.readyState === WebSocket.OPEN) {
-                        client.ws.send(JSON.stringify(data));
-                    }
-                });
+                chatHistory.push(data);
+                appendToHistory(data);
+                broadcast(data);
                 break;
 
             case 'offer':
@@ -94,10 +144,7 @@ wss.on('connection', (ws) => {
             case 'ice-candidate':
                 const targetClient = Array.from(clients.values()).find(c => c.username === data.target);
                 if (targetClient) {
-                    console.log(`[DEBUG] Relaying ${data.type} from ${data.sender} to ${data.target}`);
                     targetClient.ws.send(JSON.stringify(data));
-                } else {
-                    console.warn(`[DEBUG] Could not find target for signaling message: ${data.target}`);
                 }
                 break;
         }
@@ -106,11 +153,8 @@ wss.on('connection', (ws) => {
     ws.on('close', () => {
         const clientInfo = clients.get(ws);
         if (clientInfo) {
-            console.log(`[DEBUG] User disconnected: ${clientInfo.username}`);
             clients.delete(ws);
             broadcastUserList();
-        } else {
-            console.log('[DEBUG] An unregistered client disconnected.');
         }
     });
 });

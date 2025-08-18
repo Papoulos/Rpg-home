@@ -63,6 +63,14 @@ The right-hand panel contains a multi-user video conference feature powered by W
 - **NAT Traversal**: Uses STUN and TURN servers to ensure connections can be made even across restrictive firewalls.
 - **Audio Control**: Remote video streams start muted. Users can click on a video to enable the audio for that specific person.
 - **Global Media Controls**: A dedicated control bar on the right side of the screen allows users to toggle their own microphone and camera on or off. The buttons turn red to indicate when a device is muted or disabled.
+
+### 5. AI Chatbot
+The chat is integrated with a configurable AI chatbot.
+- **Trigger Keyword**: Users can activate the chatbot by starting a message with a specific keyword (default: `#askme`).
+- **Configurable APIs**: You can configure the chatbot to use different AI services by editing the `api.config.js` file. It supports:
+  - A custom URL endpoint.
+  - Placeholders for paid services like Google Gemini and Mistral AI.
+- **Secure API Keys**: To use paid services, you must create an `apikeys.js` file (from the `apikeys.js.example` template) and add your secret keys. This file is ignored by git to keep your keys safe.
 - **Dice Buttons**: Buttons for rolling 4, 6, 10, 20, and 100-sided dice.
 - **Public Results**: The dice roll result is posted to the chat for all users to see.
 - **Critical Roll Styling**: Dice rolls for the minimum (1) or maximum possible value are highlighted in green and red, respectively, to easily spot critical successes and failures.
