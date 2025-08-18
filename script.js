@@ -20,7 +20,7 @@
         ],
     };
 
-    const socket = new WebSocket(`ws://${window.location.host}`);
+    const socket = new WebSocket(`wss://${window.location.host}`);
 
     // --- User and Chat Management ---
     function askForUsername() {
