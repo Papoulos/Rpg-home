@@ -38,16 +38,20 @@ function broadcastUserList() {
 }
 
 // --- Chatbot Functions ---
-async function handleChatbotRequest(prompt, config) {
+async function handleChatbotRequest(prompt, config, trigger) {
     const chatbotName = config.displayName || config.service || 'Chatbot';
     let responseMessage;
+
+    // Prepend the system prompt/instruction to the user's prompt
+    const systemPrompt = "You are an assistant that will answer in a limited format with 900 caracter maximum. You will not respond if you are not 100% sure of the answer.";
+    const finalPrompt = `${systemPrompt}\n\nUser question: ${prompt}`;
 
     try {
         if (config.type === 'url') {
             const response = await fetch(config.endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt })
+                body: JSON.stringify({ prompt: finalPrompt })
             });
             if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
             const data = await response.json();
@@ -59,7 +63,7 @@ async function handleChatbotRequest(prompt, config) {
             }
 
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent?key=${config.apiKey}`;
-            const body = { contents: [{ parts: [{ text: prompt }] }] };
+            const body = { contents: [{ parts: [{ text: finalPrompt }] }] };
             const response = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -82,11 +86,6 @@ async function handleChatbotRequest(prompt, config) {
         responseMessage = `Désolé, une erreur est survenue en contactant l'IA. (${error.message})`;
     }
 
-    // Truncate the response if it's too long
-    if (responseMessage.length > 900) {
-        responseMessage = responseMessage.substring(0, 900) + '...';
-    }
-
     const finalMessage = {
         type: 'chat',
         sender: chatbotName,
@@ -94,7 +93,7 @@ async function handleChatbotRequest(prompt, config) {
         message: responseMessage
     };
     broadcast(finalMessage);
-    appendToHistory(finalMessage); // Also save chatbot responses
+    appendToHistory(finalMessage);
 }
 
 
@@ -126,19 +125,11 @@ wss.on('connection', (ws) => {
         const data = JSON.parse(message);
 
         if (data.type === 'chat') {
-            console.log(`[DEBUG] Checking for chatbot trigger in message: "${data.message}"`);
-            const knownTriggers = Object.keys(chatbotConfig);
-            console.log(`[DEBUG] Known triggers: [${knownTriggers.join(", ")}]`);
-
-            const trigger = knownTriggers.find(key => data.message.startsWith(key));
-
+            const trigger = Object.keys(chatbotConfig).find(key => data.message.startsWith(key));
             if (trigger) {
-                console.log(`[DEBUG] Trigger '${trigger}' found!`);
                 const prompt = data.message.substring(trigger.length).trim();
-                handleChatbotRequest(prompt, chatbotConfig[trigger]);
+                handleChatbotRequest(prompt, chatbotConfig[trigger], trigger);
                 return;
-            } else {
-                console.log(`[DEBUG] No trigger found. Treating as regular chat message.`);
             }
         }
 
