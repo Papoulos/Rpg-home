@@ -67,9 +67,13 @@ The right-hand panel contains a multi-user video conference feature powered by W
 ### 5. AI Chatbot
 The chat is integrated with a configurable AI chatbot.
 - **Trigger Keyword**: Users can activate the chatbot by starting a message with a specific keyword (default: `#askme`).
-- **Configurable APIs**: You can configure the chatbot to use different AI services by editing the `api.config.js` file. It supports:
+- **Configurable APIs**: You can configure the chatbot to use different AI services by editing the `api.config.js` file.
+  - To use the default API, type `#askme <your prompt>`.
+  - To use a specific API (e.g., 'gemini'), type `#askme:<api_name> <your prompt>`.
+- **API Support**: The configuration file includes examples for:
   - A custom URL endpoint.
-  - Placeholders for paid services like Google Gemini and Mistral AI.
+  - Google Gemini (requires a `model` name to be specified).
+  - A placeholder for Mistral AI.
 - **Secure API Keys**: To use paid services, you must create an `apikeys.js` file (from the `apikeys.js.example` template) and add your secret keys. This file is ignored by git to keep your keys safe.
 - **Dice Buttons**: Buttons for rolling 4, 6, 10, 20, and 100-sided dice.
 - **Public Results**: The dice roll result is posted to the chat for all users to see.
