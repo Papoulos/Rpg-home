@@ -108,7 +108,7 @@
     }
 
     // --- WebRTC Logic ---
-    async function createPeerConnection(peerUsername) {
+    async function createPeerConnection(peerUsername, isInitiator = false) {
         if (peerConnections[peerUsername] || peerUsername === getUsername()) return;
 
         const pc = new RTCPeerConnection(iceServers);
@@ -134,6 +134,12 @@
                 delete peerConnections[peerUsername];
             }
         };
+
+        if (isInitiator) {
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            sendMessage({ type: 'offer', target: peerUsername, message: pc.localDescription });
+        }
     }
 
     async function handleUserList(users) {
@@ -142,11 +148,9 @@
         // Create connections for new users and send offers
         for (const user of users) {
             if (user !== myUsername && !peerConnections[user]) {
-                await createPeerConnection(user);
-                const pc = peerConnections[user];
-                const offer = await pc.createOffer();
-                await pc.setLocalDescription(offer);
-                sendMessage({ type: 'offer', target: user, message: pc.localDescription });
+                // The user with the alphabetically lower name initiates the call
+                const isInitiator = myUsername < user;
+                await createPeerConnection(user, isInitiator);
             }
         }
 
@@ -181,9 +185,12 @@
                 addMessage({ ...data, prepend: true });
                 break;
             case 'offer':
-                await createPeerConnection(data.sender);
+                // The peer connection should already be created by handleUserList, but as a fallback:
+                if (!peerConnections[data.sender]) {
+                    await createPeerConnection(data.sender, false);
+                }
                 const pc = peerConnections[data.sender];
-                if (pc) {
+                if (pc && pc.signalingState === 'stable') {
                     await pc.setRemoteDescription(new RTCSessionDescription(data.message));
                     const answer = await pc.createAnswer();
                     await pc.setLocalDescription(answer);
