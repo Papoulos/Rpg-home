@@ -52,7 +52,7 @@ body, html {
 /* --- Panel Toggle Buttons --- */
 #toggle-chat-btn, #toggle-video-panel-btn {
     position: fixed;
-    top: 15px;
+    bottom: 15px;
     z-index: 100;
     background: #333;
     color: #eee;
