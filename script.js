@@ -62,8 +62,8 @@
         video.srcObject = stream;
         video.autoplay = true;
         video.playsInline = true;
+        video.muted = true; // Mute all streams by default to ensure autoplay
         if (name === getUsername()) {
-            video.muted = true;
             video.style.transform = 'scaleX(-1)';
         }
         const nameTag = document.createElement('div');
@@ -170,9 +170,10 @@
 
         switch (data.type) {
             case 'history':
+                // Iterate and prepend each message to maintain order but show newest first
                 data.messages.forEach(msg => {
                     if (msg.type === 'chat' || msg.type === 'dice') {
-                        addMessage({ ...msg, prepend: false });
+                        addMessage({ ...msg, prepend: true });
                     }
                 });
                 break;
