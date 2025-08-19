@@ -63,7 +63,7 @@ The right-hand panel contains a multi-user video conference feature powered by W
 - **Peer-to-Peer Connections**: Establishes direct video and audio connections between all participants for low latency.
 - **NAT Traversal**: Uses STUN and TURN servers to ensure connections can be made even across restrictive firewalls.
 - **Audio**: Audio from all participants should be enabled by default.
-- **Global Media Controls**: A dedicated control bar on the right side of the screen allows users to toggle their own microphone and camera on or off. The buttons turn red to indicate when a device is muted or disabled.
+- **Global Media Controls**: A set of buttons in the header of the video panel allows users to toggle their own microphone and camera on or off. The buttons turn red to indicate when a device is muted or disabled.
 
 ### 5. AI Chatbot
 The chat is integrated with a configurable AI chatbot.
