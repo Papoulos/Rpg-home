@@ -38,7 +38,13 @@
             </nav>
         </main>
         <aside class="panel right-panel">
-            <h2>Vidéo</h2>
+            <div class="panel-header">
+                <h2>Vidéo</h2>
+                <div id="global-controls">
+                    <button id="mute-mic-btn" title="Couper le micro">🎤</button>
+                    <button id="toggle-video-btn" title="Désactiver la caméra">📷</button>
+                </div>
+            </div>
             <div id="video-grid">
                 <!-- Les flux vidéo apparaîtront ici -->
             </div>
@@ -48,12 +54,6 @@
     <!-- Panel Toggles -->
     <button id="toggle-chat-btn" title="Cacher le panneau de chat">«</button>
     <button id="toggle-video-panel-btn" title="Cacher le panneau de vidéo">»</button>
-
-    <!-- Global Media Controls -->
-    <div id="global-controls">
-        <button id="mute-mic-btn" title="Couper le micro">🎤</button>
-        <button id="toggle-video-btn" title="Désactiver la caméra">📷</button>
-    </div>
 
     <script src="script.js" defer></script>
 </body>
