@@ -16,6 +16,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     socket.onopen = () => {
         askForUsername();
+        // Hide MJ-only controls if not the MJ
+        if (username !== 'MJ') {
+            document.getElementById('eraseFog').style.display = 'none';
+        }
         socket.send(JSON.stringify({ type: 'register', username: username }));
     };
 
@@ -48,20 +52,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
             case 'fog_state':
                 if (data.payload.isOn && !isFogOn) {
-                    toggleFog(true, true);
-                    data.payload.paths.forEach(pathJSON => {
-                        fabric.util.enlivenObjects([pathJSON], (objects) => {
-                            fogClipGroup.addWithUpdate(objects[0]);
-                            canvas.renderAll();
+                    toggleFog(true, true); // Turn on fog locally
+                    // MJ gets the erased paths, others don't
+                    if (username === 'MJ') {
+                        data.payload.paths.forEach(pathJSON => {
+                            fabric.util.enlivenObjects([pathJSON], (objects) => {
+                                fogClipGroup.addWithUpdate(objects[0]);
+                                canvas.renderAll();
+                            });
                         });
-                    });
+                    }
                 }
                 break;
             case 'fog_toggle':
                 toggleFog(data.payload.isOn, true);
                 break;
             case 'fog_erase':
-                if (isFogOn && fogClipGroup) {
+                // Only the MJ needs to process erased paths
+                if (username === 'MJ' && isFogOn && fogClipGroup) {
                     fabric.util.enlivenObjects([data.payload], (objects) => {
                         fogClipGroup.addWithUpdate(objects[0]);
                         canvas.renderAll();
@@ -95,19 +103,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function toggleFog(newState, isRemote = false) {
         isFogOn = newState;
-        if (isFogOn) {
-            fogClipGroup = new fabric.Group([], { inverted: true });
-            fogRect = new fabric.Rect({ width: canvas.width, height: canvas.height, fill: 'rgba(0,0,0,0.85)', selectable: false, evented: false, clipPath: fogClipGroup });
-            canvas.add(fogRect);
-            fogRect.sendToBack();
-        } else {
+
+        // If turning fog off, just remove the existing rect
+        if (!isFogOn) {
             if (fogRect) canvas.remove(fogRect);
-            fogRect = null; fogClipGroup = null;
+            fogRect = null;
+            fogClipGroup = null; // Also clear the clip group
             if (canvas.isDrawingMode) {
                 canvas.isDrawingMode = false;
                 document.getElementById('eraseFog').classList.remove('active');
             }
+        } else {
+            // Turning fog on - behavior depends on user role
+            if (username === 'MJ') {
+                // MJ gets the advanced, erasable fog
+                fogClipGroup = new fabric.Group([], { inverted: true });
+                fogRect = new fabric.Rect({
+                    width: canvas.width, height: canvas.height,
+                    fill: 'rgba(0,0,0,0.85)',
+                    selectable: false, evented: false,
+                    clipPath: fogClipGroup,
+                });
+            } else {
+                // Players get a simple, solid black rectangle
+                fogRect = new fabric.Rect({
+                    width: canvas.width, height: canvas.height,
+                    fill: 'rgba(0,0,0,1)', // Solid black
+                    selectable: false, evented: false,
+                });
+            }
+            canvas.add(fogRect);
+            fogRect.sendToBack();
         }
+
+        // Only the user who initiated the toggle should send the message
         if (!isRemote) {
             socket.send(JSON.stringify({ type: 'whiteboard', subType: 'fog_toggle', payload: { isOn: isFogOn }, sender: username }));
         }
@@ -190,7 +219,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = 'image/*';
-        input.onchange = e => fileInputHandler(e, (result) => fabric.Image.fromURL(result, (img) => canvas.add(img)));
+        input.onchange = e => fileInputHandler(e, (result) => {
+            fabric.Image.fromURL(result, (img) => {
+                // Check if the image is larger than the canvas
+                if (img.width > canvas.width || img.height > canvas.height) {
+                    // Calculate the scale factor to fit the image within the canvas
+                    const scaleFactor = Math.min(canvas.width / img.width, canvas.height / img.height);
+                    img.scale(scaleFactor);
+                }
+                canvas.add(img);
+                canvas.centerObject(img);
+                canvas.setActiveObject(img);
+            });
+        });
         input.click();
     });
 
@@ -208,6 +249,24 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
         input.click();
+    });
+
+    // --- Toolbar Actions ---
+    document.getElementById('deleteObject').addEventListener('click', () => {
+        const activeObject = canvas.getActiveObject();
+        if (activeObject) {
+            canvas.remove(activeObject);
+        }
+    });
+
+    // --- Keyboard Shortcuts ---
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Delete' || e.key === 'Backspace') {
+            const activeObject = canvas.getActiveObject();
+            if (activeObject) {
+                canvas.remove(activeObject);
+            }
+        }
     });
 
     // --- Feature Toggles ---
