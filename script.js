@@ -21,6 +21,7 @@
     };
 
     const socket = new WebSocket(`wss://${window.location.host}`);
+    window.socket = socket; // Expose socket globally for other scripts
 
     // --- User and Chat Management ---
     function askForUsername() {
@@ -177,6 +178,15 @@
                     }
                 });
                 break;
+            case 'mj-status':
+                window.dispatchEvent(new CustomEvent('mj-status', { detail: { isMJ: data.isMJ } }));
+                break;
+            case 'image-list-update':
+                window.dispatchEvent(new CustomEvent('image-list-update', { detail: { list: data.list } }));
+                break;
+            case 'show-image':
+                displayImage(data.url);
+                break;
             case 'user-list':
                 await handleUserList(data.users);
                 break;
@@ -282,7 +292,21 @@
     }
 
     // --- DOM Elements ---
-    let chatMessages, chatInput, sendButton, diceButtons, leftPanel, toggleChatBtn, videoGrid, rightPanel, toggleVideoPanelBtn;
+    let chatMessages, chatInput, sendButton, diceButtons, leftPanel, toggleChatBtn, videoGrid, rightPanel, toggleVideoPanelBtn, imageDisplayArea;
+
+    function displayImage(url) {
+        if (!imageDisplayArea) return;
+
+        imageDisplayArea.innerHTML = ''; // Clear previous content
+        if (url) {
+            const img = document.createElement('img');
+            img.src = url;
+            img.alt = 'Image partagée';
+            imageDisplayArea.appendChild(img);
+        } else {
+            imageDisplayArea.innerHTML = '<p>Aucune image sélectionnée.</p>';
+        }
+    }
 
     // Execute when the DOM is fully loaded
     document.addEventListener('DOMContentLoaded', async () => {
@@ -296,6 +320,8 @@
         rightPanel = document.querySelector('.right-panel');
         toggleVideoPanelBtn = document.getElementById('toggle-video-panel-btn');
         videoGrid = document.getElementById('video-grid');
+        imageDisplayArea = document.getElementById('image-display-area');
+
 
         askForUsername();
         await setupLocalMedia();

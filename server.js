@@ -18,8 +18,11 @@ const wss = new WebSocket.Server({ server });
 
 const PORT = process.env.PORT || 3000;
 const CHAT_LOG_FILE = path.join(__dirname, 'chat_history.log');
+const IMAGE_LIST_FILE = path.join(__dirname, 'images.json');
+
 
 let chatHistory = [];
+let imageList = [];
 const clients = new Map();
 
 // --- Utility Functions ---
@@ -119,6 +122,36 @@ function appendToHistory(message) {
     }
 }
 
+// --- Image List Functions ---
+
+function loadImageList() {
+    if (fs.existsSync(IMAGE_LIST_FILE)) {
+        const fileContent = fs.readFileSync(IMAGE_LIST_FILE, 'utf-8');
+        try {
+            imageList = JSON.parse(fileContent);
+            console.log(`[IMAGES] Loaded ${imageList.length} images.`);
+        } catch (error) {
+            console.error('[IMAGES] Failed to parse images.json:', error);
+            imageList = [];
+        }
+    }
+}
+
+function saveImageList() {
+    try {
+        // Sort alphabetically by name before saving
+        imageList.sort((a, b) => a.name.localeCompare(b.name));
+        fs.writeFileSync(IMAGE_LIST_FILE, JSON.stringify(imageList, null, 2));
+    } catch (error) {
+        console.error('[IMAGES] FAILED to save image list:', error);
+    }
+}
+
+function broadcastImageList() {
+    broadcast({ type: 'image-list-update', list: imageList });
+}
+
+
 // --- WebSocket Server ---
 wss.on('connection', (ws) => {
     ws.on('message', (message) => {
@@ -135,10 +168,44 @@ wss.on('connection', (ws) => {
 
         switch (data.type) {
             case 'register':
-                clients.set(ws, { username: data.username, ws: ws });
+                const isMJ = data.username.toLowerCase() === 'mj';
+                clients.set(ws, { username: data.username, ws: ws, isMJ });
+
                 ws.send(JSON.stringify({ type: 'history', messages: chatHistory }));
+                ws.send(JSON.stringify({ type: 'image-list-update', list: imageList }));
+
+                if (isMJ) {
+                    ws.send(JSON.stringify({ type: 'mj-status', isMJ: true }));
+                }
+
                 broadcastUserList();
                 break;
+
+            case 'add-image':
+                const client = clients.get(ws);
+                if (client && client.isMJ) {
+                    imageList.push({ name: data.name, url: data.url });
+                    saveImageList();
+                    broadcastImageList();
+                }
+                break;
+
+            case 'delete-image':
+                const clientToDelete = clients.get(ws);
+                if (clientToDelete && clientToDelete.isMJ) {
+                    imageList = imageList.filter(img => img.url !== data.url);
+                    saveImageList();
+                    broadcastImageList();
+                }
+                break;
+
+            case 'show-image':
+                const clientToShow = clients.get(ws);
+                if (clientToShow && clientToShow.isMJ) {
+                    broadcast({ type: 'show-image', url: data.url });
+                }
+                break;
+
             case 'chat':
             case 'dice':
                 data.timestamp = new Date().toISOString();
@@ -169,6 +236,7 @@ wss.on('connection', (ws) => {
 // --- HTTP Server ---
 app.use(express.static(path.join(__dirname, '/')));
 loadChatHistory();
+loadImageList();
 server.listen(PORT, () => {
     console.log(`Server is listening on port ${PORT}`);
 });

@@ -29,7 +29,27 @@
         <main class="main-content">
             <div class="main-display">
                 <div id="carte-content" class="tab-content">
-                    <p>Contenu de la section Carte.</p>
+                    <!-- Zone d'affichage de l'image, visible par tous -->
+                    <div id="image-display-area">
+                        <p>Aucune image sélectionnée.</p>
+                    </div>
+
+                    <!-- Contrôles pour le MJ, cachés par défaut -->
+                    <div id="image-controls" class="hidden">
+                        <h3>Gestion des Images (MJ)</h3>
+                        <div class="image-management-form">
+                            <input type="text" id="image-name-input" placeholder="Nom de l'image" required>
+                            <input type="url" id="image-url-input" placeholder="URL de l'image" required>
+                            <button id="add-image-btn">Ajouter</button>
+                        </div>
+                        <div class="image-selection-area">
+                            <select id="image-select">
+                                <option value="">Choisir une image</option>
+                            </select>
+                            <button id="show-image-btn">Afficher</button>
+                            <button id="delete-image-btn">Supprimer</button>
+                        </div>
+                    </div>
                 </div>
                 <div id="pj-content" class="tab-content">
                     <div class="sheets-controls">
@@ -74,5 +94,6 @@
     <script src="navigation.js" defer></script>
     <script src="script.js" defer></script>
     <script src="sheets.js" defer></script>
+    <script src="images.js" defer></script>
 </body>
 </html>
