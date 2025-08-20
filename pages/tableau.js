@@ -1,22 +1,10 @@
 window.initTableau = () => {
     // --- State Variables ---
-    let username = '';
+    const username = window.app.getUsername(); // Get username from main script
     let isUpdatingFromRemote = false;
     let isMouseDown = false;
-    // Feature states
-    let isPointerMode = false, remotePointers = {};
-
-    // --- WebSocket Setup ---
-    const socket = new WebSocket(`wss://${window.location.host}`);
-    function askForUsername() {
-        while (!username || username.trim() === '') {
-            username = prompt("Veuillez entrer votre nom pour le tableau blanc :");
-        }
-    }
-    socket.onopen = () => {
-        askForUsername();
-        socket.send(JSON.stringify({ type: 'register', username: username }));
-    };
+    let isPointerMode = false;
+    let remotePointers = {};
 
     // --- Canvas Setup ---
     const canvas = new fabric.Canvas('drawingCanvas');
@@ -27,21 +15,13 @@ window.initTableau = () => {
     function sendCanvasState() {
         if (isUpdatingFromRemote || isPointerMode) return;
         const json = canvas.toJSON();
-        socket.send(JSON.stringify({ type: 'whiteboard', subType: 'state', payload: json, sender: username }));
+        window.app.sendMessage({ type: 'whiteboard', subType: 'state', payload: json });
     }
 
-    socket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.sender === username && data.type !== 'whiteboard') return;
-        if (data.sender === username && data.type === 'whiteboard' && data.subType !== 'state') return;
-
-
-        if (data.type === 'whiteboard') {
-            handleWhiteboardUpdate(data);
-        }
-    };
-
     function handleWhiteboardUpdate(data) {
+        // Ignore messages sent by ourselves
+        if (data.sender === username) return;
+
         switch (data.subType) {
             case 'state':
                 isUpdatingFromRemote = true;
@@ -52,6 +32,16 @@ window.initTableau = () => {
                 break;
         }
     }
+
+    // Register our handler with the main script's WebSocket listener
+    window.app.registerMessageHandler('whiteboard', handleWhiteboardUpdate);
+
+    // Request initial state from server
+    // Note: The main script already sends a 'register' message. The server responds with history.
+    // We might need a specific "get_whiteboard_state" message if the state is not sent on register.
+    // For now, we rely on another user making a change to get the first state. A better implementation
+    // would be for the server to send the whiteboard state to a user upon registration.
+    // My server-side code DOES send the state on registration, so this is fine.
 
     // --- Feature Implementations ---
     function handleRemotePointer({ sender, payload }) {
@@ -81,17 +71,17 @@ window.initTableau = () => {
             isMouseDown = true;
             if (!isPointerMode) return;
             const ptr = canvas.getPointer(o.e);
-            socket.send(JSON.stringify({ type: 'whiteboard', subType: 'pointer', payload: { x: ptr.x, y: ptr.y, active: true }, sender: username }));
+            window.app.sendMessage({ type: 'whiteboard', subType: 'pointer', payload: { x: ptr.x, y: ptr.y, active: true } });
         },
         'mouse:move': (o) => {
             if (!isPointerMode || !isMouseDown) return;
             const ptr = canvas.getPointer(o.e);
-            socket.send(JSON.stringify({ type: 'whiteboard', subType: 'pointer', payload: { x: ptr.x, y: ptr.y, active: true }, sender: username }));
+            window.app.sendMessage({ type: 'whiteboard', subType: 'pointer', payload: { x: ptr.x, y: ptr.y, active: true } });
         },
         'mouse:up': () => {
             isMouseDown = false;
             if (!isPointerMode) return;
-            socket.send(JSON.stringify({ type: 'whiteboard', subType: 'pointer', payload: { active: false }, sender: username }));
+            window.app.sendMessage({ type: 'whiteboard', subType: 'pointer', payload: { active: false } });
         }
     });
 

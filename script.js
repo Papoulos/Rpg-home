@@ -1,5 +1,8 @@
+window.app = {};
+
 // IIFE to avoid polluting the global scope
 (() => {
+    window.app.messageHandlers = {};
     let username = '';
     let localStream;
     const peerConnections = {};
@@ -32,6 +35,7 @@
     function getUsername() {
         return username;
     }
+    window.app.getUsername = getUsername;
 
     // --- DOM Manipulation ---
     function addMessage({ sender, message, prepend = false }) {
@@ -88,6 +92,11 @@
     function sendMessage(payload) {
         socket.send(JSON.stringify({ sender: getUsername(), ...payload }));
     }
+    window.app.sendMessage = sendMessage;
+
+    window.app.registerMessageHandler = (type, handler) => {
+        window.app.messageHandlers[type] = handler;
+    };
 
     function rollDice(dieType) {
         const roll = Math.floor(Math.random() * dieType) + 1;
@@ -152,6 +161,14 @@
     // --- WebSocket Event Listeners ---
     socket.onmessage = async (event) => {
         const data = JSON.parse(event.data);
+
+        // Route message to a registered handler if one exists
+        if (window.app.messageHandlers[data.type]) {
+            window.app.messageHandlers[data.type](data);
+            return;
+        }
+
+        // Default handlers for chat, video, etc.
         switch (data.type) {
             case 'history':
                 data.messages.forEach(msg => {
