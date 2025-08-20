@@ -21,13 +21,12 @@ const CHAT_LOG_FILE = path.join(__dirname, 'chat_history.log');
 
 let chatHistory = [];
 const clients = new Map();
-let whiteboardState = null; // Variable to store whiteboard state
 
 // --- Utility Functions ---
-function broadcast(message, senderWs = null) {
+function broadcast(message) {
     const data = JSON.stringify(message);
     clients.forEach(client => {
-        if (client.ws !== senderWs && client.ws.readyState === WebSocket.OPEN) {
+        if (client.ws.readyState === WebSocket.OPEN) {
             client.ws.send(data);
         }
     });
@@ -138,9 +137,6 @@ wss.on('connection', (ws) => {
             case 'register':
                 clients.set(ws, { username: data.username, ws: ws });
                 ws.send(JSON.stringify({ type: 'history', messages: chatHistory }));
-                if (whiteboardState) {
-                    ws.send(JSON.stringify({ type: 'whiteboard', subType:'state', payload: whiteboardState, sender: 'server' }));
-                }
                 broadcastUserList();
                 break;
             case 'chat':
@@ -148,19 +144,7 @@ wss.on('connection', (ws) => {
                 data.timestamp = new Date().toISOString();
                 chatHistory.push(data);
                 appendToHistory(data);
-                broadcast(data, ws); // Pass sender to avoid echoing
-                break;
-            case 'whiteboard':
-                switch (data.subType) {
-                    case 'state':
-                        whiteboardState = data.payload;
-                        broadcast(data, ws);
-                        break;
-                    case 'pointer':
-                        // Just broadcast pointer movements, don't store them
-                        broadcast(data, ws);
-                        break;
-                }
+                broadcast(data);
                 break;
             case 'offer':
             case 'answer':

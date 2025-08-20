@@ -1,8 +1,5 @@
-window.app = {};
-
 // IIFE to avoid polluting the global scope
 (() => {
-    window.app.messageHandlers = {};
     let username = '';
     let localStream;
     const peerConnections = {};
@@ -35,7 +32,6 @@ window.app = {};
     function getUsername() {
         return username;
     }
-    window.app.getUsername = getUsername;
 
     // --- DOM Manipulation ---
     function addMessage({ sender, message, prepend = false }) {
@@ -70,6 +66,8 @@ window.app = {};
             video.muted = true; // Local video is always muted to prevent feedback
             video.style.transform = 'scaleX(-1)';
         }
+        // Remote streams are NOT muted by default, relying on browser autoplay policy
+
         const nameTag = document.createElement('div');
         nameTag.classList.add('name-tag');
         nameTag.textContent = name;
@@ -92,11 +90,6 @@ window.app = {};
     function sendMessage(payload) {
         socket.send(JSON.stringify({ sender: getUsername(), ...payload }));
     }
-    window.app.sendMessage = sendMessage;
-
-    window.app.registerMessageHandler = (type, handler) => {
-        window.app.messageHandlers[type] = handler;
-    };
 
     function rollDice(dieType) {
         const roll = Math.floor(Math.random() * dieType) + 1;
@@ -117,23 +110,31 @@ window.app = {};
     // --- WebRTC Logic ---
     async function createPeerConnection(peerUsername, isInitiator = false) {
         if (peerConnections[peerUsername] || peerUsername === getUsername()) return;
+
         const pc = new RTCPeerConnection(iceServers);
         peerConnections[peerUsername] = pc;
+
         if (localStream) {
             localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
         }
+
         pc.onicecandidate = event => {
             if (event.candidate) {
                 sendMessage({ type: 'ice-candidate', target: peerUsername, message: event.candidate });
             }
         };
-        pc.ontrack = event => addVideoStream(event.streams[0], peerUsername);
+
+        pc.ontrack = event => {
+            addVideoStream(event.streams[0], peerUsername);
+        };
+
         pc.onconnectionstatechange = () => {
             if (pc.connectionState === 'disconnected' || pc.connectionState === 'closed' || pc.connectionState === 'failed') {
                 removeVideoStream(peerUsername);
                 delete peerConnections[peerUsername];
             }
         };
+
         if (isInitiator) {
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
@@ -143,12 +144,17 @@ window.app = {};
 
     async function handleUserList(users) {
         const myUsername = getUsername();
+
+        // Create connections for new users and send offers
         for (const user of users) {
             if (user !== myUsername && !peerConnections[user]) {
+                // The user with the alphabetically lower name initiates the call
                 const isInitiator = myUsername < user;
                 await createPeerConnection(user, isInitiator);
             }
         }
+
+        // Remove disconnected users
         Object.keys(peerConnections).forEach(peerName => {
             if (!users.includes(peerName)) {
                 peerConnections[peerName].close();
@@ -162,17 +168,13 @@ window.app = {};
     socket.onmessage = async (event) => {
         const data = JSON.parse(event.data);
 
-        // Route message to a registered handler if one exists
-        if (window.app.messageHandlers[data.type]) {
-            window.app.messageHandlers[data.type](data);
-            return;
-        }
-
-        // Default handlers for chat, video, etc.
         switch (data.type) {
             case 'history':
+                // Prepend history messages so they appear in the correct order
                 data.messages.forEach(msg => {
-                    if (msg.type === 'chat' || msg.type === 'dice') addMessage({ ...msg, prepend: true });
+                    if (msg.type === 'chat' || msg.type === 'dice') {
+                        addMessage({ ...msg, prepend: true });
+                    }
                 });
                 break;
             case 'user-list':
@@ -183,7 +185,10 @@ window.app = {};
                 addMessage({ ...data, prepend: true });
                 break;
             case 'offer':
-                if (!peerConnections[data.sender]) await createPeerConnection(data.sender, false);
+                // The peer connection should already be created by handleUserList, but as a fallback:
+                if (!peerConnections[data.sender]) {
+                    await createPeerConnection(data.sender, false);
+                }
                 const pc = peerConnections[data.sender];
                 if (pc && pc.signalingState === 'stable') {
                     await pc.setRemoteDescription(new RTCSessionDescription(data.message));
@@ -216,17 +221,23 @@ window.app = {};
     }
 
     function setupToggle() {
+        // This function now handles both toggle buttons
         const toggleButtons = [
             { btn: document.getElementById('toggle-chat-btn'), panel: document.querySelector('.left-panel'), class: 'chat-hidden' },
             { btn: document.getElementById('toggle-video-panel-btn'), panel: document.querySelector('.right-panel'), class: 'video-hidden' }
         ];
+
         toggleButtons.forEach(item => {
             if (item.btn && item.panel) {
                 item.btn.addEventListener('click', () => {
                     item.panel.classList.toggle(item.class);
+                    // Update button text/icon based on state
                     const isHidden = item.panel.classList.contains(item.class);
-                    if (item.btn.id === 'toggle-chat-btn') item.btn.textContent = isHidden ? '»' : '«';
-                    else item.btn.textContent = isHidden ? '«' : '»';
+                    if (item.btn.id === 'toggle-chat-btn') {
+                        item.btn.textContent = isHidden ? '»' : '«';
+                    } else {
+                        item.btn.textContent = isHidden ? '«' : '»';
+                    }
                 });
             }
         });
@@ -237,19 +248,10 @@ window.app = {};
         chatInput.addEventListener('keydown', e => e.key === 'Enter' && handleSendMessage());
         diceButtons.forEach(button => button.addEventListener('click', () => rollDice(parseInt(button.dataset.die, 10))));
 
-        const nav = document.getElementById('main-nav');
-        if (nav) {
-            nav.addEventListener('click', (e) => {
-                if (e.target.tagName === 'BUTTON' && e.target.dataset.view) {
-                    nav.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
-                    e.target.classList.add('active');
-                    loadView(e.target.dataset.view);
-                }
-            });
-        }
-
+        // Global media controls
         const muteMicBtn = document.getElementById('mute-mic-btn');
         const toggleVideoBtn = document.getElementById('toggle-video-btn');
+
         muteMicBtn.addEventListener('click', () => {
             const audioTrack = localStream.getAudioTracks()[0];
             if (audioTrack) {
@@ -258,6 +260,7 @@ window.app = {};
                 muteMicBtn.title = audioTrack.enabled ? "Couper le micro" : "Activer le micro";
             }
         });
+
         toggleVideoBtn.addEventListener('click', () => {
             const videoTrack = localStream.getVideoTracks()[0];
             if (videoTrack) {
@@ -278,38 +281,12 @@ window.app = {};
         return `hsl(${h}, ${s}%, ${l}%)`;
     }
 
-    async function loadView(viewUrl) {
-        try {
-            const response = await fetch(viewUrl);
-            if (!response.ok) throw new Error(`Failed to load view: ${viewUrl}`);
-            mainDisplay.innerHTML = await response.text();
-
-            const scriptElement = mainDisplay.querySelector('script');
-            if (scriptElement && scriptElement.src) {
-                const scriptSrc = new URL(scriptElement.src, window.location.href).href;
-                scriptElement.remove();
-
-                const newScript = document.createElement('script');
-                newScript.src = scriptSrc;
-                newScript.onload = () => {
-                    if (window.initTableau) {
-                        window.initTableau();
-                    }
-                };
-                document.body.appendChild(newScript);
-            }
-        } catch (error) {
-            console.error('Error loading view:', error);
-            mainDisplay.innerHTML = `<p>Error loading content: ${error.message}</p>`;
-        }
-    }
-
     // --- DOM Elements ---
-    let chatMessages, chatInput, sendButton, diceButtons, leftPanel, toggleChatBtn, videoGrid, rightPanel, toggleVideoPanelBtn, mainDisplay;
+    let chatMessages, chatInput, sendButton, diceButtons, leftPanel, toggleChatBtn, videoGrid, rightPanel, toggleVideoPanelBtn;
 
     // Execute when the DOM is fully loaded
     document.addEventListener('DOMContentLoaded', async () => {
-        mainDisplay = document.querySelector('.main-display');
+        // Define all DOM elements
         chatMessages = document.getElementById('chat-messages');
         chatInput = document.getElementById('chat-input');
         sendButton = document.getElementById('send-button');
@@ -319,7 +296,6 @@ window.app = {};
         rightPanel = document.querySelector('.right-panel');
         toggleVideoPanelBtn = document.getElementById('toggle-video-panel-btn');
         videoGrid = document.getElementById('video-grid');
-        mainDisplay = document.querySelector('.main-display');
 
         askForUsername();
         await setupLocalMedia();
@@ -333,11 +309,5 @@ window.app = {};
 
         setupEventListeners();
         setupToggle();
-
-        // Load the default view on page load
-        const defaultViewButton = document.querySelector('#main-nav button.active');
-        if (defaultViewButton) {
-            defaultViewButton.click();
-        }
     });
 })();
