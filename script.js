@@ -249,6 +249,20 @@
         chatInput.addEventListener('keydown', e => e.key === 'Enter' && handleSendMessage());
         diceButtons.forEach(button => button.addEventListener('click', () => rollDice(parseInt(button.dataset.die, 10))));
 
+        // Menu navigation
+        document.querySelector('a[href="#carte"]').addEventListener('click', (e) => {
+            e.preventDefault();
+            loadMainContent('whiteboard.html');
+        });
+        document.querySelector('a[href="#pj"]').addEventListener('click', (e) => {
+            e.preventDefault();
+            mainDisplay.innerHTML = '<p>Player Characters section is not yet implemented.</p>';
+        });
+        document.querySelector('a[href="#prez"]').addEventListener('click', (e) => {
+            e.preventDefault();
+            mainDisplay.innerHTML = '<p>Prez section is not yet implemented.</p>';
+        });
+
         // Global media controls
         const muteMicBtn = document.getElementById('mute-mic-btn');
         const toggleVideoBtn = document.getElementById('toggle-video-btn');
@@ -281,6 +295,33 @@
         }
         const h = hash % 360;
         return `hsl(${h}, ${s}%, ${l}%)`;
+    }
+
+    async function loadMainContent(url) {
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Failed to load HTML from ${url}`);
+            const content = await response.text();
+            mainDisplay.innerHTML = content;
+
+            const scriptElement = mainDisplay.querySelector('script');
+            if (scriptElement && scriptElement.src) {
+                const scriptSrc = scriptElement.src;
+                scriptElement.remove();
+
+                const newScript = document.createElement('script');
+                newScript.src = scriptSrc;
+                newScript.onload = () => {
+                    if (window.initWhiteboard) {
+                        window.initWhiteboard();
+                    }
+                };
+                document.body.appendChild(newScript);
+            }
+        } catch (error) {
+            console.error('Error loading main content:', error);
+            mainDisplay.innerHTML = `<p>Error loading content. Please try again.</p>`;
+        }
     }
 
     // --- DOM Elements ---

@@ -1,10 +1,9 @@
-document.addEventListener('DOMContentLoaded', () => {
+window.initWhiteboard = () => {
     // --- State Variables ---
     let username = '';
     let isUpdatingFromRemote = false;
     let isMouseDown = false;
     // Feature states
-    let fogRect = null, isFogOn = false, erasedPaths = [];
     let isPointerMode = false, remotePointers = {};
 
     // --- WebSocket Setup ---
@@ -16,9 +15,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     socket.onopen = () => {
         askForUsername();
-        if (username !== 'MJ') {
-            document.getElementById('eraseFog').style.display = 'none';
-        }
         socket.send(JSON.stringify({ type: 'register', username: username }));
     };
 
@@ -30,13 +26,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Real-time Collaboration Logic ---
     function sendCanvasState() {
         if (isUpdatingFromRemote || isPointerMode) return;
-        const json = canvas.toJSON(['selectable', 'evented', 'clipPath', 'inverted']);
+        const json = canvas.toJSON();
         socket.send(JSON.stringify({ type: 'whiteboard', subType: 'state', payload: json, sender: username }));
     }
 
     socket.onmessage = (event) => {
         const data = JSON.parse(event.data);
-        if (data.sender === username && data.type !== 'whiteboard') return; // Allow self-sent whiteboard messages for state sync
+        if (data.sender === username && data.type !== 'whiteboard') return;
         if (data.sender === username && data.type === 'whiteboard' && data.subType !== 'state') return;
 
 
@@ -51,30 +47,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 isUpdatingFromRemote = true;
                 canvas.loadFromJSON(data.payload, () => { canvas.renderAll(); isUpdatingFromRemote = false; });
                 break;
-            case 'fog_state':
-                if (data.payload.isOn && !isFogOn) {
-                    toggleFog(true, true);
-                    if (username === 'MJ') {
-                        // Rebuild the entire erasedPaths array from server data
-                        const pathsJSON = data.payload.paths;
-                        fabric.util.enlivenObjects(pathsJSON, (enlivenedObjects) => {
-                            erasedPaths = enlivenedObjects;
-                            updateFogClipPath();
-                        });
-                    }
-                }
-                break;
-            case 'fog_toggle':
-                toggleFog(data.payload.isOn, true);
-                break;
-            case 'fog_erase':
-                if (username === 'MJ' && isFogOn) {
-                    fabric.util.enlivenObjects([data.payload], (objects) => {
-                        erasedPaths.push(objects[0]);
-                        updateFogClipPath();
-                    });
-                }
-                break;
             case 'pointer':
                 handleRemotePointer(data);
                 break;
@@ -82,13 +54,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Feature Implementations ---
-    function updateFogClipPath() {
-        if (!fogRect) return;
-        const newClipGroup = new fabric.Group(erasedPaths, { inverted: true });
-        fogRect.clipPath = newClipGroup;
-        canvas.renderAll();
-    }
-
     function handleRemotePointer({ sender, payload }) {
         let pointer = remotePointers[sender];
         if (payload.active) {
@@ -107,51 +72,11 @@ document.addEventListener('DOMContentLoaded', () => {
         canvas.renderAll();
     }
 
-    function toggleFog(newState, isRemote = false) {
-        isFogOn = newState;
-        if (!isFogOn) {
-            if (fogRect) canvas.remove(fogRect);
-            fogRect = null;
-            erasedPaths = []; // Clear the paths array
-            if (canvas.isDrawingMode) {
-                canvas.isDrawingMode = false;
-                document.getElementById('eraseFog').classList.remove('active');
-            }
-        } else {
-            erasedPaths = []; // Reset paths when fog is turned on
-            if (username === 'MJ') {
-                fogRect = new fabric.Rect({ width: canvas.width, height: canvas.height, fill: 'rgba(0,0,0,0.85)', selectable: false, evented: false });
-                updateFogClipPath(); // Initial clip path (empty)
-            } else {
-                fogRect = new fabric.Rect({ width: canvas.width, height: canvas.height, fill: 'rgba(0,0,0,1)', selectable: false, evented: false });
-            }
-            canvas.add(fogRect);
-            fogRect.sendToBack();
-        }
-        if (!isRemote) {
-            socket.send(JSON.stringify({ type: 'whiteboard', subType: 'fog_toggle', payload: { isOn: isFogOn }, sender: username }));
-        }
-        canvas.renderAll();
-    }
-
     // --- Canvas Event Listeners ---
     canvas.on({
-        'object:added': (e) => {
-            if (isFogOn && e.target !== fogRect) e.target.bringToFront();
-            sendCanvasState();
-        },
+        'object:added': sendCanvasState,
         'object:modified': sendCanvasState,
         'object:removed': sendCanvasState,
-        'path:created': (e) => {
-            if (isFogOn && canvas.isDrawingMode && username === 'MJ') {
-                const path = e.path;
-                path.set({ selectable: false, evented: false });
-                erasedPaths.push(path);
-                updateFogClipPath();
-                canvas.remove(path);
-                socket.send(JSON.stringify({ type: 'whiteboard', subType: 'fog_erase', payload: path.toJSON(), sender: username }));
-            }
-        },
         'mouse:down': (o) => {
             isMouseDown = true;
             if (!isPointerMode) return;
@@ -176,7 +101,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const { width, height } = container.getBoundingClientRect();
         canvas.setWidth(width);
         canvas.setHeight(height);
-        if (fogRect) fogRect.set({ width: canvas.width, height: canvas.height });
         canvas.renderAll();
     }
     window.addEventListener('resize', resizeCanvas);
@@ -252,21 +176,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    document.getElementById('toggleFog').addEventListener('click', () => toggleFog(!isFogOn));
-    document.getElementById('eraseFog').addEventListener('click', () => {
-        if (!isFogOn) return alert("Activez le brouillard de guerre d'abord !");
-        canvas.isDrawingMode = !canvas.isDrawingMode;
-        document.getElementById('eraseFog').classList.toggle('active', canvas.isDrawingMode);
-    });
     const pointerBtn = document.getElementById('pointer-mode-btn');
-    pointerBtn.style.display = '';
     pointerBtn.addEventListener('click', () => {
         isPointerMode = !isPointerMode;
         pointerBtn.classList.toggle('active', isPointerMode);
         canvas.selection = !isPointerMode;
-        if (isPointerMode) {
-            canvas.isDrawingMode = false;
-            document.getElementById('eraseFog').classList.remove('active');
-        }
     });
-});
+};
