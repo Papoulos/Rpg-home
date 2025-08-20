@@ -101,19 +101,66 @@ body, html {
 .main-display {
     width: 100%;
     text-align: center;
+    flex-grow: 1; /* Allow this area to grow and fill space */
+    display: flex; /* Use flex to make child iframe fill it */
+    justify-content: center;
+    align-items: center;
 }
 
 /* Menu de navigation */
-.main-menu {
+.menu-container {
     display: flex;
     justify-content: center;
+    align-items: center;
     gap: 20px;
     width: 80%;
-    padding: 8px 0;
+    padding: 8px;
     background-color: #2c2c2c;
     border-radius: 10px;
     border: 1px solid #3a3a3a;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.main-menu {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}
+
+.sheets-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#sheet-select {
+    background-color: #3e3e3e;
+    color: #e0e0e0;
+    border: 1px solid #555;
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 14px;
+}
+
+#sheet-select:hover {
+    background-color: #4a4a4a;
+}
+
+#add-sheet-btn {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    width: 28px;
+    height: 28px;
+    font-size: 20px;
+    line-height: 28px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+#add-sheet-btn:hover {
+    background-color: #45a049;
 }
 
 .menu-item {

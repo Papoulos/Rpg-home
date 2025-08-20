@@ -31,11 +31,19 @@
                 <!-- Le contenu principal (whiteboard, etc.) ira ici -->
                 <p>Zone d'affichage principale.</p>
             </div>
-            <nav class="main-menu">
-                <a href="#carte" class="menu-item">Carte</a>
-                <a href="#pj" class="menu-item">PJ</a>
-                <a href="#prez" class="menu-item">Prez</a>
-            </nav>
+            <div class="menu-container">
+                <nav class="main-menu">
+                    <a href="#carte" class="menu-item">Carte</a>
+                    <a href="#pj" class="menu-item">PJ</a>
+                    <a href="#prez" class="menu-item">Prez</a>
+                </nav>
+                <div class="sheets-controls">
+                    <select id="sheet-select">
+                        <option value="">Choisir une fiche</option>
+                    </select>
+                    <button id="add-sheet-btn">+</button>
+                </div>
+            </div>
         </main>
         <aside class="panel right-panel">
             <div class="panel-header">
@@ -56,5 +64,6 @@
     <button id="toggle-video-panel-btn" title="Cacher le panneau de vidéo">»</button>
 
     <script src="script.js" defer></script>
+    <script src="sheets.js" defer></script>
 </body>
 </html>
