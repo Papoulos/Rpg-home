@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let isUpdatingFromRemote = false;
     let isMouseDown = false;
     // Feature states
-    let fogRect = null, fogClipGroup = null, isFogOn = false;
+    let fogRect = null, isFogOn = false, erasedPaths = [];
     let isPointerMode = false, remotePointers = {};
 
     // --- WebSocket Setup ---
@@ -16,7 +16,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     socket.onopen = () => {
         askForUsername();
-        // Hide MJ-only controls if not the MJ
         if (username !== 'MJ') {
             document.getElementById('eraseFog').style.display = 'none';
         }
@@ -37,7 +36,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     socket.onmessage = (event) => {
         const data = JSON.parse(event.data);
-        if (data.sender === username) return;
+        if (data.sender === username && data.type !== 'whiteboard') return; // Allow self-sent whiteboard messages for state sync
+        if (data.sender === username && data.type === 'whiteboard' && data.subType !== 'state') return;
+
 
         if (data.type === 'whiteboard') {
             handleWhiteboardUpdate(data);
@@ -52,14 +53,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
             case 'fog_state':
                 if (data.payload.isOn && !isFogOn) {
-                    toggleFog(true, true); // Turn on fog locally
-                    // MJ gets the erased paths, others don't
+                    toggleFog(true, true);
                     if (username === 'MJ') {
-                        data.payload.paths.forEach(pathJSON => {
-                            fabric.util.enlivenObjects([pathJSON], (objects) => {
-                                fogClipGroup.addWithUpdate(objects[0]);
-                                canvas.renderAll();
-                            });
+                        // Rebuild the entire erasedPaths array from server data
+                        const pathsJSON = data.payload.paths;
+                        fabric.util.enlivenObjects(pathsJSON, (enlivenedObjects) => {
+                            erasedPaths = enlivenedObjects;
+                            updateFogClipPath();
                         });
                     }
                 }
@@ -68,11 +68,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 toggleFog(data.payload.isOn, true);
                 break;
             case 'fog_erase':
-                // Only the MJ needs to process erased paths
-                if (username === 'MJ' && isFogOn && fogClipGroup) {
+                if (username === 'MJ' && isFogOn) {
                     fabric.util.enlivenObjects([data.payload], (objects) => {
-                        fogClipGroup.addWithUpdate(objects[0]);
-                        canvas.renderAll();
+                        erasedPaths.push(objects[0]);
+                        updateFogClipPath();
                     });
                 }
                 break;
@@ -83,6 +82,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Feature Implementations ---
+    function updateFogClipPath() {
+        if (!fogRect) return;
+        const newClipGroup = new fabric.Group(erasedPaths, { inverted: true });
+        fogRect.clipPath = newClipGroup;
+        canvas.renderAll();
+    }
+
     function handleRemotePointer({ sender, payload }) {
         let pointer = remotePointers[sender];
         if (payload.active) {
@@ -103,40 +109,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function toggleFog(newState, isRemote = false) {
         isFogOn = newState;
-
-        // If turning fog off, just remove the existing rect
         if (!isFogOn) {
             if (fogRect) canvas.remove(fogRect);
             fogRect = null;
-            fogClipGroup = null; // Also clear the clip group
+            erasedPaths = []; // Clear the paths array
             if (canvas.isDrawingMode) {
                 canvas.isDrawingMode = false;
                 document.getElementById('eraseFog').classList.remove('active');
             }
         } else {
-            // Turning fog on - behavior depends on user role
+            erasedPaths = []; // Reset paths when fog is turned on
             if (username === 'MJ') {
-                // MJ gets the advanced, erasable fog
-                fogClipGroup = new fabric.Group([], { inverted: true, absolutePositioned: true });
-                fogRect = new fabric.Rect({
-                    width: canvas.width, height: canvas.height,
-                    fill: 'rgba(0,0,0,0.85)',
-                    selectable: false, evented: false,
-                    clipPath: fogClipGroup,
-                });
+                fogRect = new fabric.Rect({ width: canvas.width, height: canvas.height, fill: 'rgba(0,0,0,0.85)', selectable: false, evented: false });
+                updateFogClipPath(); // Initial clip path (empty)
             } else {
-                // Players get a simple, solid black rectangle
-                fogRect = new fabric.Rect({
-                    width: canvas.width, height: canvas.height,
-                    fill: 'rgba(0,0,0,1)', // Solid black
-                    selectable: false, evented: false,
-                });
+                fogRect = new fabric.Rect({ width: canvas.width, height: canvas.height, fill: 'rgba(0,0,0,1)', selectable: false, evented: false });
             }
             canvas.add(fogRect);
             fogRect.sendToBack();
         }
-
-        // Only the user who initiated the toggle should send the message
         if (!isRemote) {
             socket.send(JSON.stringify({ type: 'whiteboard', subType: 'fog_toggle', payload: { isOn: isFogOn }, sender: username }));
         }
@@ -152,12 +143,12 @@ document.addEventListener('DOMContentLoaded', () => {
         'object:modified': sendCanvasState,
         'object:removed': sendCanvasState,
         'path:created': (e) => {
-            if (isFogOn && canvas.isDrawingMode) {
+            if (isFogOn && canvas.isDrawingMode && username === 'MJ') {
                 const path = e.path;
                 path.set({ selectable: false, evented: false });
-                fogClipGroup.addWithUpdate(path);
+                erasedPaths.push(path);
+                updateFogClipPath();
                 canvas.remove(path);
-                canvas.renderAll();
                 socket.send(JSON.stringify({ type: 'whiteboard', subType: 'fog_erase', payload: path.toJSON(), sender: username }));
             }
         },
@@ -221,9 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
         input.accept = 'image/*';
         input.onchange = e => fileInputHandler(e, (result) => {
             fabric.Image.fromURL(result, (img) => {
-                // Check if the image is larger than the canvas
                 if (img.width > canvas.width || img.height > canvas.height) {
-                    // Calculate the scale factor to fit the image within the canvas
                     const scaleFactor = Math.min(canvas.width / img.width, canvas.height / img.height);
                     img.scale(scaleFactor);
                 }
@@ -251,25 +240,18 @@ document.addEventListener('DOMContentLoaded', () => {
         input.click();
     });
 
-    // --- Toolbar Actions ---
     document.getElementById('deleteObject').addEventListener('click', () => {
         const activeObject = canvas.getActiveObject();
-        if (activeObject) {
-            canvas.remove(activeObject);
-        }
+        if (activeObject) canvas.remove(activeObject);
     });
 
-    // --- Keyboard Shortcuts ---
     window.addEventListener('keydown', (e) => {
         if (e.key === 'Delete' || e.key === 'Backspace') {
             const activeObject = canvas.getActiveObject();
-            if (activeObject) {
-                canvas.remove(activeObject);
-            }
+            if (activeObject) canvas.remove(activeObject);
         }
     });
 
-    // --- Feature Toggles ---
     document.getElementById('toggleFog').addEventListener('click', () => toggleFog(!isFogOn));
     document.getElementById('eraseFog').addEventListener('click', () => {
         if (!isFogOn) return alert("Activez le brouillard de guerre d'abord !");
@@ -277,7 +259,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('eraseFog').classList.toggle('active', canvas.isDrawingMode);
     });
     const pointerBtn = document.getElementById('pointer-mode-btn');
-    pointerBtn.style.display = ''; // Unhide the button
+    pointerBtn.style.display = '';
     pointerBtn.addEventListener('click', () => {
         isPointerMode = !isPointerMode;
         pointerBtn.classList.toggle('active', isPointerMode);
