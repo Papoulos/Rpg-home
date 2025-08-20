@@ -28,22 +28,29 @@
         </aside>
         <main class="main-content">
             <div class="main-display">
-                <!-- Le contenu principal (whiteboard, etc.) ira ici -->
-                <p>Zone d'affichage principale.</p>
-            </div>
-            <div class="menu-container">
-                <nav class="main-menu">
-                    <a href="#carte" class="menu-item">Carte</a>
-                    <a href="#pj" class="menu-item">PJ</a>
-                    <a href="#prez" class="menu-item">Prez</a>
-                </nav>
-                <div class="sheets-controls">
-                    <select id="sheet-select">
-                        <option value="">Choisir une fiche</option>
-                    </select>
-                    <button id="add-sheet-btn">+</button>
+                <div id="carte-content" class="tab-content">
+                    <p>Contenu de la section Carte.</p>
+                </div>
+                <div id="pj-content" class="tab-content">
+                    <div class="sheets-controls">
+                        <select id="sheet-select">
+                            <option value="">Choisir une fiche</option>
+                        </select>
+                        <button id="add-sheet-btn">+</button>
+                    </div>
+                    <div id="sheet-display-area">
+                        <!-- L'iframe de la Google Sheet ira ici -->
+                    </div>
+                </div>
+                <div id="prez-content" class="tab-content">
+                    <p>Contenu de la section Prez.</p>
                 </div>
             </div>
+            <nav class="main-menu">
+                <a href="#carte" class="menu-item" data-target="carte-content">Carte</a>
+                <a href="#pj" class="menu-item" data-target="pj-content">PJ</a>
+                <a href="#prez" class="menu-item" data-target="prez-content">Prez</a>
+            </nav>
         </main>
         <aside class="panel right-panel">
             <div class="panel-header">
@@ -63,6 +70,7 @@
     <button id="toggle-chat-btn" title="Cacher le panneau de chat">«</button>
     <button id="toggle-video-panel-btn" title="Cacher le panneau de vidéo">»</button>
 
+    <script src="navigation.js" defer></script>
     <script src="script.js" defer></script>
     <script src="sheets.js" defer></script>
 </body>
