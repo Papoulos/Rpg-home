@@ -22,7 +22,6 @@ const CHAT_LOG_FILE = path.join(__dirname, 'chat_history.log');
 let chatHistory = [];
 const clients = new Map();
 let whiteboardState = null; // Variable to store whiteboard state
-let fogState = { isOn: false, paths: [] }; // Variable to store fog of war state
 
 // --- Utility Functions ---
 function broadcast(message, senderWs = null) {
@@ -142,9 +141,6 @@ wss.on('connection', (ws) => {
                 if (whiteboardState) {
                     ws.send(JSON.stringify({ type: 'whiteboard', subType:'state', payload: whiteboardState, sender: 'server' }));
                 }
-                if (fogState.isOn) {
-                    ws.send(JSON.stringify({ type: 'whiteboard', subType: 'fog_state', payload: fogState }));
-                }
                 broadcastUserList();
                 break;
             case 'chat':
@@ -158,17 +154,6 @@ wss.on('connection', (ws) => {
                 switch (data.subType) {
                     case 'state':
                         whiteboardState = data.payload;
-                        broadcast(data, ws);
-                        break;
-                    case 'fog_toggle':
-                        fogState.isOn = data.payload.isOn;
-                        if (!fogState.isOn) {
-                            fogState.paths = []; // Clear paths when fog is turned off
-                        }
-                        broadcast(data, ws);
-                        break;
-                    case 'fog_erase':
-                        fogState.paths.push(data.payload);
                         broadcast(data, ws);
                         break;
                     case 'pointer':
