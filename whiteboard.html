@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Whiteboard</title>
+    <link rel="stylesheet" href="whiteboard.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+</head>
+<body>
+    <div id="whiteboard-container">
+        <div id="toolbar">
+            <button id="set-background-btn">Set Background</button>
+            <button id="add-image-btn">Add Image</button>
+            <button id="add-text-btn">Add Text</button>
+            <input type="color" id="color-picker" value="#ff0000">
+            <button id="draw-rect-btn">Draw Rectangle</button>
+            <button id="draw-circle-btn">Draw Circle</button>
+            <button id="toggle-fog-btn">Toggle Fog</button>
+            <label for="eraser-size">Eraser:</label>
+            <input type="range" id="eraser-size" min="10" max="100" value="20">
+            <button id="erase-fog-btn">Erase Fog</button>
+            <button id="pointer-mode-btn">Pointer</button>
+        </div>
+        <canvas id="whiteboard-canvas"></canvas>
+    </div>
+    <script src="whiteboard.js"></script>
+</body>
+</html>
