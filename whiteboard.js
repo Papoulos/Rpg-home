@@ -1,19 +1,17 @@
-document.addEventListener('DOMContentLoaded', () => {
-    // --- DOM and State Variables ---
-    const container = document.getElementById('whiteboard-container');
-    const canvasElement = document.getElementById('whiteboard-canvas');
-    let isUpdatingFromRemote = false; // Flag to prevent update loops
+// --- DOM and State Variables ---
+const container = document.getElementById('whiteboard-container');
+const canvasElement = document.getElementById('whiteboard-canvas');
+let isUpdatingFromRemote = false; // Flag to prevent update loops
 
-    // Feature-specific state variables
-    let fogRect = null, fogClipGroup = null, isFogOn = false;
-    let isPointerMode = false, remotePointers = {};
-    let isMouseDown = false;
+// Feature-specific state variables
+let fogRect = null, fogClipGroup = null, isFogOn = false;
+let isPointerMode = false, remotePointers = {};
+let isMouseDown = false;
 
-    if (!container || !canvasElement) {
-        // Early exit if essential elements are not found
-        return;
-    }
-
+if (!container || !canvasElement) {
+    // Early exit if essential elements are not found
+    console.error("Whiteboard container or canvas element not found.");
+} else {
     const canvas = new fabric.Canvas(canvasElement, {
         isDrawingMode: false,
         // Set object-level controls to be consistent across browsers
@@ -241,7 +239,7 @@ document.addEventListener('DOMContentLoaded', () => {
         canvas.setActiveObject(circle);
     });
     document.getElementById('toggle-fog-btn').addEventListener('click', () => toggleFog(!isFogOn));
-    document.getElementById('erase-fog-btn').addEventListener('click', () => {
+    document.getElementById('erase-fog-btn').addEventListener('click', ()_ => {
         if (!isFogOn) return alert("Turn on the Fog of War first!");
         canvas.isDrawingMode = !canvas.isDrawingMode;
         document.getElementById('erase-fog-btn').classList.toggle('active', canvas.isDrawingMode);
@@ -259,4 +257,4 @@ document.addEventListener('DOMContentLoaded', () => {
     canvas.freeDrawingBrush.width = 20; // Default eraser size
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
-});
+}
