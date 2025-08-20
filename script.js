@@ -1,5 +1,9 @@
 // IIFE to avoid polluting the global scope
 (() => {
+    // --- App State & Setup ---
+    window.app = {}; // Namespace for sharing functions
+    window.app.messageHandlers = {}; // Registry for module-specific message handlers
+
     let username = '';
     let localStream;
     const peerConnections = {};
@@ -7,22 +11,14 @@
         iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
             { urls: 'stun:stun1.l.google.com:19302' },
-            {
-                urls: 'turn:openrelay.metered.ca:80',
-                username: 'openrelayproject',
-                credential: 'openrelayproject'
-            },
-            {
-                urls: 'turn:openrelay.metered.ca:443',
-                username: 'openrelayproject',
-                credential: 'openrelayproject'
-            }
         ],
     };
-
     const socket = new WebSocket(`wss://${window.location.host}`);
 
-    // --- User and Chat Management ---
+    // --- DOM Elements ---
+    let chatMessages, chatInput, sendButton, diceButtons, leftPanel, toggleChatBtn, videoGrid, rightPanel, toggleVideoPanelBtn, mainDisplay;
+
+    // --- Core Functions ---
     function askForUsername() {
         while (!username || username.trim() === '') {
             username = prompt("Veuillez entrer votre nom pour le chat :");
@@ -32,24 +28,56 @@
     function getUsername() {
         return username;
     }
+    window.app.getUsername = getUsername; // Expose for modules
+
+    // --- Messaging ---
+    function sendMessage(payload) {
+        socket.send(JSON.stringify({ sender: getUsername(), ...payload }));
+    }
+    window.app.sendMessage = sendMessage; // Expose for modules
+
+    window.app.registerMessageHandler = (type, handler) => {
+        window.app.messageHandlers[type] = handler;
+    };
+
+    // --- View Loading ---
+    async function loadView(viewUrl) {
+        try {
+            const response = await fetch(viewUrl);
+            if (!response.ok) throw new Error(`Failed to load view: ${viewUrl}`);
+            mainDisplay.innerHTML = await response.text();
+
+            const scriptElement = mainDisplay.querySelector('script');
+            if (scriptElement && scriptElement.src) {
+                const scriptSrc = new URL(scriptElement.src, window.location.href).href;
+                scriptElement.remove();
+
+                const newScript = document.createElement('script');
+                newScript.src = scriptSrc;
+                newScript.onload = () => {
+                    if (window.initTableau) {
+                        window.initTableau();
+                    }
+                };
+                document.body.appendChild(newScript);
+            }
+        } catch (error) {
+            console.error('Error loading view:', error);
+            mainDisplay.innerHTML = `<p>Error loading content: ${error.message}</p>`;
+        }
+    }
 
     // --- DOM Manipulation ---
     function addMessage({ sender, message, prepend = false }) {
-        if (!sender || !message) {
-            console.warn('[UI] Ignoring malformed message object:', { sender, message });
-            return;
-        }
+        if (!sender || !message) return;
         const messageElement = document.createElement('div');
         messageElement.classList.add('chat-message');
         const userColor = stringToHslColor(sender, 70, 75);
         const richMessage = parseForRichContent(message);
         const coloredSender = sender === 'System' ? `<strong style="color: #aaa;">${sender}:</strong>` : `<strong style="color: ${userColor};">${sender}:</strong>`;
         messageElement.innerHTML = `${coloredSender} ${richMessage}`;
-        if (prepend) {
-            chatMessages.prepend(messageElement);
-        } else {
-            chatMessages.appendChild(messageElement);
-        }
+        if (prepend) chatMessages.prepend(messageElement);
+        else chatMessages.appendChild(messageElement);
     }
 
     function addVideoStream(stream, name) {
@@ -61,13 +89,7 @@
         video.srcObject = stream;
         video.autoplay = true;
         video.playsInline = true;
-
-        if (name === getUsername()) {
-            video.muted = true; // Local video is always muted to prevent feedback
-            video.style.transform = 'scaleX(-1)';
-        }
-        // Remote streams are NOT muted by default, relying on browser autoplay policy
-
+        if (name === getUsername()) video.muted = true;
         const nameTag = document.createElement('div');
         nameTag.classList.add('name-tag');
         nameTag.textContent = name;
@@ -83,99 +105,19 @@
 
     function parseForRichContent(message) {
         const urlRegex = /(https?:\/\/[^\s]+)/g;
-        return message.replace(urlRegex, (url) => /\.(jpeg|jpg|gif|png)$/i.test(url) ? `<a href="${url}" target="_blank"><img src="${url}" alt="Image" style="max-width: 100%; max-height: 150px;" /></a>` : `<a href="${url}" target="_blank">${url}</a>`);
+        return message.replace(urlRegex, (url) => /\.(jpeg|jpg|gif|png)$/i.test(url) ? `<a href="${url}" target="_blank"><img src="${url}" alt="Image" style="max-width: 100%;" /></a>` : `<a href="${url}" target="_blank">${url}</a>`);
     }
 
-    // --- Messaging ---
-    function sendMessage(payload) {
-        socket.send(JSON.stringify({ sender: getUsername(), ...payload }));
-    }
-
-    function rollDice(dieType) {
-        const roll = Math.floor(Math.random() * dieType) + 1;
-        let resultDisplay = `<strong>${roll}</strong>`;
-        if (roll === 1) resultDisplay = `<span class="crit-success">${roll}</span>`;
-        if (roll === dieType) resultDisplay = `<span class="crit-fail">${roll}</span>`;
-        sendMessage({ type: 'dice', message: `lance un dé ${dieType} : ${resultDisplay}` });
-    }
-
-    function handleSendMessage() {
-        const message = chatInput.value.trim();
-        if (message) {
-            sendMessage({ type: 'chat', message });
-            chatInput.value = '';
-        }
-    }
-
-    // --- WebRTC Logic ---
-    async function createPeerConnection(peerUsername, isInitiator = false) {
-        if (peerConnections[peerUsername] || peerUsername === getUsername()) return;
-
-        const pc = new RTCPeerConnection(iceServers);
-        peerConnections[peerUsername] = pc;
-
-        if (localStream) {
-            localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-        }
-
-        pc.onicecandidate = event => {
-            if (event.candidate) {
-                sendMessage({ type: 'ice-candidate', target: peerUsername, message: event.candidate });
-            }
-        };
-
-        pc.ontrack = event => {
-            addVideoStream(event.streams[0], peerUsername);
-        };
-
-        pc.onconnectionstatechange = () => {
-            if (pc.connectionState === 'disconnected' || pc.connectionState === 'closed' || pc.connectionState === 'failed') {
-                removeVideoStream(peerUsername);
-                delete peerConnections[peerUsername];
-            }
-        };
-
-        if (isInitiator) {
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            sendMessage({ type: 'offer', target: peerUsername, message: pc.localDescription });
-        }
-    }
-
-    async function handleUserList(users) {
-        const myUsername = getUsername();
-
-        // Create connections for new users and send offers
-        for (const user of users) {
-            if (user !== myUsername && !peerConnections[user]) {
-                // The user with the alphabetically lower name initiates the call
-                const isInitiator = myUsername < user;
-                await createPeerConnection(user, isInitiator);
-            }
-        }
-
-        // Remove disconnected users
-        Object.keys(peerConnections).forEach(peerName => {
-            if (!users.includes(peerName)) {
-                peerConnections[peerName].close();
-                delete peerConnections[peerName];
-                removeVideoStream(peerName);
-            }
-        });
-    }
-
-    // --- WebSocket Event Listeners ---
+    // --- WebSocket & WebRTC ---
     socket.onmessage = async (event) => {
         const data = JSON.parse(event.data);
-
+        if (window.app.messageHandlers[data.type]) {
+            window.app.messageHandlers[data.type](data);
+            return;
+        }
         switch (data.type) {
             case 'history':
-                // Prepend history messages so they appear in the correct order
-                data.messages.forEach(msg => {
-                    if (msg.type === 'chat' || msg.type === 'dice') {
-                        addMessage({ ...msg, prepend: true });
-                    }
-                });
+                data.messages.forEach(msg => { if (msg.type === 'chat' || msg.type === 'dice') addMessage({ ...msg, prepend: true }); });
                 break;
             case 'user-list':
                 await handleUserList(data.users);
@@ -185,10 +127,7 @@
                 addMessage({ ...data, prepend: true });
                 break;
             case 'offer':
-                // The peer connection should already be created by handleUserList, but as a fallback:
-                if (!peerConnections[data.sender]) {
-                    await createPeerConnection(data.sender, false);
-                }
+                if (!peerConnections[data.sender]) await createPeerConnection(data.sender, false);
                 const pc = peerConnections[data.sender];
                 if (pc && pc.signalingState === 'stable') {
                     await pc.setRemoteDescription(new RTCSessionDescription(data.message));
@@ -206,108 +145,99 @@
         }
     };
 
-    socket.onclose = () => addMessage({ sender: 'System', message: 'Connection lost. Please refresh.', prepend: true });
-    socket.onerror = (error) => console.error('WebSocket error:', error);
+    async function createPeerConnection(peerUsername, isInitiator = false) {
+        if (peerConnections[peerUsername] || peerUsername === getUsername()) return;
+        const pc = new RTCPeerConnection(iceServers);
+        peerConnections[peerUsername] = pc;
+        if (localStream) localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+        pc.onicecandidate = e => { if (e.candidate) sendMessage({ type: 'ice-candidate', target: peerUsername, message: e.candidate }); };
+        pc.ontrack = e => addVideoStream(e.streams[0], peerUsername);
+        pc.onconnectionstatechange = () => {
+            if (['disconnected', 'closed', 'failed'].includes(pc.connectionState)) {
+                removeVideoStream(peerUsername);
+                delete peerConnections[peerUsername];
+            }
+        };
+        if (isInitiator) {
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            sendMessage({ type: 'offer', target: peerUsername, message: pc.localDescription });
+        }
+    }
+
+    async function handleUserList(users) {
+        const myUsername = getUsername();
+        for (const user of users) {
+            if (user !== myUsername && !peerConnections[user]) {
+                await createPeerConnection(user, myUsername < user);
+            }
+        }
+        Object.keys(peerConnections).forEach(peerName => {
+            if (!users.includes(peerName)) {
+                peerConnections[peerName].close();
+                delete peerConnections[peerName];
+                removeVideoStream(peerName);
+            }
+        });
+    }
 
     // --- Initial Setup ---
-    async function setupLocalMedia() {
-        try {
-            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-            addVideoStream(localStream, getUsername());
-        } catch (error) {
-            console.error('Error accessing media devices.', error);
-            alert('Could not access your camera or microphone. Please check permissions and try again.');
-        }
-    }
-
-    function setupToggle() {
-        // This function now handles both toggle buttons
-        const toggleButtons = [
-            { btn: document.getElementById('toggle-chat-btn'), panel: document.querySelector('.left-panel'), class: 'chat-hidden' },
-            { btn: document.getElementById('toggle-video-panel-btn'), panel: document.querySelector('.right-panel'), class: 'video-hidden' }
-        ];
-
-        toggleButtons.forEach(item => {
-            if (item.btn && item.panel) {
-                item.btn.addEventListener('click', () => {
-                    item.panel.classList.toggle(item.class);
-                    // Update button text/icon based on state
-                    const isHidden = item.panel.classList.contains(item.class);
-                    if (item.btn.id === 'toggle-chat-btn') {
-                        item.btn.textContent = isHidden ? '»' : '«';
-                    } else {
-                        item.btn.textContent = isHidden ? '«' : '»';
-                    }
-                });
-            }
-        });
-    }
-
     function setupEventListeners() {
-        sendButton.addEventListener('click', handleSendMessage);
-        chatInput.addEventListener('keydown', e => e.key === 'Enter' && handleSendMessage());
-        diceButtons.forEach(button => button.addEventListener('click', () => rollDice(parseInt(button.dataset.die, 10))));
-
-        // Global media controls
-        const muteMicBtn = document.getElementById('mute-mic-btn');
-        const toggleVideoBtn = document.getElementById('toggle-video-btn');
-
-        muteMicBtn.addEventListener('click', () => {
-            const audioTrack = localStream.getAudioTracks()[0];
-            if (audioTrack) {
-                audioTrack.enabled = !audioTrack.enabled;
-                muteMicBtn.classList.toggle('muted', !audioTrack.enabled);
-                muteMicBtn.title = audioTrack.enabled ? "Couper le micro" : "Activer le micro";
-            }
-        });
-
-        toggleVideoBtn.addEventListener('click', () => {
-            const videoTrack = localStream.getVideoTracks()[0];
-            if (videoTrack) {
-                videoTrack.enabled = !videoTrack.enabled;
-                toggleVideoBtn.classList.toggle('muted', !videoTrack.enabled);
-                toggleVideoBtn.title = videoTrack.enabled ? "Désactiver la caméra" : "Activer la caméra";
-            }
-        });
-    }
-
-    function stringToHslColor(str, s, l) {
-        if (!str) return '#ffffff';
-        let hash = 0;
-        for (let i = 0; i < str.length; i++) {
-            hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        // Chat
+        sendButton.addEventListener('click', () => { const msg = chatInput.value.trim(); if (msg) { sendMessage({ type: 'chat', message: msg }); chatInput.value = ''; } });
+        chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') { const msg = chatInput.value.trim(); if (msg) { sendMessage({ type: 'chat', message: msg }); chatInput.value = ''; } } });
+        // Dice
+        diceButtons.forEach(button => button.addEventListener('click', () => { const roll = Math.floor(Math.random() * parseInt(button.dataset.die)) + 1; sendMessage({ type: 'dice', message: `lance un dé ${button.dataset.die} : <strong>${roll}</strong>` }); }));
+        // Media Controls
+        document.getElementById('mute-mic-btn').addEventListener('click', () => { if(localStream) localStream.getAudioTracks()[0].enabled = !localStream.getAudioTracks()[0].enabled; });
+        document.getElementById('toggle-video-btn').addEventListener('click', () => { if(localStream) localStream.getVideoTracks()[0].enabled = !localStream.getVideoTracks()[0].enabled; });
+        // Navigation
+        const nav = document.getElementById('main-nav');
+        if (nav) {
+            nav.addEventListener('click', (e) => {
+                if (e.target.tagName === 'BUTTON' && e.target.dataset.view) {
+                    nav.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+                    e.target.classList.add('active');
+                    loadView(e.target.dataset.view);
+                }
+            });
         }
-        const h = hash % 360;
-        return `hsl(${h}, ${s}%, ${l}%)`;
     }
 
-    // --- DOM Elements ---
-    let chatMessages, chatInput, sendButton, diceButtons, leftPanel, toggleChatBtn, videoGrid, rightPanel, toggleVideoPanelBtn;
-
-    // Execute when the DOM is fully loaded
-    document.addEventListener('DOMContentLoaded', async () => {
+    async function initialize() {
         // Define all DOM elements
         chatMessages = document.getElementById('chat-messages');
         chatInput = document.getElementById('chat-input');
         sendButton = document.getElementById('send-button');
         diceButtons = document.querySelectorAll('.dice-button');
-        leftPanel = document.querySelector('.left-panel');
-        toggleChatBtn = document.getElementById('toggle-chat-btn');
-        rightPanel = document.querySelector('.right-panel');
-        toggleVideoPanelBtn = document.getElementById('toggle-video-panel-btn');
         videoGrid = document.getElementById('video-grid');
+        mainDisplay = document.querySelector('.main-display');
 
         askForUsername();
-        await setupLocalMedia();
-
-        const registerUser = () => sendMessage({ type: 'register', username: getUsername() });
-        if (socket.readyState === WebSocket.OPEN) {
-            registerUser();
-        } else {
-            socket.addEventListener('open', registerUser);
+        try {
+            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            addVideoStream(localStream, getUsername());
+        } catch (error) {
+            console.error('Error accessing media devices.', error);
+            alert('Could not access camera or microphone.');
         }
 
+        const registerUser = () => sendMessage({ type: 'register', username: getUsername() });
+        if (socket.readyState === WebSocket.OPEN) registerUser();
+        else socket.addEventListener('open', registerUser);
+
         setupEventListeners();
-        setupToggle();
-    });
+
+        const defaultViewButton = document.querySelector('#main-nav button.active');
+        if (defaultViewButton) defaultViewButton.click();
+    }
+
+    function stringToHslColor(str, s, l) {
+        if (!str) return '#ffffff';
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        return `hsl(${hash % 360}, ${s}%, ${l}%)`;
+    }
+
+    document.addEventListener('DOMContentLoaded', initialize);
 })();
