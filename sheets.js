@@ -1,11 +1,21 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const mainDisplay = document.querySelector('.main-display');
+    // Only operate within the PJ tab content
+    const pjContent = document.getElementById('pj-content');
+    if (!pjContent) return; // Exit if not on a page with the PJ tab
+
+    const sheetDisplayArea = document.getElementById('sheet-display-area');
     const sheetSelect = document.getElementById('sheet-select');
     const addSheetBtn = document.getElementById('add-sheet-btn');
 
+    // Ensure all required elements are present
+    if (!sheetDisplayArea || !sheetSelect || !addSheetBtn) {
+        console.warn('Sheet components not found. The script will not run.');
+        return;
+    }
+
     const storageKey = 'googleSheets';
     let sheets = [];
-    const originalMainContent = mainDisplay.innerHTML;
+    const originalMainContent = sheetDisplayArea.innerHTML;
 
     // --- Data Management ---
 
@@ -55,7 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function displaySheet(url) {
-        mainDisplay.innerHTML = ''; // Clear the display area
+        sheetDisplayArea.innerHTML = ''; // Clear the display area
 
         if (url) {
             const iframe = document.createElement('iframe');
@@ -63,10 +73,10 @@ document.addEventListener('DOMContentLoaded', () => {
             iframe.style.width = '100%';
             iframe.style.height = '100%';
             iframe.style.border = 'none';
-            mainDisplay.appendChild(iframe);
+            sheetDisplayArea.appendChild(iframe);
         } else {
             // Restore the original content if no sheet is selected
-            mainDisplay.innerHTML = originalMainContent;
+            sheetDisplayArea.innerHTML = originalMainContent;
         }
     }
 
