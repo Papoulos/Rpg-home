@@ -344,7 +344,7 @@ window.app = {};
                 // Create a new script tag and execute the fetched content inline
                 const newScript = document.createElement('script');
                 newScript.textContent = scriptContent;
-                document.body.appendChild(newScript).parentNode.removeChild(newScript);
+                document.body.appendChild(newScript);
             }
         } catch (error) {
             console.error('Error loading main content:', error);
