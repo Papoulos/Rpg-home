@@ -117,7 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Turning fog on - behavior depends on user role
             if (username === 'MJ') {
                 // MJ gets the advanced, erasable fog
-                fogClipGroup = new fabric.Group([], { inverted: true });
+                fogClipGroup = new fabric.Group([], { inverted: true, absolutePositioned: true });
                 fogRect = new fabric.Rect({
                     width: canvas.width, height: canvas.height,
                     fill: 'rgba(0,0,0,0.85)',
