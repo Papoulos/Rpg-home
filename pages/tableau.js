@@ -1,4 +1,4 @@
-window.initWhiteboard = () => {
+window.initTableau = () => {
     // --- State Variables ---
     let username = '';
     let isUpdatingFromRemote = false;
