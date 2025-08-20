@@ -35,20 +35,12 @@
                     </div>
 
                     <!-- Contrôles pour le MJ, cachés par défaut -->
-                    <div id="image-controls" class="hidden">
-                        <h3>Gestion des Images (MJ)</h3>
-                        <div class="image-management-form">
-                            <input type="text" id="image-name-input" placeholder="Nom de l'image" required>
-                            <input type="url" id="image-url-input" placeholder="URL de l'image" required>
-                            <button id="add-image-btn" class="control-btn btn-add" title="Ajouter l'image">+</button>
-                        </div>
-                        <div class="image-selection-area">
-                            <select id="image-select">
-                                <option value="">Choisir une image</option>
-                            </select>
-                            <button id="show-image-btn" class="control-btn btn-show" title="Afficher l'image">▶️</button>
-                            <button id="delete-image-btn" class="control-btn btn-delete" title="Supprimer l'image">🗑️</button>
-                        </div>
+                    <div class="image-controls hidden">
+                        <select id="image-select">
+                            <option value="">Choisir une image</option>
+                        </select>
+                        <button id="add-image-btn" class="control-btn btn-add" title="Ajouter une image">+</button>
+                        <button id="delete-image-btn" class="control-btn btn-delete" title="Supprimer l'image">-</button>
                     </div>
                 </div>
                 <div id="pj-content" class="tab-content">
