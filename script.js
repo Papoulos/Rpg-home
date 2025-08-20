@@ -292,6 +292,14 @@ window.app = {};
             e.preventDefault();
             loadMainContent('whiteboard.html');
         });
+        document.querySelector('a[href="#pj"]').addEventListener('click', (e) => {
+            e.preventDefault();
+            mainDisplay.innerHTML = '<p>Player Characters section is not yet implemented.</p>';
+        });
+        document.querySelector('a[href="#prez"]').addEventListener('click', (e) => {
+            e.preventDefault();
+            mainDisplay.innerHTML = '<p>Prez section is not yet implemented.</p>';
+        });
     }
 
     function stringToHslColor(str, s, l) {
