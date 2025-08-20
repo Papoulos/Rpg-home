@@ -23,6 +23,7 @@ const IMAGE_LIST_FILE = path.join(__dirname, 'images.json');
 
 let chatHistory = [];
 let imageList = [];
+let currentImageUrl = null; // Track the currently displayed image
 const clients = new Map();
 
 // --- Utility Functions ---
@@ -173,6 +174,7 @@ wss.on('connection', (ws) => {
 
                 ws.send(JSON.stringify({ type: 'history', messages: chatHistory }));
                 ws.send(JSON.stringify({ type: 'image-list-update', list: imageList }));
+                ws.send(JSON.stringify({ type: 'show-image', url: currentImageUrl })); // Send current image on join
 
                 if (isMJ) {
                     ws.send(JSON.stringify({ type: 'mj-status', isMJ: true }));
@@ -193,6 +195,11 @@ wss.on('connection', (ws) => {
             case 'delete-image':
                 const clientToDelete = clients.get(ws);
                 if (clientToDelete && clientToDelete.isMJ) {
+                    // If the deleted image is the one being shown, clear the display.
+                    if (data.url === currentImageUrl) {
+                        currentImageUrl = null;
+                        broadcast({ type: 'show-image', url: null });
+                    }
                     imageList = imageList.filter(img => img.url !== data.url);
                     saveImageList();
                     broadcastImageList();
@@ -202,6 +209,7 @@ wss.on('connection', (ws) => {
             case 'show-image':
                 const clientToShow = clients.get(ws);
                 if (clientToShow && clientToShow.isMJ) {
+                    currentImageUrl = data.url; // Update current image state
                     broadcast({ type: 'show-image', url: data.url });
                 }
                 break;

@@ -102,6 +102,7 @@ body, html {
     width: 100%;
     flex-grow: 1; /* Allow this area to grow and fill space */
     display: flex; /* Use flex to make child iframe fill it */
+    min-height: 0; /* Prevents flex items from overflowing their container */
 }
 
 /* Tabbed Content */
@@ -150,25 +151,31 @@ body, html {
     color: #ffffff;
 }
 
-/* Controls within the PJ Tab */
-.sheets-controls {
+/* --- Shared Controls Bar (for Sheets & Images) --- */
+.sheets-controls, .image-controls {
     display: flex;
     align-items: center;
     gap: 5px;
-    padding-bottom: 5px;
+    padding-bottom: 10px;
     border-bottom: 1px solid #3a3a3a;
+    flex-shrink: 0; /* Prevent the bar from shrinking */
 }
 
-#sheet-select {
+.image-controls.hidden {
+    display: none;
+}
+
+.sheets-controls select, .image-controls select {
     background-color: #3e3e3e;
     color: #e0e0e0;
     border: 1px solid #555;
     border-radius: 5px;
-    padding: 2px 8px;
-    font-size: 12px;
+    padding: 4px 8px;
+    font-size: 14px;
+    flex-grow: 1;
 }
 
-#sheet-select:hover {
+.sheets-controls select:hover, .image-controls select:hover {
     background-color: #4a4a4a;
 }
 
@@ -412,47 +419,4 @@ body, html {
     object-fit: contain; /* Scales the image nicely */
 }
 
-#image-controls {
-    position: absolute;
-    bottom: 10px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(40, 40, 40, 0.9);
-    padding: 1rem;
-    border-radius: 8px;
-    border: 1px solid #555;
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    width: 90%;
-    max-width: 600px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-}
-
-#image-controls.hidden {
-    display: none;
-}
-
-#image-controls h3 {
-    margin-top: 0;
-    text-align: center;
-    font-size: 1rem;
-    color: #eee;
-}
-
-.image-management-form,
-.image-selection-area {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.image-management-form input[type="text"],
-.image-management-form input[type="url"],
-.image-selection-area select {
-    flex-grow: 1;
-    padding: 0.5rem;
-    background-color: #3e3e3e;
-    color: #e0e0e0;
-    border: 1px solid #555;
-    border-radius: 5px;
-}
+/* Styles for the image controls are now handled by the shared .image-controls class */

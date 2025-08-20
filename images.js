@@ -1,29 +1,38 @@
-// This script will be responsible for managing the image-related UI and interactions for the MJ.
 document.addEventListener('DOMContentLoaded', () => {
-    const imageControls = document.getElementById('image-controls');
+    // Note: The global `socket` is exposed by script.js
+    if (typeof socket === 'undefined') {
+        console.error('Socket is not available. Make sure script.js is loaded first.');
+        return;
+    }
+
+    const imageControls = document.querySelector('.image-controls');
     const addImageBtn = document.getElementById('add-image-btn');
     const deleteImageBtn = document.getElementById('delete-image-btn');
-    const showImageBtn = document.getElementById('show-image-btn');
-    const imageNameInput = document.getElementById('image-name-input');
-    const imageUrlInput = document.getElementById('image-url-input');
     const imageSelect = document.getElementById('image-select');
 
-    // This global socket instance is defined in script.js
-    // We need to ensure this script is loaded after script.js, which it is in index.html
-    // A more robust solution might use a shared module or a global event bus.
-    const socket = window.socket;
+    if (!imageControls || !addImageBtn || !deleteImageBtn || !imageSelect) {
+        // The user is not the MJ or on a page without these controls.
+        return;
+    }
+
+    // --- Event Handlers ---
 
     function handleAddImage() {
-        const name = imageNameInput.value.trim();
-        const url = imageUrlInput.value.trim();
+        const name = prompt('Entrez le nom de l\'image :');
+        if (!name) return;
 
-        if (name && url) {
-            socket.send(JSON.stringify({ type: 'add-image', name, url }));
-            imageNameInput.value = '';
-            imageUrlInput.value = '';
-        } else {
-            alert('Veuillez fournir un nom et une URL pour l\'image.');
+        const url = prompt('Entrez le lien web de l\'image :');
+        if (!url) return;
+
+        // Basic URL validation
+        try {
+            new URL(url);
+        } catch (_) {
+            alert('Veuillez entrer une URL valide.');
+            return;
         }
+
+        socket.send(JSON.stringify({ type: 'add-image', name, url }));
     }
 
     function handleDeleteImage() {
@@ -40,12 +49,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function handleShowImage() {
         const selectedUrl = imageSelect.value;
-        if (selectedUrl) {
-            socket.send(JSON.stringify({ type: 'show-image', url: selectedUrl }));
-        } else {
-            alert('Veuillez sélectionner une image à afficher.');
-        }
+        // The 'show-image' event is sent even for the placeholder,
+        // which will have an empty value. The server will broadcast this,
+        // and the client will clear the image display.
+        socket.send(JSON.stringify({ type: 'show-image', url: selectedUrl }));
     }
+
+    // --- WebSocket Event Listeners (via window events) ---
 
     window.addEventListener('mj-status', (e) => {
         if (e.detail.isMJ) {
@@ -55,11 +65,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.addEventListener('image-list-update', (e) => {
         const imageList = e.detail.list;
-
-        // Preserve the currently selected value
         const selectedValue = imageSelect.value;
 
-        // Clear existing options
+        // Clear existing options (keeping the placeholder)
         while (imageSelect.options.length > 1) {
             imageSelect.remove(1);
         }
@@ -76,8 +84,9 @@ document.addEventListener('DOMContentLoaded', () => {
         imageSelect.value = selectedValue;
     });
 
-    // Add event listeners
+    // --- Initial Setup ---
+
     addImageBtn.addEventListener('click', handleAddImage);
     deleteImageBtn.addEventListener('click', handleDeleteImage);
-    showImageBtn.addEventListener('click', handleShowImage);
+    imageSelect.addEventListener('change', handleShowImage);
 });
