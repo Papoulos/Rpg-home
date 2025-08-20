@@ -90,7 +90,7 @@ body, html {
 /* Contenu principal */
 .main-content {
     flex: 3;
-    padding: 40px;
+    padding: 10px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
