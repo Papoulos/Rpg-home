@@ -40,14 +40,14 @@
                         <div class="image-management-form">
                             <input type="text" id="image-name-input" placeholder="Nom de l'image" required>
                             <input type="url" id="image-url-input" placeholder="URL de l'image" required>
-                            <button id="add-image-btn">Ajouter</button>
+                            <button id="add-image-btn" class="control-btn btn-add" title="Ajouter l'image">+</button>
                         </div>
                         <div class="image-selection-area">
                             <select id="image-select">
                                 <option value="">Choisir une image</option>
                             </select>
-                            <button id="show-image-btn">Afficher</button>
-                            <button id="delete-image-btn">Supprimer</button>
+                            <button id="show-image-btn" class="control-btn btn-show" title="Afficher l'image">▶️</button>
+                            <button id="delete-image-btn" class="control-btn btn-delete" title="Supprimer l'image">🗑️</button>
                         </div>
                     </div>
                 </div>
@@ -56,8 +56,8 @@
                         <select id="sheet-select">
                             <option value="">Choisir une fiche</option>
                         </select>
-                        <button id="add-sheet-btn">+</button>
-                        <button id="delete-sheet-btn">-</button>
+                        <button id="add-sheet-btn" class="control-btn btn-add" title="Ajouter une fiche">+</button>
+                        <button id="delete-sheet-btn" class="control-btn btn-delete" title="Supprimer la fiche">-</button>
                     </div>
                     <div id="sheet-display-area">
                         <!-- L'iframe de la Google Sheet ira ici -->
