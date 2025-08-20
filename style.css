@@ -154,8 +154,8 @@ body, html {
 .sheets-controls {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding-bottom: 10px;
+    gap: 5px;
+    padding-bottom: 5px;
     border-bottom: 1px solid #3a3a3a;
 }
 
@@ -163,30 +163,42 @@ body, html {
     background-color: #3e3e3e;
     color: #e0e0e0;
     border: 1px solid #555;
-    border-radius: 6px;
-    padding: 5px 10px;
-    font-size: 14px;
+    border-radius: 5px;
+    padding: 2px 8px;
+    font-size: 12px;
 }
 
 #sheet-select:hover {
     background-color: #4a4a4a;
 }
 
-#add-sheet-btn {
-    background-color: #4CAF50;
+#add-sheet-btn, #delete-sheet-btn {
     color: white;
     border: none;
-    border-radius: 6px;
-    width: 28px;
-    height: 28px;
-    font-size: 20px;
-    line-height: 28px;
+    border-radius: 5px;
+    width: 24px;
+    height: 24px;
+    font-size: 18px;
+    font-weight: bold;
+    line-height: 24px;
     cursor: pointer;
     transition: background-color 0.2s;
 }
 
+#add-sheet-btn {
+    background-color: #4CAF50;
+}
+
+#delete-sheet-btn {
+    background-color: #f44336;
+}
+
 #add-sheet-btn:hover {
     background-color: #45a049;
+}
+
+#delete-sheet-btn:hover {
+    background-color: #d32f2f;
 }
 
 /* --- Styles pour le panneau de Chat --- */

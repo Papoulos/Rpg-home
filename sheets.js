@@ -6,9 +6,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const sheetDisplayArea = document.getElementById('sheet-display-area');
     const sheetSelect = document.getElementById('sheet-select');
     const addSheetBtn = document.getElementById('add-sheet-btn');
+    const deleteSheetBtn = document.getElementById('delete-sheet-btn');
 
     // Ensure all required elements are present
-    if (!sheetDisplayArea || !sheetSelect || !addSheetBtn) {
+    if (!sheetDisplayArea || !sheetSelect || !addSheetBtn || !deleteSheetBtn) {
         console.warn('Sheet components not found. The script will not run.');
         return;
     }
@@ -105,9 +106,33 @@ document.addEventListener('DOMContentLoaded', () => {
         displaySheet(selectedUrl);
     }
 
+    function handleDeleteSheetClick() {
+        const selectedIndex = sheetSelect.selectedIndex;
+        if (selectedIndex <= 0) {
+            alert('Veuillez sélectionner une fiche à supprimer.');
+            return;
+        }
+
+        const sheetName = sheetSelect.options[selectedIndex].text;
+        const selectedUrl = sheetSelect.value;
+
+        if (confirm(`Êtes-vous sûr de vouloir supprimer la fiche "${sheetName}" ?`)) {
+            // Remove the sheet from the array
+            sheets = sheets.filter(sheet => sheet.url !== selectedUrl);
+
+            // Persist changes
+            saveSheets();
+
+            // Update UI
+            populateDropdown();
+            displaySheet(null); // Clear the display
+        }
+    }
+
     // --- Initialization ---
 
     addSheetBtn.addEventListener('click', handleAddSheetClick);
+    deleteSheetBtn.addEventListener('click', handleDeleteSheetClick);
     sheetSelect.addEventListener('change', handleSheetSelectChange);
 
     loadSheets();
