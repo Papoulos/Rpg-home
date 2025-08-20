@@ -172,33 +172,45 @@ body, html {
     background-color: #4a4a4a;
 }
 
-#add-sheet-btn, #delete-sheet-btn {
+/* --- Shared Control Button Styles --- */
+.control-btn {
     color: white;
     border: none;
     border-radius: 5px;
-    width: 24px;
-    height: 24px;
-    font-size: 18px;
+    width: 28px; /* Slightly larger for better clickability */
+    height: 28px;
+    font-size: 16px;
     font-weight: bold;
-    line-height: 24px;
+    line-height: 28px;
+    text-align: center;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s, transform 0.1s;
+    flex-shrink: 0; /* Prevent buttons from shrinking */
 }
 
-#add-sheet-btn {
+.control-btn:active {
+    transform: scale(0.9);
+}
+
+.btn-add {
     background-color: #4CAF50;
 }
-
-#delete-sheet-btn {
-    background-color: #f44336;
-}
-
-#add-sheet-btn:hover {
+.btn-add:hover {
     background-color: #45a049;
 }
 
-#delete-sheet-btn:hover {
+.btn-delete {
+    background-color: #f44336;
+}
+.btn-delete:hover {
     background-color: #d32f2f;
+}
+
+.btn-show {
+    background-color: #2196F3; /* Blue for show */
+}
+.btn-show:hover {
+    background-color: #1e88e5;
 }
 
 /* --- Styles pour le panneau de Chat --- */
@@ -374,16 +386,15 @@ body, html {
 
 /* --- Image Management --- */
 #carte-content {
-    flex-direction: column;
-    justify-content: flex-start;
-    align-items: center;
+    /* This is already a flex container from .tab-content */
     padding: 1rem;
     position: relative; /* For positioning the controls */
+    gap: 1rem; /* Add some space between elements if needed */
 }
 
 #image-display-area {
     width: 100%;
-    height: 100%;
+    flex-grow: 1; /* This is the key change to make it fill available space */
     display: flex;
     justify-content: center;
     align-items: center;
@@ -440,9 +451,8 @@ body, html {
 .image-selection-area select {
     flex-grow: 1;
     padding: 0.5rem;
-}
-
-.image-management-form button,
-.image-selection-area button {
-    padding: 0.5rem 1rem;
+    background-color: #3e3e3e;
+    color: #e0e0e0;
+    border: 1px solid #555;
+    border-radius: 5px;
 }
