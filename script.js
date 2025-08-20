@@ -1,5 +1,10 @@
+// App namespace
+window.app = {};
+
 // IIFE to avoid polluting the global scope
 (() => {
+    // --- App-level variables ---
+    window.app.messageHandlers = {};
     let username = '';
     let localStream;
     const peerConnections = {};
@@ -90,6 +95,11 @@
     function sendMessage(payload) {
         socket.send(JSON.stringify({ sender: getUsername(), ...payload }));
     }
+    window.app.sendMessage = sendMessage;
+
+    window.app.registerMessageHandler = (type, handler) => {
+        window.app.messageHandlers[type] = handler;
+    };
 
     function rollDice(dieType) {
         const roll = Math.floor(Math.random() * dieType) + 1;
@@ -168,6 +178,13 @@
     socket.onmessage = async (event) => {
         const data = JSON.parse(event.data);
 
+        // Check for a registered custom handler first
+        if (window.app.messageHandlers[data.type]) {
+            window.app.messageHandlers[data.type](data);
+            return;
+        }
+
+        // Default handlers
         switch (data.type) {
             case 'history':
                 // Prepend history messages so they appear in the correct order
@@ -269,6 +286,12 @@
                 toggleVideoBtn.title = videoTrack.enabled ? "Désactiver la caméra" : "Activer la caméra";
             }
         });
+
+        // Menu navigation
+        document.querySelector('a[href="#carte"]').addEventListener('click', (e) => {
+            e.preventDefault();
+            loadMainContent('whiteboard.html');
+        });
     }
 
     function stringToHslColor(str, s, l) {
@@ -281,8 +304,46 @@
         return `hsl(${h}, ${s}%, ${l}%)`;
     }
 
+    function stringToHslColor(str, s, l) {
+        if (!str) return '#ffffff';
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const h = hash % 360;
+        return `hsl(${h}, ${s}%, ${l}%)`;
+    }
+
+    async function loadMainContent(url) {
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Failed to load ${url}`);
+            const content = await response.text();
+            mainDisplay.innerHTML = content;
+
+            // If the loaded content has a script, we need to execute it
+            const scriptElement = mainDisplay.querySelector('script');
+            if (scriptElement) {
+                const newScript = document.createElement('script');
+                if (scriptElement.src) {
+                    newScript.src = scriptElement.src;
+                    newScript.onload = () => console.log(`${scriptElement.src} loaded and executed.`);
+                    document.body.appendChild(newScript);
+                } else {
+                    newScript.textContent = scriptElement.textContent;
+                    document.body.appendChild(newScript);
+                }
+                scriptElement.remove(); // Remove the original script element
+            }
+
+        } catch (error) {
+            console.error('Error loading main content:', error);
+            mainDisplay.innerHTML = `<p>Error loading content. Please try again.</p>`;
+        }
+    }
+
     // --- DOM Elements ---
-    let chatMessages, chatInput, sendButton, diceButtons, leftPanel, toggleChatBtn, videoGrid, rightPanel, toggleVideoPanelBtn;
+    let chatMessages, chatInput, sendButton, diceButtons, leftPanel, toggleChatBtn, videoGrid, rightPanel, toggleVideoPanelBtn, mainDisplay;
 
     // Execute when the DOM is fully loaded
     document.addEventListener('DOMContentLoaded', async () => {
@@ -296,6 +357,7 @@
         rightPanel = document.querySelector('.right-panel');
         toggleVideoPanelBtn = document.getElementById('toggle-video-panel-btn');
         videoGrid = document.getElementById('video-grid');
+        mainDisplay = document.querySelector('.main-display');
 
         askForUsername();
         await setupLocalMedia();
