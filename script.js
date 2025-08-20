@@ -324,26 +324,28 @@ window.app = {};
 
     async function loadMainContent(url) {
         try {
+            // Fetch the HTML content for the view
             const response = await fetch(url);
-            if (!response.ok) throw new Error(`Failed to load ${url}`);
+            if (!response.ok) throw new Error(`Failed to load HTML from ${url}`);
             const content = await response.text();
             mainDisplay.innerHTML = content;
 
-            // If the loaded content has a script, we need to execute it
+            // Find the script tag within the loaded HTML
             const scriptElement = mainDisplay.querySelector('script');
-            if (scriptElement) {
-                const newScript = document.createElement('script');
-                if (scriptElement.src) {
-                    newScript.src = scriptElement.src;
-                    newScript.onload = () => console.log(`${scriptElement.src} loaded and executed.`);
-                    document.body.appendChild(newScript);
-                } else {
-                    newScript.textContent = scriptElement.textContent;
-                    document.body.appendChild(newScript);
-                }
-                scriptElement.remove(); // Remove the original script element
-            }
+            if (scriptElement && scriptElement.src) {
+                const scriptUrl = scriptElement.src;
+                scriptElement.remove(); // Remove the original, non-executing script tag
 
+                // Fetch the JavaScript content itself
+                const scriptResponse = await fetch(scriptUrl);
+                if (!scriptResponse.ok) throw new Error(`Failed to load SCRIPT from ${scriptUrl}`);
+                const scriptContent = await scriptResponse.text();
+
+                // Create a new script tag and execute the fetched content inline
+                const newScript = document.createElement('script');
+                newScript.textContent = scriptContent;
+                document.body.appendChild(newScript).parentNode.removeChild(newScript);
+            }
         } catch (error) {
             console.error('Error loading main content:', error);
             mainDisplay.innerHTML = `<p>Error loading content. Please try again.</p>`;
