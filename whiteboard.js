@@ -66,7 +66,7 @@
             return e(
                 React.Fragment,
                 null,
-                e(Excalidraw, {
+                e(ExcalidrawComponent, {
                     excalidrawAPI: setExcalidrawAPI,
                     onChange: onChange,
                     initialData: {
