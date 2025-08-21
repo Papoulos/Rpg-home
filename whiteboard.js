@@ -6,7 +6,7 @@
         if (!whiteboardContainer) return;
 
         const e = React.createElement;
-        const Excalidraw = window.Excalidraw.Excalidraw;
+        const Excalidraw = window.ExcalidrawLib.Excalidraw;
 
         const Whiteboard = () => {
             const [excalidrawAPI, setExcalidrawAPI] = React.useState(null);
