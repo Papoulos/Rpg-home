@@ -3,10 +3,29 @@
     // Wait for the main script to be loaded and the socket to be available
     document.addEventListener('DOMContentLoaded', () => {
         const whiteboardContainer = document.getElementById('whiteboard-container');
-        if (!whiteboardContainer) return;
+        if (!whiteboardContainer) {
+            console.error("Whiteboard container not found!");
+            return;
+        }
+
+        if (typeof React === 'undefined' || typeof ReactDOM === 'undefined') {
+            console.error("React or ReactDOM is not loaded!");
+            return;
+        }
 
         const e = React.createElement;
-        const Excalidraw = window.ExcalidrawLib.Excalidraw;
+        let ExcalidrawComponent;
+
+        if (window.ExcalidrawLib && window.ExcalidrawLib.Excalidraw) {
+            ExcalidrawComponent = window.ExcalidrawLib.Excalidraw;
+        } else if (window.Excalidraw && window.Excalidraw.Excalidraw) {
+            ExcalidrawComponent = window.Excalidraw.Excalidraw;
+        } else {
+            console.error("Excalidraw component not found on window object!");
+            whiteboardContainer.innerHTML = '<p>Error: Whiteboard library could not be loaded.</p>';
+            return;
+        }
+
 
         const Whiteboard = () => {
             const [excalidrawAPI, setExcalidrawAPI] = React.useState(null);
