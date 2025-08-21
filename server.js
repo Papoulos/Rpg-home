@@ -229,6 +229,15 @@ wss.on('connection', (ws) => {
                     targetClient.ws.send(JSON.stringify(data));
                 }
                 break;
+
+            case 'whiteboard-update':
+                // Broadcast to all clients except the sender
+                clients.forEach(client => {
+                    if (client.ws !== ws && client.ws.readyState === WebSocket.OPEN) {
+                        client.ws.send(JSON.stringify(data));
+                    }
+                });
+                break;
         }
     });
 
