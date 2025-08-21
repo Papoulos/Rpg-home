@@ -213,6 +213,9 @@
             case 'ice-candidate':
                 await peerConnections[data.sender]?.addIceCandidate(new RTCIceCandidate(data.message));
                 break;
+            case 'whiteboard-update':
+                window.dispatchEvent(new CustomEvent('whiteboard-remote-update', { detail: data }));
+                break;
         }
     };
 
