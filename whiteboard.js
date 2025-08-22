@@ -30,6 +30,33 @@
         const Whiteboard = () => {
             const [excalidrawAPI, setExcalidrawAPI] = React.useState(null);
 
+            const addBackgroundImage = async () => {
+                if (!excalidrawAPI) {
+                    return;
+                }
+                const dataURL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+
+                const blob = await (await fetch(dataURL)).blob();
+                const file = new File([blob], "background.png", { type: "image/png" });
+
+                excalidrawAPI.addFiles([file]);
+            };
+
+            React.useEffect(() => {
+                const addBackgroundBtn = document.getElementById('add-background-image-btn');
+                if (addBackgroundBtn) {
+                    addBackgroundBtn.addEventListener('click', addBackgroundImage);
+                }
+
+                return () => {
+                    if (addBackgroundBtn) {
+                        addBackgroundBtn.removeEventListener('click', addBackgroundImage);
+                    }
+                }
+            }, [excalidrawAPI]);
+
+            const MainMenu = () => a.a.createElement(a.a.Fragment, null);
+
             const onChange = (elements, appState, files) => {
                 if (window.socket && window.socket.readyState === WebSocket.OPEN) {
                     // Avoid broadcasting initial empty state or excessive updates
@@ -62,17 +89,33 @@
                 };
             }, [excalidrawAPI]);
 
+            const UIOptions = {
+                canvasActions: {
+                    changeViewBackgroundColor: false,
+                    clearCanvas: false,
+                    export: false,
+                    loadScene: false,
+                    saveToActiveFile: false,
+                    toggleTheme: false,
+                    saveAsImage: false,
+                },
+            };
+
 
             return e(
                 React.Fragment,
                 null,
-                e(ExcalidrawComponent, {
-                    excalidrawAPI: setExcalidrawAPI,
-                    onChange: onChange,
-                    initialData: {
-                        appState: { viewBackgroundColor: "#ffffff" }
-                    }
-                })
+                e(
+                    "div",
+                    {
+                        style: { height: "100%", width: "100%" }
+                    },
+                    e(ExcalidrawComponent, {
+                        excalidrawAPI: setExcalidrawAPI,
+                        onChange: onChange,
+                        UIOptions
+                    })
+                )
             );
         };
 
