@@ -217,6 +217,10 @@
             case 'fabric-path-created':
                 window.dispatchEvent(new CustomEvent('fabric-remote-path-created', { detail: data }));
                 break;
+
+            case 'fabric-set-background':
+                window.dispatchEvent(new CustomEvent('fabric-remote-set-background', { detail: data }));
+                break;
         }
     };
 

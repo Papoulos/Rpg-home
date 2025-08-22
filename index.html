@@ -58,8 +58,12 @@
                 <div id="prez-content" class="tab-content" style="height: 100%;">
                     <div id="whiteboard-container" style="width: 100%; height: 100%;"></div>
                 </div>
-                <div id="fabric-content" class="tab-content" style="height: 100%;">
-                    <canvas id="fabric-canvas"></canvas>
+                <div id="fabric-content" class="tab-content" style="height: 100%; flex-direction: column;">
+                    <div class="whiteboard-controls">
+                        <input type="file" id="fabric-background-image-input" style="display: none;" accept="image/*" />
+                        <label for="fabric-background-image-input" class="control-btn btn-add" title="Set Background Image">+</label>
+                    </div>
+                    <canvas id="fabric-canvas" style="flex-grow: 1;"></canvas>
                 </div>
             </div>
             <nav class="main-menu">
