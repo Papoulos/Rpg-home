@@ -56,6 +56,12 @@ body, html {
     margin-bottom: 15px;
 }
 
+.whiteboard-controls {
+    padding: 5px;
+    display: flex;
+    justify-content: center;
+}
+
 /* --- Panel Toggle Buttons --- */
 #toggle-chat-btn, #toggle-video-panel-btn {
     position: fixed;

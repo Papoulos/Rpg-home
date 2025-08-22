@@ -30,27 +30,23 @@
         const Whiteboard = () => {
             const [excalidrawAPI, setExcalidrawAPI] = React.useState(null);
 
-            const addBackgroundImage = async () => {
-                if (!excalidrawAPI) {
+            const handleFileInput = (event) => {
+                if (!excalidrawAPI || !event.target.files || event.target.files.length === 0) {
                     return;
                 }
-                const dataURL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
-
-                const blob = await (await fetch(dataURL)).blob();
-                const file = new File([blob], "background.png", { type: "image/png" });
-
+                const file = event.target.files[0];
                 excalidrawAPI.addFiles([file]);
             };
 
             React.useEffect(() => {
-                const addBackgroundBtn = document.getElementById('add-background-image-btn');
-                if (addBackgroundBtn) {
-                    addBackgroundBtn.addEventListener('click', addBackgroundImage);
+                const fileInput = document.getElementById('background-image-input');
+                if (fileInput) {
+                    fileInput.addEventListener('change', handleFileInput);
                 }
 
                 return () => {
-                    if (addBackgroundBtn) {
-                        addBackgroundBtn.removeEventListener('click', addBackgroundImage);
+                    if (fileInput) {
+                        fileInput.removeEventListener('change', handleFileInput);
                     }
                 }
             }, [excalidrawAPI]);
