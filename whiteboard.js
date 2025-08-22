@@ -51,8 +51,6 @@
                 }
             }, [excalidrawAPI]);
 
-            const MainMenu = () => a.a.createElement(a.a.Fragment, null);
-
             const onChange = (elements, appState, files) => {
                 if (window.socket && window.socket.readyState === WebSocket.OPEN) {
                     // Avoid broadcasting initial empty state or excessive updates
