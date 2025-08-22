@@ -247,6 +247,15 @@ wss.on('connection', (ws) => {
                     }
                 });
                 break;
+
+            case 'fabric-add-object':
+                // Broadcast to all clients except the sender
+                clients.forEach(client => {
+                    if (client.ws !== ws && client.ws.readyState === WebSocket.OPEN) {
+                        client.ws.send(JSON.stringify(data));
+                    }
+                });
+                break;
         }
     });
 
