@@ -60,8 +60,18 @@
                 </div>
                 <div id="fabric-content" class="tab-content" style="height: 100%; flex-direction: column;">
                     <div class="whiteboard-controls">
-                        <input type="file" id="fabric-background-image-input" style="display: none;" accept="image/*" />
-                        <label for="fabric-background-image-input" class="control-btn btn-add" title="Set Background Image">+</label>
+                        <div id="fabric-toolbar">
+                            <button id="fabric-pencil-tool" class="control-btn">Pencil</button>
+                            <button id="fabric-line-tool" class="control-btn">Line</button>
+                            <button id="fabric-rect-tool" class="control-btn">Rect</button>
+                            <button id="fabric-circle-tool" class="control-btn">Circle</button>
+                            <input type="file" id="fabric-image-input" style="display: none;" accept="image/*" />
+                            <label for="fabric-image-input" class="control-btn" title="Add Image">Img</label>
+                        </div>
+                        <div>
+                            <input type="file" id="fabric-background-image-input" style="display: none;" accept="image/*" />
+                            <label for="fabric-background-image-input" class="control-btn btn-add" title="Set Background Image">+</label>
+                        </div>
                     </div>
                     <canvas id="fabric-canvas" style="flex-grow: 1;"></canvas>
                 </div>

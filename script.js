@@ -221,6 +221,10 @@
             case 'fabric-set-background':
                 window.dispatchEvent(new CustomEvent('fabric-remote-set-background', { detail: data }));
                 break;
+
+            case 'fabric-add-object':
+                window.dispatchEvent(new CustomEvent('fabric-remote-add-object', { detail: data }));
+                break;
         }
     };
 
