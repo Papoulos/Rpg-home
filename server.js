@@ -230,7 +230,7 @@ wss.on('connection', (ws) => {
                 }
                 break;
 
-            case 'whiteboard-update':
+            case 'fabric-path-created':
                 // Broadcast to all clients except the sender
                 clients.forEach(client => {
                     if (client.ws !== ws && client.ws.readyState === WebSocket.OPEN) {
