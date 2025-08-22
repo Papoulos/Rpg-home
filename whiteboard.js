@@ -30,29 +30,6 @@
         const Whiteboard = () => {
             const [excalidrawAPI, setExcalidrawAPI] = React.useState(null);
 
-            const handleFileInput = (event) => {
-                if (!excalidrawAPI || !event.target.files || event.target.files.length === 0) {
-                    return;
-                }
-                const file = event.target.files[0];
-                excalidrawAPI.addFiles([file]);
-            };
-
-            React.useEffect(() => {
-                const fileInput = document.getElementById('background-image-input');
-                if (fileInput) {
-                    fileInput.addEventListener('change', handleFileInput);
-                }
-
-                return () => {
-                    if (fileInput) {
-                        fileInput.removeEventListener('change', handleFileInput);
-                    }
-                }
-            }, [excalidrawAPI]);
-
-            const MainMenu = () => a.a.createElement(a.a.Fragment, null);
-
             const onChange = (elements, appState, files) => {
                 if (window.socket && window.socket.readyState === WebSocket.OPEN) {
                     // Avoid broadcasting initial empty state or excessive updates
