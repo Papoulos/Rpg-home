@@ -36,11 +36,6 @@
 
         if (!fabricContent || !canvasElement) return;
 
-        // Set canvas dimensions to match its container
-        const containerRect = fabricContent.getBoundingClientRect();
-        canvasElement.width = containerRect.width;
-        canvasElement.height = containerRect.height;
-
         canvas = new fabric.Canvas('fabric-canvas', {
             isDrawingMode: false,
         });
