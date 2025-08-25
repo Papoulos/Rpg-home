@@ -94,7 +94,6 @@ body, html {
     display: flex;
     flex-direction: column;
     gap: 10px; /* Replaces justify-content for consistent spacing */
-    align-items: center;
     background-color: #1e1e1e;
 }
 
