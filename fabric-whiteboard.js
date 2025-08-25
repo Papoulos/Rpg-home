@@ -32,7 +32,8 @@
         // --- Collaboration Logic ---
         canvas.on('path:created', (e) => {
             const path = e.path;
-            const pathJson = path.toJSON();
+            path.id = getNextId();
+            const pathJson = path.toJSON(['id']);
             if (window.socket && window.socket.readyState === WebSocket.OPEN) {
                 window.socket.send(JSON.stringify({
                     type: 'fabric-path-created',
@@ -106,6 +107,16 @@
             reader.onload = (e) => {
                 const dataUrl = e.target.result;
                 fabric.Image.fromURL(dataUrl, (img) => {
+                    const scale = Math.min(
+                        (canvas.width / 2) / img.width,
+                        (canvas.height / 2) / img.height
+                    );
+                    img.set({
+                        scaleX: scale,
+                        scaleY: scale,
+                        left: (canvas.width - img.width * scale) / 2,
+                        top: (canvas.height - img.height * scale) / 2
+                    });
                     canvas.add(img);
                     if (window.socket && window.socket.readyState === WebSocket.OPEN) {
                         window.socket.send(JSON.stringify({
@@ -126,6 +137,9 @@
         // --- Drawing Logic ---
         let isDrawing = false;
         let startX, startY, currentShape;
+        let objectIdCounter = 0;
+
+        const getNextId = () => `obj_${Date.now()}_${objectIdCounter++}`;
 
         canvas.on('mouse:down', (o) => {
             if (activeTool === 'pencil' || !o.pointer) return;
@@ -133,11 +147,13 @@
             startX = o.pointer.x;
             startY = o.pointer.y;
 
+            const id = getNextId();
             switch (activeTool) {
                 case 'line':
                     currentShape = new fabric.Line([startX, startY, startX, startY], {
                         stroke: '#ffffff',
-                        strokeWidth: 2
+                        strokeWidth: 2,
+                        id: id
                     });
                     break;
                 case 'rect':
@@ -148,7 +164,8 @@
                         height: 0,
                         stroke: '#ffffff',
                         strokeWidth: 2,
-                        fill: 'transparent'
+                        fill: 'transparent',
+                        id: id
                     });
                     break;
                 case 'circle':
@@ -158,7 +175,8 @@
                         radius: 0,
                         stroke: '#ffffff',
                         strokeWidth: 2,
-                        fill: 'transparent'
+                        fill: 'transparent',
+                        id: id
                     });
                     break;
             }
@@ -191,7 +209,7 @@
 
         canvas.on('mouse:up', () => {
             if (isDrawing && currentShape) {
-                const shapeJson = currentShape.toJSON();
+                const shapeJson = currentShape.toJSON(['id']);
                 if (window.socket && window.socket.readyState === WebSocket.OPEN) {
                     window.socket.send(JSON.stringify({
                         type: 'fabric-add-object',
@@ -219,7 +237,81 @@
             }
         });
 
+        window.addEventListener('fabric-remote-update-object', (event) => {
+            if (canvas) {
+                const objJson = event.detail.payload;
+                const objToUpdate = canvas.getObjects().find(obj => obj.id === objJson.id);
+                if (objToUpdate) {
+                    objToUpdate.set(objJson);
+                    canvas.renderAll();
+                }
+            }
+        });
+
+        window.addEventListener('fabric-remote-remove-object', (event) => {
+            if (canvas) {
+                const { id } = event.detail.payload;
+                const objToRemove = canvas.getObjects().find(obj => obj.id === id);
+                if (objToRemove) {
+                    canvas.remove(objToRemove);
+                    canvas.renderAll();
+                }
+            }
+        });
+
         // --- Toolbar Logic ---
+        const deleteTool = document.getElementById('fabric-delete-tool');
+        deleteTool.addEventListener('click', () => {
+            const activeObject = canvas.getActiveObject();
+            if (activeObject) {
+                canvas.remove(activeObject);
+                if (window.socket && window.socket.readyState === WebSocket.OPEN) {
+                    window.socket.send(JSON.stringify({
+                        type: 'fabric-remove-object',
+                        payload: { id: activeObject.id }
+                    }));
+                }
+            }
+        });
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                const activeObject = canvas.getActiveObject();
+                if (activeObject) {
+                    canvas.remove(activeObject);
+                    if (window.socket && window.socket.readyState === WebSocket.OPEN) {
+                        window.socket.send(JSON.stringify({
+                            type: 'fabric-remove-object',
+                            payload: { id: activeObject.id }
+                        }));
+                    }
+                }
+            }
+        });
+
+        const colorPicker = document.getElementById('fabric-color-picker');
+        colorPicker.addEventListener('change', (e) => {
+            const color = e.target.value;
+            if (canvas) {
+                canvas.freeDrawingBrush.color = color;
+                const activeObject = canvas.getActiveObject();
+                if (activeObject) {
+                    activeObject.set('stroke', color);
+                    if (activeObject.type !== 'line') {
+                        activeObject.set('fill', color);
+                    }
+                    canvas.renderAll();
+
+                    if (window.socket && window.socket.readyState === WebSocket.OPEN) {
+                        window.socket.send(JSON.stringify({
+                            type: 'fabric-update-object',
+                            payload: activeObject.toJSON(['id'])
+                        }));
+                    }
+                }
+            }
+        });
+
         const pencilTool = document.getElementById('fabric-pencil-tool');
         const lineTool = document.getElementById('fabric-line-tool');
         const rectTool = document.getElementById('fabric-rect-tool');

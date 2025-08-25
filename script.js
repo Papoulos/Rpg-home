@@ -225,6 +225,14 @@
             case 'fabric-add-object':
                 window.dispatchEvent(new CustomEvent('fabric-remote-add-object', { detail: data }));
                 break;
+
+            case 'fabric-update-object':
+                window.dispatchEvent(new CustomEvent('fabric-remote-update-object', { detail: data }));
+                break;
+
+            case 'fabric-remove-object':
+                window.dispatchEvent(new CustomEvent('fabric-remote-remove-object', { detail: data }));
+                break;
         }
     };
 
