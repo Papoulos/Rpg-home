@@ -37,11 +37,18 @@
         if (!fabricContent || !canvasElement) return;
 
         const setCanvasSize = () => {
+            const controls = document.querySelector('.whiteboard-controls');
             const containerRect = fabricContent.getBoundingClientRect();
-            canvasElement.width = containerRect.width;
-            canvasElement.height = containerRect.height;
+            const controlsRect = controls.getBoundingClientRect();
+
+            const newWidth = containerRect.width;
+            const newHeight = containerRect.height - controlsRect.height;
+
+            canvasElement.width = newWidth;
+            canvasElement.height = newHeight;
+
             if (canvas) {
-                canvas.setDimensions({ width: containerRect.width, height: containerRect.height });
+                canvas.setDimensions({ width: newWidth, height: newHeight });
                 canvas.renderAll();
             }
         };
@@ -395,12 +402,13 @@
             if (canvas) {
                 clearTimeout(resizeTimeout);
                 resizeTimeout = setTimeout(() => {
-                    const setCanvasSize = () => {
-                        const containerRect = fabricContent.getBoundingClientRect();
-                        canvas.setDimensions({ width: containerRect.width, height: containerRect.height });
-                        canvas.renderAll();
-                    };
-                    setCanvasSize();
+                    const controls = document.querySelector('.whiteboard-controls');
+                    const containerRect = fabricContent.getBoundingClientRect();
+                    const controlsRect = controls.getBoundingClientRect();
+                    const newWidth = containerRect.width;
+                    const newHeight = containerRect.height - controlsRect.height;
+                    canvas.setDimensions({ width: newWidth, height: newHeight });
+                    canvas.renderAll();
                 }, 100);
             }
         });
