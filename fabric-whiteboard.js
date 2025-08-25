@@ -36,6 +36,17 @@
 
         if (!fabricContent || !canvasElement) return;
 
+        const setCanvasSize = () => {
+            const containerRect = fabricContent.getBoundingClientRect();
+            canvasElement.width = containerRect.width;
+            canvasElement.height = containerRect.height;
+            if (canvas) {
+                canvas.setDimensions({ width: containerRect.width, height: containerRect.height });
+                canvas.renderAll();
+            }
+        };
+
+        setCanvasSize();
         canvas = new fabric.Canvas('fabric-canvas', {
             isDrawingMode: false,
         });
@@ -378,5 +389,20 @@
                 initializeCanvas();
             }
         }
+
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            if (canvas) {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(() => {
+                    const setCanvasSize = () => {
+                        const containerRect = fabricContent.getBoundingClientRect();
+                        canvas.setDimensions({ width: containerRect.width, height: containerRect.height });
+                        canvas.renderAll();
+                    };
+                    setCanvasSize();
+                }, 100);
+            }
+        });
     });
 })();
