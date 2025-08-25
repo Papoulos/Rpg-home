@@ -1,12 +1,30 @@
 (() => {
     let canvas = null;
-    let activeTool = 'pencil';
+    let activeTool = 'select';
 
     const setActiveTool = (tool) => {
         activeTool = tool;
         if (canvas) {
             canvas.isDrawingMode = tool === 'pencil';
+            if (tool === 'select') {
+                canvas.selection = true;
+                canvas.defaultCursor = 'default';
+                canvas.hoverCursor = 'move';
+            } else {
+                canvas.selection = false;
+                canvas.defaultCursor = 'crosshair';
+                canvas.hoverCursor = 'crosshair';
+            }
         }
+
+        const toolButtons = document.querySelectorAll('#fabric-toolbar .control-btn');
+        toolButtons.forEach(btn => {
+            if (btn.id === `fabric-${tool}-tool`) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
     };
 
     const initializeCanvas = () => {
@@ -207,6 +225,18 @@
             canvas.renderAll();
         });
 
+        canvas.on('object:modified', (e) => {
+            if (e.target) {
+                const modifiedObject = e.target;
+                if (window.socket && window.socket.readyState === WebSocket.OPEN) {
+                    window.socket.send(JSON.stringify({
+                        type: 'fabric-update-object',
+                        payload: modifiedObject.toJSON(['id'])
+                    }));
+                }
+            }
+        });
+
         canvas.on('mouse:up', () => {
             if (isDrawing && currentShape) {
                 const shapeJson = currentShape.toJSON(['id']);
@@ -260,6 +290,9 @@
         });
 
         // --- Toolbar Logic ---
+        const selectTool = document.getElementById('fabric-select-tool');
+        selectTool.addEventListener('click', () => setActiveTool('select'));
+
         const deleteTool = document.getElementById('fabric-delete-tool');
         deleteTool.addEventListener('click', () => {
             const activeObject = canvas.getActiveObject();
