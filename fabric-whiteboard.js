@@ -3,6 +3,8 @@
     let activeTool = 'select';
     let currentColor = '#ffffff';
 
+    let remotePointers = {};
+
     const setActiveTool = (tool) => {
         activeTool = tool;
         if (canvas) {
@@ -11,6 +13,10 @@
                 canvas.selection = true;
                 canvas.defaultCursor = 'default';
                 canvas.hoverCursor = 'move';
+            } else if (tool === 'pointer') {
+                canvas.selection = false;
+                canvas.defaultCursor = 'none'; // Hide local cursor
+                canvas.hoverCursor = 'none';
             } else {
                 canvas.selection = false;
                 canvas.defaultCursor = 'crosshair';
@@ -223,6 +229,15 @@
         });
 
         canvas.on('mouse:move', (o) => {
+            if (activeTool === 'pointer' && o.pointer) {
+                if (window.socket && window.socket.readyState === WebSocket.OPEN) {
+                    window.socket.send(JSON.stringify({
+                        type: 'pointer-move',
+                        payload: { x: o.pointer.x, y: o.pointer.y }
+                    }));
+                }
+            }
+
             if (!isDrawing || !currentShape || !o.pointer) return;
             const endX = o.pointer.x;
             const endY = o.pointer.y;
@@ -308,6 +323,47 @@
             }
         });
 
+        window.addEventListener('fabric-load', (event) => {
+            if (canvas) {
+                const state = JSON.parse(event.detail.payload);
+                canvas.loadFromJSON(state, () => {
+                    canvas.renderAll();
+                });
+            }
+        });
+
+        window.addEventListener('pointer-move', (event) => {
+            if (canvas) {
+                const { sender, payload } = event.detail;
+                if (!remotePointers[sender]) {
+                    remotePointers[sender] = new fabric.Circle({
+                        radius: 5,
+                        fill: 'red',
+                        left: payload.x,
+                        top: payload.y,
+                        selectable: false,
+                        evented: false,
+                    });
+                    canvas.add(remotePointers[sender]);
+                } else {
+                    remotePointers[sender].set({ left: payload.x, top: payload.y });
+                }
+                canvas.renderAll();
+            }
+        });
+
+        window.addEventListener('pointer-disconnect', (event) => {
+            if (canvas) {
+                const { sender } = event.detail;
+                if (remotePointers[sender]) {
+                    canvas.remove(remotePointers[sender]);
+                    delete remotePointers[sender];
+                    canvas.renderAll();
+                }
+            }
+        });
+
+
         // --- Toolbar Logic ---
         const selectTool = document.getElementById('fabric-select-tool');
         selectTool.addEventListener('click', () => setActiveTool('select'));
@@ -369,11 +425,13 @@
         const lineTool = document.getElementById('fabric-line-tool');
         const rectTool = document.getElementById('fabric-rect-tool');
         const circleTool = document.getElementById('fabric-circle-tool');
+        const pointerTool = document.getElementById('fabric-pointer-tool');
 
         pencilTool.addEventListener('click', () => setActiveTool('pencil'));
         lineTool.addEventListener('click', () => setActiveTool('line'));
         rectTool.addEventListener('click', () => setActiveTool('rect'));
         circleTool.addEventListener('click', () => setActiveTool('circle'));
+        pointerTool.addEventListener('click', () => setActiveTool('pointer'));
     };
 
     const observer = new MutationObserver((mutations) => {
