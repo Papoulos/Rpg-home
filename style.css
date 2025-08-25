@@ -167,8 +167,31 @@ body, html {
 }
 
 #fabric-toolbar .control-btn {
-    width: auto;
-    padding: 5px 10px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #333;
+    border: 1px solid #444;
+}
+
+#fabric-toolbar .control-btn.active,
+#fabric-toolbar .control-btn:hover {
+    background-color: #444;
+    border-color: #555;
+}
+
+#fabric-toolbar .control-btn svg {
+    width: 20px;
+    height: 20px;
+    fill: #eee;
+}
+
+#fabric-color-picker {
+    padding: 0;
+    width: 36px;
+    height: 36px;
 }
 
 /* --- Shared Controls Bar (for Sheets & Images) --- */
