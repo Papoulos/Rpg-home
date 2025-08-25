@@ -256,6 +256,24 @@ wss.on('connection', (ws) => {
                     }
                 });
                 break;
+
+            case 'fabric-update-object':
+                // Broadcast to all clients except the sender
+                clients.forEach(client => {
+                    if (client.ws !== ws && client.ws.readyState === WebSocket.OPEN) {
+                        client.ws.send(JSON.stringify(data));
+                    }
+                });
+                break;
+
+            case 'fabric-remove-object':
+                // Broadcast to all clients except the sender
+                clients.forEach(client => {
+                    if (client.ws !== ws && client.ws.readyState === WebSocket.OPEN) {
+                        client.ws.send(JSON.stringify(data));
+                    }
+                });
+                break;
         }
     });
 
