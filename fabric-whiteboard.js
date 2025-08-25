@@ -1,6 +1,7 @@
 (() => {
     let canvas = null;
     let activeTool = 'select';
+    let currentColor = '#ffffff';
 
     const setActiveTool = (tool) => {
         activeTool = tool;
@@ -41,8 +42,10 @@
         canvasElement.height = containerRect.height;
 
         canvas = new fabric.Canvas('fabric-canvas', {
-            isDrawingMode: true,
+            isDrawingMode: false,
         });
+
+        setActiveTool('select');
 
         canvas.freeDrawingBrush.width = 5;
         canvas.freeDrawingBrush.color = '#ffffff';
@@ -51,7 +54,7 @@
         canvas.on('path:created', (e) => {
             const path = e.path;
             path.id = getNextId();
-            const pathJson = path.toJSON(['id']);
+            const pathJson = path.toJSON();
             if (window.socket && window.socket.readyState === WebSocket.OPEN) {
                 window.socket.send(JSON.stringify({
                     type: 'fabric-path-created',
@@ -160,7 +163,7 @@
         const getNextId = () => `obj_${Date.now()}_${objectIdCounter++}`;
 
         canvas.on('mouse:down', (o) => {
-            if (activeTool === 'pencil' || !o.pointer) return;
+            if (activeTool === 'pencil' || activeTool === 'select' || !o.pointer) return;
             isDrawing = true;
             startX = o.pointer.x;
             startY = o.pointer.y;
@@ -169,8 +172,9 @@
             switch (activeTool) {
                 case 'line':
                     currentShape = new fabric.Line([startX, startY, startX, startY], {
-                        stroke: '#ffffff',
+                        stroke: currentColor,
                         strokeWidth: 2,
+                        selectable: true,
                         id: id
                     });
                     break;
@@ -180,9 +184,10 @@
                         top: startY,
                         width: 0,
                         height: 0,
-                        stroke: '#ffffff',
+                        stroke: currentColor,
                         strokeWidth: 2,
                         fill: 'transparent',
+                        selectable: true,
                         id: id
                     });
                     break;
@@ -191,9 +196,10 @@
                         left: startX,
                         top: startY,
                         radius: 0,
-                        stroke: '#ffffff',
+                        stroke: currentColor,
                         strokeWidth: 2,
                         fill: 'transparent',
+                        selectable: true,
                         id: id
                     });
                     break;
@@ -231,7 +237,7 @@
                 if (window.socket && window.socket.readyState === WebSocket.OPEN) {
                     window.socket.send(JSON.stringify({
                         type: 'fabric-update-object',
-                        payload: modifiedObject.toJSON(['id'])
+                        payload: modifiedObject.toJSON()
                     }));
                 }
             }
@@ -239,7 +245,7 @@
 
         canvas.on('mouse:up', () => {
             if (isDrawing && currentShape) {
-                const shapeJson = currentShape.toJSON(['id']);
+                const shapeJson = currentShape.toJSON();
                 if (window.socket && window.socket.readyState === WebSocket.OPEN) {
                     window.socket.send(JSON.stringify({
                         type: 'fabric-add-object',
@@ -323,15 +329,16 @@
         });
 
         const colorPicker = document.getElementById('fabric-color-picker');
-        colorPicker.addEventListener('change', (e) => {
+        colorPicker.addEventListener('input', (e) => {
             const color = e.target.value;
+            currentColor = color;
             if (canvas) {
                 canvas.freeDrawingBrush.color = color;
                 const activeObject = canvas.getActiveObject();
                 if (activeObject) {
                     activeObject.set('stroke', color);
                     if (activeObject.type !== 'line') {
-                        activeObject.set('fill', color);
+                        activeObject.set('fill', 'transparent'); // Keep shapes transparent
                     }
                     canvas.renderAll();
 
