@@ -6,6 +6,7 @@ const fs = require('fs');
 const fetch = require('node-fetch');
 const chatbotConfig = require('./api.config.js');
 const fabric = require('fabric');
+const { JSDOM } = require('jsdom');
 
 const app = express();
 
@@ -29,7 +30,12 @@ const clients = new Map();
 let whiteboardState = null; // Will store the JSON of the fabric canvas
 
 // --- Server-side Canvas ---
-const serverCanvas = new fabric.StaticCanvas(null, { width: 1920, height: 1080 }); // Default size
+// We need to create a virtual DOM with JSDOM for fabric to work in Node.js
+const dom = new JSDOM(`<!DOCTYPE html><body><canvas></canvas></body>`);
+global.document = dom.window.document;
+global.window = dom.window;
+
+const serverCanvas = new fabric.StaticCanvas(dom.window.document.querySelector('canvas'), { width: 1920, height: 1080 });
 whiteboardState = JSON.stringify(serverCanvas.toJSON()); // Initial empty state
 
 // --- Utility Functions ---
