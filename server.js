@@ -29,7 +29,7 @@ const clients = new Map();
 let whiteboardState = null; // Will store the JSON of the fabric canvas
 
 // --- Server-side Canvas ---
-const serverCanvas = new fabric.Canvas(null, { width: 1920, height: 1080 }); // Default size
+const serverCanvas = new fabric.StaticCanvas(null, { width: 1920, height: 1080 }); // Default size
 whiteboardState = JSON.stringify(serverCanvas.toJSON()); // Initial empty state
 
 // --- Utility Functions ---
