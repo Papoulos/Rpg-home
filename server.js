@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const fetch = require('node-fetch');
 const chatbotConfig = require('./api.config.js');
+const fabric = require('fabric').fabric;
 
 const app = express();
 
@@ -25,6 +26,11 @@ let chatHistory = [];
 let imageList = [];
 let currentImageUrl = null; // Track the currently displayed image
 const clients = new Map();
+let whiteboardState = null; // Will store the JSON of the fabric canvas
+
+// --- Server-side Canvas ---
+const serverCanvas = new fabric.Canvas(null, { width: 1920, height: 1080 }); // Default size
+whiteboardState = JSON.stringify(serverCanvas.toJSON()); // Initial empty state
 
 // --- Utility Functions ---
 function broadcast(message) {
@@ -39,6 +45,15 @@ function broadcast(message) {
 function broadcastUserList() {
     const userList = Array.from(clients.values()).map(c => c.username).filter(Boolean);
     broadcast({ type: 'user-list', users: userList });
+}
+
+function broadcastToOthers(ws, message) {
+    const data = JSON.stringify(message);
+    clients.forEach(client => {
+        if (client.ws !== ws && client.ws.readyState === WebSocket.OPEN) {
+            client.ws.send(data);
+        }
+    });
 }
 
 // --- Chatbot Functions ---
@@ -175,6 +190,9 @@ wss.on('connection', (ws) => {
                 ws.send(JSON.stringify({ type: 'history', messages: chatHistory }));
                 ws.send(JSON.stringify({ type: 'image-list-update', list: imageList }));
                 ws.send(JSON.stringify({ type: 'show-image', url: currentImageUrl })); // Send current image on join
+                if (whiteboardState) {
+                    ws.send(JSON.stringify({ type: 'fabric-load', payload: whiteboardState }));
+                }
 
                 if (isMJ) {
                     ws.send(JSON.stringify({ type: 'mj-status', isMJ: true }));
@@ -231,48 +249,48 @@ wss.on('connection', (ws) => {
                 break;
 
             case 'fabric-path-created':
-                // Broadcast to all clients except the sender
-                clients.forEach(client => {
-                    if (client.ws !== ws && client.ws.readyState === WebSocket.OPEN) {
-                        client.ws.send(JSON.stringify(data));
-                    }
+            case 'fabric-add-object':
+                fabric.util.enlivenObjects([data.payload], (objects) => {
+                    objects.forEach(obj => serverCanvas.add(obj));
+                    whiteboardState = JSON.stringify(serverCanvas.toJSON());
                 });
+                broadcastToOthers(ws, data);
                 break;
 
             case 'fabric-set-background':
-                // Broadcast to all clients except the sender
-                clients.forEach(client => {
-                    if (client.ws !== ws && client.ws.readyState === WebSocket.OPEN) {
-                        client.ws.send(JSON.stringify(data));
-                    }
+                serverCanvas.setBackgroundImage(data.payload, () => {
+                    whiteboardState = JSON.stringify(serverCanvas.toJSON());
+                }, {
+                    scaleX: serverCanvas.width / (data.payload.width || 1),
+                    scaleY: serverCanvas.height / (data.payload.height || 1)
                 });
-                break;
-
-            case 'fabric-add-object':
-                // Broadcast to all clients except the sender
-                clients.forEach(client => {
-                    if (client.ws !== ws && client.ws.readyState === WebSocket.OPEN) {
-                        client.ws.send(JSON.stringify(data));
-                    }
-                });
+                broadcastToOthers(ws, data);
                 break;
 
             case 'fabric-update-object':
-                // Broadcast to all clients except the sender
-                clients.forEach(client => {
-                    if (client.ws !== ws && client.ws.readyState === WebSocket.OPEN) {
-                        client.ws.send(JSON.stringify(data));
-                    }
-                });
+                const objToUpdate = serverCanvas.getObjects().find(obj => obj.id === data.payload.id);
+                if (objToUpdate) {
+                    objToUpdate.set(data.payload);
+                    whiteboardState = JSON.stringify(serverCanvas.toJSON());
+                }
+                broadcastToOthers(ws, data);
+                break;
+
+            case 'pointer-move':
+                const clientInfo = clients.get(ws);
+                if (clientInfo) {
+                    data.sender = clientInfo.username;
+                    broadcastToOthers(ws, data);
+                }
                 break;
 
             case 'fabric-remove-object':
-                // Broadcast to all clients except the sender
-                clients.forEach(client => {
-                    if (client.ws !== ws && client.ws.readyState === WebSocket.OPEN) {
-                        client.ws.send(JSON.stringify(data));
-                    }
-                });
+                const objToRemove = serverCanvas.getObjects().find(obj => obj.id === data.payload.id);
+                if (objToRemove) {
+                    serverCanvas.remove(objToRemove);
+                    whiteboardState = JSON.stringify(serverCanvas.toJSON());
+                }
+                broadcastToOthers(ws, data);
                 break;
         }
     });

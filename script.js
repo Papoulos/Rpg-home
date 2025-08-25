@@ -161,6 +161,7 @@
                 peerConnections[peerName].close();
                 delete peerConnections[peerName];
                 removeVideoStream(peerName);
+                window.dispatchEvent(new CustomEvent('pointer-disconnect', { detail: { sender: peerName } }));
             }
         });
     }
@@ -232,6 +233,14 @@
 
             case 'fabric-remove-object':
                 window.dispatchEvent(new CustomEvent('fabric-remote-remove-object', { detail: data }));
+                break;
+
+            case 'fabric-load':
+                window.dispatchEvent(new CustomEvent('fabric-load', { detail: data }));
+                break;
+
+            case 'pointer-move':
+                window.dispatchEvent(new CustomEvent('pointer-move', { detail: data }));
                 break;
         }
     };
