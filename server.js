@@ -177,8 +177,10 @@ function broadcastImageList() {
 
 // --- Whiteboard State Functions ---
 function saveWhiteboardState(state) {
+    console.log(`[WHITEBOARD] Attempting to save state of length: ${state.length}`);
     try {
         fs.writeFileSync(WHITEBOARD_STATE_FILE, state);
+        console.log(`[WHITEBOARD] State successfully saved to ${WHITEBOARD_STATE_FILE}`);
     } catch (error) {
         console.error('[WHITEBOARD] FAILED to save state:', error);
     }
