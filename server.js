@@ -5,9 +5,6 @@ const path = require('path');
 const fs = require('fs');
 const fetch = require('node-fetch');
 const chatbotConfig = require('./api.config.js');
-const { fabric } = require('fabric');
-const { JSDOM } = require('jsdom');
-
 const app = express();
 
 const options = {
@@ -28,17 +25,7 @@ let chatHistory = [];
 let imageList = [];
 let currentImageUrl = null; // Track the currently displayed image
 const clients = new Map();
-let whiteboardState = null; // Will store the JSON of the fabric canvas
-
-// --- Server-side Canvas ---
-// We need to create a virtual DOM with JSDOM for fabric to work in Node.js
-const dom = new JSDOM(`<!DOCTYPE html><body><canvas></canvas></body>`);
-global.document = dom.window.document;
-global.window = dom.window;
-global.Image = dom.window.Image;
-
-const serverCanvas = new fabric.StaticCanvas(null, { width: 1920, height: 1080 });
-whiteboardState = JSON.stringify(serverCanvas.toJSON()); // Initial empty state
+let whiteboardState = null; // Will store the JSON string of the fabric canvas
 
 // --- Utility Functions ---
 function broadcast(message) {
@@ -177,10 +164,8 @@ function broadcastImageList() {
 
 // --- Whiteboard State Functions ---
 function saveWhiteboardState(state) {
-    console.log(`[WHITEBOARD] Attempting to save state of length: ${state.length}`);
     try {
         fs.writeFileSync(WHITEBOARD_STATE_FILE, state);
-        console.log(`[WHITEBOARD] State successfully saved to ${WHITEBOARD_STATE_FILE}`);
     } catch (error) {
         console.error('[WHITEBOARD] FAILED to save state:', error);
     }
@@ -191,10 +176,7 @@ function loadWhiteboardState() {
         const fileContent = fs.readFileSync(WHITEBOARD_STATE_FILE, 'utf-8');
         if (fileContent) {
             whiteboardState = fileContent;
-            serverCanvas.loadFromJSON(whiteboardState, () => {
-                serverCanvas.renderAll();
-                console.log('[WHITEBOARD] Loaded saved state.');
-            });
+            console.log('[WHITEBOARD] Loaded saved whiteboard state.');
         }
     }
 }
@@ -280,51 +262,19 @@ wss.on('connection', (ws) => {
                 }
                 break;
 
+            // Real-time sync: broadcast drawing events to other clients
             case 'fabric-path-created':
             case 'fabric-add-object':
-                console.log('[WHITEBOARD] Received fabric-add-object event.');
-                fabric.util.enlivenObjects([data.payload], (objects) => {
-                    console.log('[WHITEBOARD] Enlivening object successful. Adding to server canvas.');
-                    objects.forEach(obj => serverCanvas.add(obj));
-                    serverCanvas.renderAll();
-                    whiteboardState = JSON.stringify(serverCanvas.toJSON());
-                    saveWhiteboardState(whiteboardState);
-                });
-                broadcastToOthers(ws, data);
-                break;
-
-            case 'fabric-set-background':
-                console.log('[WHITEBOARD] Received fabric-set-background event.');
-                fabric.Image.fromURL(data.payload, (img) => {
-                    console.log('[WHITEBOARD] Image loaded from URL. Setting as background.');
-                    serverCanvas.setBackgroundImage(img, () => {
-                        serverCanvas.renderAll();
-                        whiteboardState = JSON.stringify(serverCanvas.toJSON());
-                        saveWhiteboardState(whiteboardState);
-                        console.log('[WHITEBOARD] Background set and state saved.');
-                    }, {
-                        scaleX: serverCanvas.width / img.width,
-                        scaleY: serverCanvas.height / img.height
-                    });
-                }, { crossOrigin: 'anonymous' });
-                broadcastToOthers(ws, data);
-                break;
-
             case 'fabric-update-object':
-                console.log('[WHITEBOARD] Received fabric-update-object event.');
-                const objToUpdate = serverCanvas.getObjects().find(obj => obj.id === data.payload.id);
-                if (objToUpdate) {
-                    serverCanvas.remove(objToUpdate);
-                    fabric.util.enlivenObjects([data.payload], (newObjects) => {
-                        console.log('[WHITEBOARD] Enlivening updated object successful.');
-                        serverCanvas.add(newObjects[0]);
-                        serverCanvas.renderAll();
-                        whiteboardState = JSON.stringify(serverCanvas.toJSON());
-                        saveWhiteboardState(whiteboardState);
-                        console.log('[WHITEBOARD] Object updated (by replacement) and state saved.');
-                    });
-                }
+            case 'fabric-remove-object':
+            case 'fabric-set-background':
                 broadcastToOthers(ws, data);
+                break;
+
+            // Persistence: save the full state received from a client
+            case 'fabric-state-update':
+                whiteboardState = data.payload;
+                saveWhiteboardState(whiteboardState);
                 break;
 
             case 'pointer-move':
@@ -333,19 +283,6 @@ wss.on('connection', (ws) => {
                     data.sender = clientInfo.username;
                     broadcastToOthers(ws, data);
                 }
-                break;
-
-            case 'fabric-remove-object':
-                console.log('[WHITEBOARD] Received fabric-remove-object event.');
-                const objToRemove = serverCanvas.getObjects().find(obj => obj.id === data.payload.id);
-                if (objToRemove) {
-                    serverCanvas.remove(objToRemove);
-                    serverCanvas.renderAll();
-                    whiteboardState = JSON.stringify(serverCanvas.toJSON());
-                    saveWhiteboardState(whiteboardState);
-                    console.log('[WHITEBOARD] Object removed and state saved.');
-                }
-                broadcastToOthers(ws, data);
                 break;
         }
     });
