@@ -21,6 +21,7 @@ const wss = new WebSocket.Server({ server });
 const PORT = process.env.PORT || 3000;
 const CHAT_LOG_FILE = path.join(__dirname, 'chat_history.log');
 const IMAGE_LIST_FILE = path.join(__dirname, 'images.json');
+const WHITEBOARD_STATE_FILE = path.join(__dirname, 'whiteboard.json');
 
 
 let chatHistory = [];
@@ -173,6 +174,28 @@ function broadcastImageList() {
     broadcast({ type: 'image-list-update', list: imageList });
 }
 
+// --- Whiteboard State Functions ---
+function saveWhiteboardState(state) {
+    try {
+        fs.writeFileSync(WHITEBOARD_STATE_FILE, state);
+    } catch (error) {
+        console.error('[WHITEBOARD] FAILED to save state:', error);
+    }
+}
+
+function loadWhiteboardState() {
+    if (fs.existsSync(WHITEBOARD_STATE_FILE)) {
+        const fileContent = fs.readFileSync(WHITEBOARD_STATE_FILE, 'utf-8');
+        if (fileContent) {
+            whiteboardState = fileContent;
+            serverCanvas.loadFromJSON(whiteboardState, () => {
+                serverCanvas.renderAll();
+                console.log('[WHITEBOARD] Loaded saved state.');
+            });
+        }
+    }
+}
+
 
 // --- WebSocket Server ---
 wss.on('connection', (ws) => {
@@ -260,6 +283,7 @@ wss.on('connection', (ws) => {
                     objects.forEach(obj => serverCanvas.add(obj));
                     serverCanvas.renderAll();
                     whiteboardState = JSON.stringify(serverCanvas.toJSON());
+                    saveWhiteboardState(whiteboardState);
                 });
                 broadcastToOthers(ws, data);
                 break;
@@ -269,6 +293,7 @@ wss.on('connection', (ws) => {
                     serverCanvas.setBackgroundImage(img, () => {
                         serverCanvas.renderAll();
                         whiteboardState = JSON.stringify(serverCanvas.toJSON());
+                        saveWhiteboardState(whiteboardState);
                     });
                 });
                 broadcastToOthers(ws, data);
@@ -280,6 +305,7 @@ wss.on('connection', (ws) => {
                     objToUpdate.set(data.payload);
                     serverCanvas.renderAll();
                     whiteboardState = JSON.stringify(serverCanvas.toJSON());
+                    saveWhiteboardState(whiteboardState);
                 }
                 broadcastToOthers(ws, data);
                 break;
@@ -298,6 +324,7 @@ wss.on('connection', (ws) => {
                     serverCanvas.remove(objToRemove);
                     serverCanvas.renderAll();
                     whiteboardState = JSON.stringify(serverCanvas.toJSON());
+                    saveWhiteboardState(whiteboardState);
                 }
                 broadcastToOthers(ws, data);
                 break;
@@ -317,6 +344,7 @@ wss.on('connection', (ws) => {
 app.use(express.static(path.join(__dirname, '/')));
 loadChatHistory();
 loadImageList();
+loadWhiteboardState();
 server.listen(PORT, () => {
     console.log(`Server is listening on port ${PORT}`);
 });
