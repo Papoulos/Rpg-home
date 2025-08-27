@@ -18,7 +18,8 @@
         if (!canvas) return;
         clearTimeout(debounceTimeout);
         debounceTimeout = setTimeout(() => {
-            const state = JSON.stringify(canvas.toJSON(['id', 'isFog', 'isEraserPath']));
+            const propertiesToInclude = ['id', 'isFog', 'isEraserPath', 'selectable', 'evented'];
+            const state = JSON.stringify(canvas.toJSON(propertiesToInclude));
             if (window.socket && window.socket.readyState === WebSocket.OPEN) {
                 window.socket.send(JSON.stringify({
                     type: 'fabric-state-update',
@@ -378,6 +379,11 @@
             canvas.loadFromJSON(payload, () => {
                 fogLayer = canvas.getObjects().find(o => o.isFog && o.type === 'group') || null;
                 if (fogLayer) {
+                    // Defensively set properties to prevent interaction after reload
+                    fogLayer.set({
+                        selectable: false,
+                        evented: false,
+                    });
                     const fogBase = fogLayer.getObjects('rect')[0];
                     fogBase.set('fill', isMJ ? 'rgba(0,0,0,0.5)' : 'black');
                 }
