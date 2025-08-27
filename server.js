@@ -35,6 +35,7 @@ let whiteboardState = null; // Will store the JSON of the fabric canvas
 const dom = new JSDOM(`<!DOCTYPE html><body><canvas></canvas></body>`);
 global.document = dom.window.document;
 global.window = dom.window;
+global.Image = dom.window.Image;
 
 const serverCanvas = new fabric.StaticCanvas(dom.window.document.querySelector('canvas'), { width: 1920, height: 1080 });
 whiteboardState = JSON.stringify(serverCanvas.toJSON()); // Initial empty state
@@ -300,7 +301,7 @@ wss.on('connection', (ws) => {
                         saveWhiteboardState(whiteboardState);
                         console.log('[WHITEBOARD] Background set and state saved.');
                     });
-                });
+                }, { crossOrigin: 'anonymous' });
                 broadcastToOthers(ws, data);
                 break;
 
