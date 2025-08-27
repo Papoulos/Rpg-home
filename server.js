@@ -278,8 +278,11 @@ wss.on('connection', (ws) => {
 
             // Persistence: save the full state received from a client
             case 'fabric-state-update':
-                whiteboardState = data.payload;
-                saveWhiteboardState(whiteboardState);
+                const clientState = clients.get(ws);
+                if (clientState && clientState.isMJ) {
+                    whiteboardState = data.payload;
+                    saveWhiteboardState(whiteboardState);
+                }
                 break;
 
             case 'pointer-move':
