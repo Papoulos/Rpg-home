@@ -264,11 +264,10 @@ wss.on('connection', (ws) => {
                 break;
 
             case 'fabric-set-background':
-                serverCanvas.setBackgroundImage(data.payload, () => {
-                    whiteboardState = JSON.stringify(serverCanvas.toJSON());
-                }, {
-                    scaleX: serverCanvas.width / (data.payload.width || 1),
-                    scaleY: serverCanvas.height / (data.payload.height || 1)
+                fabric.Image.fromURL(data.payload, (img) => {
+                    serverCanvas.setBackgroundImage(img, () => {
+                        whiteboardState = JSON.stringify(serverCanvas.toJSON());
+                    });
                 });
                 broadcastToOthers(ws, data);
                 break;
