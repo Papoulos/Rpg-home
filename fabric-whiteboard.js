@@ -322,7 +322,7 @@
                 canvas.remove(currentShape); // remove the temp path
                 addFogEraserPath(currentShape);
                 if (window.socket?.readyState === WebSocket.OPEN) {
-                    window.socket.send(JSON.stringify({ type: 'fabric-fog-erase', payload: currentShape.toJSON(['id', 'isEraserPath']) }));
+                    window.socket.send(JSON.stringify({ type: 'fabric-fog-erase', payload: currentShape.toJSON(['id', 'isEraserPath', 'left', 'top']) }));
                 }
             } else if (isDrawing && currentShape) {
                 if (window.socket?.readyState === WebSocket.OPEN) {
