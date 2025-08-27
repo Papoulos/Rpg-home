@@ -37,7 +37,7 @@ global.document = dom.window.document;
 global.window = dom.window;
 global.Image = dom.window.Image;
 
-const serverCanvas = new fabric.StaticCanvas(dom.window.document.querySelector('canvas'), { width: 1920, height: 1080 });
+const serverCanvas = new fabric.StaticCanvas(null, { width: 1920, height: 1080 });
 whiteboardState = JSON.stringify(serverCanvas.toJSON()); // Initial empty state
 
 // --- Utility Functions ---
