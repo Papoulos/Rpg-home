@@ -279,7 +279,9 @@ wss.on('connection', (ws) => {
 
             case 'fabric-path-created':
             case 'fabric-add-object':
+                console.log('[WHITEBOARD] Received fabric-add-object event.');
                 fabric.util.enlivenObjects([data.payload], (objects) => {
+                    console.log('[WHITEBOARD] Enlivening object successful. Adding to server canvas.');
                     objects.forEach(obj => serverCanvas.add(obj));
                     serverCanvas.renderAll();
                     whiteboardState = JSON.stringify(serverCanvas.toJSON());
@@ -289,23 +291,28 @@ wss.on('connection', (ws) => {
                 break;
 
             case 'fabric-set-background':
+                console.log('[WHITEBOARD] Received fabric-set-background event.');
                 fabric.Image.fromURL(data.payload, (img) => {
+                    console.log('[WHITEBOARD] Image loaded from URL. Setting as background.');
                     serverCanvas.setBackgroundImage(img, () => {
                         serverCanvas.renderAll();
                         whiteboardState = JSON.stringify(serverCanvas.toJSON());
                         saveWhiteboardState(whiteboardState);
+                        console.log('[WHITEBOARD] Background set and state saved.');
                     });
                 });
                 broadcastToOthers(ws, data);
                 break;
 
             case 'fabric-update-object':
+                console.log('[WHITEBOARD] Received fabric-update-object event.');
                 const objToUpdate = serverCanvas.getObjects().find(obj => obj.id === data.payload.id);
                 if (objToUpdate) {
                     objToUpdate.set(data.payload);
                     serverCanvas.renderAll();
                     whiteboardState = JSON.stringify(serverCanvas.toJSON());
                     saveWhiteboardState(whiteboardState);
+                    console.log('[WHITEBOARD] Object updated and state saved.');
                 }
                 broadcastToOthers(ws, data);
                 break;
@@ -319,12 +326,14 @@ wss.on('connection', (ws) => {
                 break;
 
             case 'fabric-remove-object':
+                console.log('[WHITEBOARD] Received fabric-remove-object event.');
                 const objToRemove = serverCanvas.getObjects().find(obj => obj.id === data.payload.id);
                 if (objToRemove) {
                     serverCanvas.remove(objToRemove);
                     serverCanvas.renderAll();
                     whiteboardState = JSON.stringify(serverCanvas.toJSON());
                     saveWhiteboardState(whiteboardState);
+                    console.log('[WHITEBOARD] Object removed and state saved.');
                 }
                 broadcastToOthers(ws, data);
                 break;
