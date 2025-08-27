@@ -2,8 +2,22 @@
     let canvas = null;
     let activeTool = 'select';
     let currentColor = '#ffffff';
-
     let remotePointers = {};
+    let debounceTimeout = null;
+
+    const sendCanvasStateToServer = () => {
+        if (!canvas) return;
+        clearTimeout(debounceTimeout);
+        debounceTimeout = setTimeout(() => {
+            const state = JSON.stringify(canvas.toJSON(['id']));
+            if (window.socket && window.socket.readyState === WebSocket.OPEN) {
+                window.socket.send(JSON.stringify({
+                    type: 'fabric-state-update',
+                    payload: state
+                }));
+            }
+        }, 500); // Debounce for 500ms
+    };
 
     const setActiveTool = (tool) => {
         activeTool = tool;
@@ -73,13 +87,14 @@
         canvas.on('path:created', (e) => {
             const path = e.path;
             path.id = getNextId();
-            const pathJson = path.toJSON();
+            const pathJson = path.toJSON(['id']);
             if (window.socket && window.socket.readyState === WebSocket.OPEN) {
                 window.socket.send(JSON.stringify({
                     type: 'fabric-path-created',
                     payload: pathJson
                 }));
             }
+            sendCanvasStateToServer();
         });
 
         window.addEventListener('fabric-remote-path-created', (event) => {
@@ -113,6 +128,7 @@
 
                 // Apply locally
                 setBackground(dataUrl);
+                sendCanvasStateToServer();
             };
             reader.readAsDataURL(file);
         };
@@ -161,9 +177,10 @@
                     if (window.socket && window.socket.readyState === WebSocket.OPEN) {
                         window.socket.send(JSON.stringify({
                             type: 'fabric-add-object',
-                            payload: img.toJSON()
+                            payload: img.toJSON(['id'])
                         }));
                     }
+                    sendCanvasStateToServer();
                 });
             };
             reader.readAsDataURL(file);
@@ -265,21 +282,23 @@
                 if (window.socket && window.socket.readyState === WebSocket.OPEN) {
                     window.socket.send(JSON.stringify({
                         type: 'fabric-update-object',
-                        payload: modifiedObject.toJSON()
+                        payload: modifiedObject.toJSON(['id'])
                     }));
                 }
+                sendCanvasStateToServer();
             }
         });
 
         canvas.on('mouse:up', () => {
             if (isDrawing && currentShape) {
-                const shapeJson = currentShape.toJSON();
+                const shapeJson = currentShape.toJSON(['id']);
                 if (window.socket && window.socket.readyState === WebSocket.OPEN) {
                     window.socket.send(JSON.stringify({
                         type: 'fabric-add-object',
                         payload: shapeJson
                     }));
                 }
+                sendCanvasStateToServer();
                 isDrawing = false;
                 currentShape = null;
             }
@@ -382,6 +401,7 @@
                         payload: { id: activeObject.id }
                     }));
                 }
+                sendCanvasStateToServer();
             }
         });
 
@@ -396,6 +416,7 @@
                             payload: { id: activeObject.id }
                         }));
                     }
+                    sendCanvasStateToServer();
                 }
             }
         });
