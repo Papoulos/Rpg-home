@@ -5,7 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const fetch = require('node-fetch');
 const chatbotConfig = require('./api.config.js');
-const fabric = require('fabric');
+const { fabric } = require('fabric');
 const { JSDOM } = require('jsdom');
 
 const app = express();
