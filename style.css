@@ -469,3 +469,59 @@ body, html {
 }
 
 /* Styles for the image controls are now handled by the shared .image-controls class */
+
+/* --- FOG OF WAR CONTROLS --- */
+#fabric-fog-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.toolbar-divider {
+    width: 1px;
+    height: 24px;
+    background-color: #555;
+    margin: 0 5px;
+}
+
+.brush-size-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #ccc;
+    font-size: 14px;
+}
+
+#fabric-fog-brush-size {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100px;
+    height: 8px;
+    background: #444;
+    outline: none;
+    border-radius: 4px;
+    transition: opacity .2s;
+}
+
+#fabric-fog-brush-size::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    background: #4CAF50;
+    cursor: pointer;
+    border-radius: 50%;
+}
+
+#fabric-fog-brush-size::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    background: #4CAF50;
+    cursor: pointer;
+    border-radius: 50%;
+    border: none;
+}
+
+.hidden {
+    display: none !important;
+}
