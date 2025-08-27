@@ -243,24 +243,20 @@
         let isDrawing = false;
         let startX, startY, currentShape;
         let isErasingFog = false;
+        let currentEraserPathData = [];
 
         canvas.on('mouse:down', (o) => {
             if (!o.pointer) return;
             isDrawing = true;
-            startX = o.pointer.x;
-            startY = o.pointer.y;
+            const pointer = canvas.getPointer(o.e);
+            startX = pointer.x;
+            startY = pointer.y;
 
             if (activeTool === 'fog-eraser') {
                 if (!fogLayer) return;
                 isErasingFog = true;
-                currentShape = new fabric.Path(`M ${startX} ${startY}`, {
-                    stroke: 'white', // color doesn't matter for eraser
-                    strokeWidth: fogBrushSize,
-                    strokeLineCap: 'round',
-                    strokeLineJoin: 'round',
-                    fill: null,
-                });
-                canvas.add(currentShape); // Add temporarily for visual feedback
+                currentEraserPathData = [[ 'M', startX, startY ]];
+                // No temporary shape is added to the canvas, we'll draw it manually for feedback.
                 return;
             }
 
@@ -288,17 +284,33 @@
                 }
             }
 
-            if (!isDrawing || !currentShape || !o.pointer) return;
-            const endX = o.pointer.x;
-            const endY = o.pointer.y;
+            if (!isDrawing || !o.pointer) return;
+            const pointer = canvas.getPointer(o.e);
+            const endX = pointer.x;
+            const endY = pointer.y;
 
             if (isErasingFog) {
-                const path = currentShape.path;
-                path.push(['L', endX, endY]);
-                currentShape.set({ path: path });
-                canvas.renderAll();
+                currentEraserPathData.push(['L', endX, endY]);
+                // Manually render the feedback on the canvas
+                canvas.clearContext(canvas.contextTop);
+                const ctx = canvas.getContext('2d'); // get the main context
+                ctx.save();
+                ctx.globalAlpha = 0.5;
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = fogBrushSize;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.beginPath();
+                currentEraserPathData.forEach(p => {
+                    if (p[0] === 'M') ctx.moveTo(p[1], p[2]);
+                    else ctx.lineTo(p[1], p[2]);
+                });
+                ctx.stroke();
+                ctx.restore();
                 return;
             }
+
+            if (!currentShape) return;
 
             switch (activeTool) {
                 case 'line': currentShape.set({ x2: endX, y2: endY }); break;
@@ -318,21 +330,33 @@
         });
 
         canvas.on('mouse:up', () => {
-            if (isErasingFog && currentShape) {
-                canvas.remove(currentShape); // remove the temp path
-                addFogEraserPath(currentShape);
+            canvas.clearContext(canvas.contextTop); // Clear feedback drawing
+            if (isErasingFog && currentEraserPathData.length > 1) {
+                const path = new fabric.Path(currentEraserPathData, {
+                    stroke: 'transparent',
+                    strokeWidth: fogBrushSize,
+                    strokeLineCap: 'round',
+                    strokeLineJoin: 'round',
+                    fill: null,
+                });
+                path.id = getNextId();
+                addFogEraserPath(path);
+
                 if (window.socket?.readyState === WebSocket.OPEN) {
-                    window.socket.send(JSON.stringify({ type: 'fabric-fog-erase', payload: currentShape.toJSON(['id', 'isEraserPath', 'left', 'top']) }));
+                    window.socket.send(JSON.stringify({ type: 'fabric-fog-erase', payload: path.toJSON(['id', 'isEraserPath', 'left', 'top']) }));
                 }
+
             } else if (isDrawing && currentShape) {
                 if (window.socket?.readyState === WebSocket.OPEN) {
                     window.socket.send(JSON.stringify({ type: 'fabric-add-object', payload: currentShape.toJSON(['id']) }));
                 }
                 sendCanvasStateToServer();
             }
+
             isDrawing = false;
             isErasingFog = false;
             currentShape = null;
+            currentEraserPathData = [];
         });
 
         // --- Remote Event Handlers ---
