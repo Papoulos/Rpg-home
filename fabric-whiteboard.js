@@ -333,7 +333,7 @@
             canvas.clearContext(canvas.contextTop); // Clear feedback drawing
             if (isErasingFog && currentEraserPathData.length > 1) {
                 const path = new fabric.Path(currentEraserPathData, {
-                    stroke: 'transparent',
+                    stroke: 'white',
                     strokeWidth: fogBrushSize,
                     strokeLineCap: 'round',
                     strokeLineJoin: 'round',
