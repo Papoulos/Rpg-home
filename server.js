@@ -300,6 +300,9 @@ wss.on('connection', (ws) => {
                         whiteboardState = JSON.stringify(serverCanvas.toJSON());
                         saveWhiteboardState(whiteboardState);
                         console.log('[WHITEBOARD] Background set and state saved.');
+                    }, {
+                        scaleX: serverCanvas.width / img.width,
+                        scaleY: serverCanvas.height / img.height
                     });
                 }, { crossOrigin: 'anonymous' });
                 broadcastToOthers(ws, data);
@@ -309,11 +312,15 @@ wss.on('connection', (ws) => {
                 console.log('[WHITEBOARD] Received fabric-update-object event.');
                 const objToUpdate = serverCanvas.getObjects().find(obj => obj.id === data.payload.id);
                 if (objToUpdate) {
-                    objToUpdate.set(data.payload);
-                    serverCanvas.renderAll();
-                    whiteboardState = JSON.stringify(serverCanvas.toJSON());
-                    saveWhiteboardState(whiteboardState);
-                    console.log('[WHITEBOARD] Object updated and state saved.');
+                    serverCanvas.remove(objToUpdate);
+                    fabric.util.enlivenObjects([data.payload], (newObjects) => {
+                        console.log('[WHITEBOARD] Enlivening updated object successful.');
+                        serverCanvas.add(newObjects[0]);
+                        serverCanvas.renderAll();
+                        whiteboardState = JSON.stringify(serverCanvas.toJSON());
+                        saveWhiteboardState(whiteboardState);
+                        console.log('[WHITEBOARD] Object updated (by replacement) and state saved.');
+                    });
                 }
                 broadcastToOthers(ws, data);
                 break;

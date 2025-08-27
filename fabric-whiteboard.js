@@ -306,8 +306,11 @@
                 const objJson = event.detail.payload;
                 const objToUpdate = canvas.getObjects().find(obj => obj.id === objJson.id);
                 if (objToUpdate) {
-                    objToUpdate.set(objJson);
-                    canvas.renderAll();
+                    canvas.remove(objToUpdate);
+                    fabric.util.enlivenObjects([objJson], (newObjects) => {
+                        canvas.add(newObjects[0]);
+                        canvas.renderAll();
+                    });
                 }
             }
         });
