@@ -258,6 +258,7 @@ wss.on('connection', (ws) => {
             case 'fabric-add-object':
                 fabric.util.enlivenObjects([data.payload], (objects) => {
                     objects.forEach(obj => serverCanvas.add(obj));
+                    serverCanvas.renderAll();
                     whiteboardState = JSON.stringify(serverCanvas.toJSON());
                 });
                 broadcastToOthers(ws, data);
@@ -266,6 +267,7 @@ wss.on('connection', (ws) => {
             case 'fabric-set-background':
                 fabric.Image.fromURL(data.payload, (img) => {
                     serverCanvas.setBackgroundImage(img, () => {
+                        serverCanvas.renderAll();
                         whiteboardState = JSON.stringify(serverCanvas.toJSON());
                     });
                 });
@@ -276,6 +278,7 @@ wss.on('connection', (ws) => {
                 const objToUpdate = serverCanvas.getObjects().find(obj => obj.id === data.payload.id);
                 if (objToUpdate) {
                     objToUpdate.set(data.payload);
+                    serverCanvas.renderAll();
                     whiteboardState = JSON.stringify(serverCanvas.toJSON());
                 }
                 broadcastToOthers(ws, data);
@@ -293,6 +296,7 @@ wss.on('connection', (ws) => {
                 const objToRemove = serverCanvas.getObjects().find(obj => obj.id === data.payload.id);
                 if (objToRemove) {
                     serverCanvas.remove(objToRemove);
+                    serverCanvas.renderAll();
                     whiteboardState = JSON.stringify(serverCanvas.toJSON());
                 }
                 broadcastToOthers(ws, data);
