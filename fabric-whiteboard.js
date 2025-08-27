@@ -4,12 +4,21 @@
     let currentColor = '#ffffff';
     let remotePointers = {};
     let debounceTimeout = null;
+    let isMJ = false;
+    let fogBrushSize = 50;
+    let fogLayer = null; // This will be a fabric.Group
+
+    // --- UTILITY ---
+    const getNextId = (() => {
+        let objectIdCounter = 0;
+        return () => `obj_${Date.now()}_${objectIdCounter++}`;
+    })();
 
     const sendCanvasStateToServer = () => {
         if (!canvas) return;
         clearTimeout(debounceTimeout);
         debounceTimeout = setTimeout(() => {
-            const state = JSON.stringify(canvas.toJSON(['id']));
+            const state = JSON.stringify(canvas.toJSON(['id', 'isFog', 'isEraserPath']));
             if (window.socket && window.socket.readyState === WebSocket.OPEN) {
                 window.socket.send(JSON.stringify({
                     type: 'fabric-state-update',
@@ -29,8 +38,14 @@
                 canvas.hoverCursor = 'move';
             } else if (tool === 'pointer') {
                 canvas.selection = false;
-                canvas.defaultCursor = 'none'; // Hide local cursor
+                canvas.defaultCursor = 'none';
                 canvas.hoverCursor = 'none';
+            } else if (tool === 'fog-eraser') {
+                canvas.selection = false;
+                // Custom cursor for the eraser
+                const cursorUrl = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="${fogBrushSize}" height="${fogBrushSize}" viewBox="0 0 ${fogBrushSize} ${fogBrushSize}"><circle cx="${fogBrushSize/2}" cy="${fogBrushSize/2}" r="${fogBrushSize/2 - 1}" fill="rgba(255,255,255,0.5)" stroke="black" stroke-width="1"/></svg>`;
+                canvas.defaultCursor = `url(${cursorUrl}) ${fogBrushSize/2} ${fogBrushSize/2}, crosshair`;
+                canvas.hoverCursor = canvas.defaultCursor;
             } else {
                 canvas.selection = false;
                 canvas.defaultCursor = 'crosshair';
@@ -40,12 +55,69 @@
 
         const toolButtons = document.querySelectorAll('#fabric-toolbar .control-btn');
         toolButtons.forEach(btn => {
-            if (btn.id === `fabric-${tool}-tool`) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
+            btn.classList.remove('active');
         });
+        const activeBtn = document.getElementById(`fabric-${tool}-tool`);
+        if (activeBtn) {
+            activeBtn.classList.add('active');
+        }
+    };
+
+    // --- FOG OF WAR ---
+    const createFogLayer = () => {
+        const fogRect = new fabric.Rect({
+            left: 0,
+            top: 0,
+            width: canvas.width,
+            height: canvas.height,
+            fill: isMJ ? 'rgba(0,0,0,0.5)' : 'black',
+            selectable: false,
+            evented: false,
+            isFog: true,
+            id: 'fog-base'
+        });
+
+        fogLayer = new fabric.Group([fogRect], {
+            selectable: false,
+            evented: false,
+            isFog: true,
+            id: 'fog-layer'
+        });
+
+        canvas.add(fogLayer);
+        fogLayer.moveTo(999); // Ensure it's on top of everything
+    };
+
+    const toggleFog = (forceState) => {
+        const fogExists = !!canvas.getObjects().find(o => o.isFog);
+
+        if ((forceState === undefined && fogExists) || forceState === false) {
+            canvas.getObjects().forEach(obj => {
+                if (obj.isFog) {
+                    canvas.remove(obj);
+                }
+            });
+            fogLayer = null;
+        } else if ((forceState === undefined && !fogExists) || forceState === true) {
+            createFogLayer();
+        }
+        canvas.renderAll();
+        sendCanvasStateToServer();
+    };
+
+    const addFogEraserPath = (path) => {
+        if (!fogLayer) return;
+
+        path.set({
+            globalCompositeOperation: 'destination-out',
+            selectable: false,
+            evented: false,
+            isEraserPath: true
+        });
+
+        fogLayer.addWithUpdate(path);
+        canvas.renderAll();
+        sendCanvasStateToServer();
     };
 
     const initializeCanvas = () => {
@@ -53,22 +125,22 @@
 
         const fabricContent = document.getElementById('fabric-content');
         const canvasElement = document.getElementById('fabric-canvas');
-
         if (!fabricContent || !canvasElement) return;
 
         const setCanvasSize = () => {
             const controls = document.querySelector('.whiteboard-controls');
             const containerRect = fabricContent.getBoundingClientRect();
             const controlsRect = controls.getBoundingClientRect();
-
             const newWidth = containerRect.width;
             const newHeight = containerRect.height - controlsRect.height;
-
             canvasElement.width = newWidth;
             canvasElement.height = newHeight;
-
             if (canvas) {
                 canvas.setDimensions({ width: newWidth, height: newHeight });
+                if (fogLayer) {
+                    const fogBase = fogLayer.getObjects('rect')[0];
+                    fogBase.set({ width: newWidth, height: newHeight });
+                }
                 canvas.renderAll();
             }
         };
@@ -79,19 +151,32 @@
         });
 
         setActiveTool('select');
-
         canvas.freeDrawingBrush.width = 5;
         canvas.freeDrawingBrush.color = '#ffffff';
+
+        // --- MJ and FOG Status ---
+        window.addEventListener('mj-status', (event) => {
+            isMJ = event.detail.isMJ;
+            const fogToolbar = document.getElementById('fabric-fog-toolbar');
+            if (isMJ) {
+                fogToolbar.classList.remove('hidden');
+            }
+            // If fog exists, update its color based on MJ status
+            if (fogLayer) {
+                const fogBase = fogLayer.getObjects('rect')[0];
+                fogBase.set('fill', isMJ ? 'rgba(0,0,0,0.5)' : 'black');
+                canvas.renderAll();
+            }
+        });
 
         // --- Collaboration Logic ---
         canvas.on('path:created', (e) => {
             const path = e.path;
             path.id = getNextId();
-            const pathJson = path.toJSON(['id']);
             if (window.socket && window.socket.readyState === WebSocket.OPEN) {
                 window.socket.send(JSON.stringify({
                     type: 'fabric-path-created',
-                    payload: pathJson
+                    payload: path.toJSON(['id'])
                 }));
             }
             sendCanvasStateToServer();
@@ -99,39 +184,12 @@
 
         window.addEventListener('fabric-remote-path-created', (event) => {
             if (canvas) {
-                const pathJson = event.detail.payload;
-                fabric.util.enlivenObjects([pathJson], function (objects) {
-                    objects.forEach(function (obj) {
-                        canvas.add(obj);
-                    });
+                fabric.util.enlivenObjects([event.detail.payload], (objects) => {
+                    objects.forEach((obj) => canvas.add(obj));
                     canvas.renderAll();
                 });
             }
         });
-
-        const handleBackgroundImage = (event) => {
-            if (!canvas || !event.target.files || event.target.files.length === 0) {
-                return;
-            }
-            const file = event.target.files[0];
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const dataUrl = e.target.result;
-
-                // Send to other clients
-                if (window.socket && window.socket.readyState === WebSocket.OPEN) {
-                    window.socket.send(JSON.stringify({
-                        type: 'fabric-set-background',
-                        payload: dataUrl
-                    }));
-                }
-
-                // Apply locally
-                setBackground(dataUrl);
-                sendCanvasStateToServer();
-            };
-            reader.readAsDataURL(file);
-        };
 
         const setBackground = (dataUrl) => {
             fabric.Image.fromURL(dataUrl, (img) => {
@@ -142,116 +200,90 @@
             });
         };
 
-        window.addEventListener('fabric-remote-set-background', (event) => {
-            if (canvas) {
-                const dataUrl = event.detail.payload;
-                setBackground(dataUrl);
-            }
-        });
-
-        const fileInput = document.getElementById('fabric-background-image-input');
-        if (fileInput) {
-            fileInput.addEventListener('change', handleBackgroundImage);
-        }
-
-        const handleImageInput = (event) => {
-            if (!canvas || !event.target.files || event.target.files.length === 0) {
-                return;
-            }
+        document.getElementById('fabric-background-image-input').addEventListener('change', (event) => {
+            if (!canvas || !event.target.files || event.target.files.length === 0) return;
             const file = event.target.files[0];
             const reader = new FileReader();
             reader.onload = (e) => {
                 const dataUrl = e.target.result;
-                fabric.Image.fromURL(dataUrl, (img) => {
-                    const scale = Math.min(
-                        (canvas.width / 2) / img.width,
-                        (canvas.height / 2) / img.height
-                    );
-                    img.set({
-                        scaleX: scale,
-                        scaleY: scale,
-                        left: (canvas.width - img.width * scale) / 2,
-                        top: (canvas.height - img.height * scale) / 2
-                    });
+                if (window.socket && window.socket.readyState === WebSocket.OPEN) {
+                    window.socket.send(JSON.stringify({ type: 'fabric-set-background', payload: dataUrl }));
+                }
+                setBackground(dataUrl);
+                sendCanvasStateToServer();
+            };
+            reader.readAsDataURL(file);
+        });
+
+        window.addEventListener('fabric-remote-set-background', (event) => {
+            if (canvas) setBackground(event.detail.payload);
+        });
+
+        document.getElementById('fabric-image-input').addEventListener('change', (event) => {
+            if (!canvas || !event.target.files || event.target.files.length === 0) return;
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                fabric.Image.fromURL(e.target.result, (img) => {
+                    const scale = Math.min((canvas.width / 2) / img.width, (canvas.height / 2) / img.height);
+                    img.set({ scaleX: scale, scaleY: scale, left: (canvas.width - img.width * scale) / 2, top: (canvas.height - img.height * scale) / 2 });
+                    img.id = getNextId();
                     canvas.add(img);
                     if (window.socket && window.socket.readyState === WebSocket.OPEN) {
-                        window.socket.send(JSON.stringify({
-                            type: 'fabric-add-object',
-                            payload: img.toJSON(['id'])
-                        }));
+                        window.socket.send(JSON.stringify({ type: 'fabric-add-object', payload: img.toJSON(['id']) }));
                     }
                     sendCanvasStateToServer();
                 });
             };
             reader.readAsDataURL(file);
-        };
-
-        const imageInput = document.getElementById('fabric-image-input');
-        if (imageInput) {
-            imageInput.addEventListener('change', handleImageInput);
-        }
+        });
 
         // --- Drawing Logic ---
         let isDrawing = false;
         let startX, startY, currentShape;
-        let objectIdCounter = 0;
-
-        const getNextId = () => `obj_${Date.now()}_${objectIdCounter++}`;
+        let isErasingFog = false;
 
         canvas.on('mouse:down', (o) => {
-            if (activeTool === 'pencil' || activeTool === 'select' || !o.pointer) return;
+            if (!o.pointer) return;
             isDrawing = true;
             startX = o.pointer.x;
             startY = o.pointer.y;
 
+            if (activeTool === 'fog-eraser') {
+                if (!fogLayer) return;
+                isErasingFog = true;
+                currentShape = new fabric.Path(`M ${startX} ${startY}`, {
+                    stroke: 'white', // color doesn't matter for eraser
+                    strokeWidth: fogBrushSize,
+                    strokeLineCap: 'round',
+                    strokeLineJoin: 'round',
+                    fill: null,
+                });
+                canvas.add(currentShape); // Add temporarily for visual feedback
+                return;
+            }
+
+            if (activeTool === 'pencil' || activeTool === 'select' || activeTool === 'pointer') return;
+
             const id = getNextId();
             switch (activeTool) {
                 case 'line':
-                    currentShape = new fabric.Line([startX, startY, startX, startY], {
-                        stroke: currentColor,
-                        strokeWidth: 2,
-                        selectable: true,
-                        id: id
-                    });
+                    currentShape = new fabric.Line([startX, startY, startX, startY], { stroke: currentColor, strokeWidth: 2, id: id });
                     break;
                 case 'rect':
-                    currentShape = new fabric.Rect({
-                        left: startX,
-                        top: startY,
-                        width: 0,
-                        height: 0,
-                        stroke: currentColor,
-                        strokeWidth: 2,
-                        fill: 'transparent',
-                        selectable: true,
-                        id: id
-                    });
+                    currentShape = new fabric.Rect({ left: startX, top: startY, width: 0, height: 0, stroke: currentColor, strokeWidth: 2, fill: 'transparent', id: id });
                     break;
                 case 'circle':
-                    currentShape = new fabric.Circle({
-                        left: startX,
-                        top: startY,
-                        radius: 0,
-                        stroke: currentColor,
-                        strokeWidth: 2,
-                        fill: 'transparent',
-                        selectable: true,
-                        id: id
-                    });
+                    currentShape = new fabric.Circle({ left: startX, top: startY, radius: 0, stroke: currentColor, strokeWidth: 2, fill: 'transparent', id: id });
                     break;
             }
-            if (currentShape) {
-                canvas.add(currentShape);
-            }
+            if (currentShape) canvas.add(currentShape);
         });
 
         canvas.on('mouse:move', (o) => {
             if (activeTool === 'pointer' && o.pointer) {
-                if (window.socket && window.socket.readyState === WebSocket.OPEN) {
-                    window.socket.send(JSON.stringify({
-                        type: 'pointer-move',
-                        payload: { x: o.pointer.x, y: o.pointer.y }
-                    }));
+                if (window.socket?.readyState === WebSocket.OPEN) {
+                    window.socket.send(JSON.stringify({ type: 'pointer-move', payload: { x: o.pointer.x, y: o.pointer.y } }));
                 }
             }
 
@@ -259,147 +291,153 @@
             const endX = o.pointer.x;
             const endY = o.pointer.y;
 
+            if (isErasingFog) {
+                const path = currentShape.path;
+                path.push(['L', endX, endY]);
+                currentShape.set({ path: path });
+                canvas.renderAll();
+                return;
+            }
+
             switch (activeTool) {
-                case 'line':
-                    currentShape.set({ x2: endX, y2: endY });
-                    break;
-                case 'rect':
-                    currentShape.set({
-                        width: endX - startX,
-                        height: endY - startY
-                    });
-                    break;
-                case 'circle':
-                    currentShape.set({ radius: Math.abs(endX - startX) / 2 });
-                    break;
+                case 'line': currentShape.set({ x2: endX, y2: endY }); break;
+                case 'rect': currentShape.set({ width: endX - startX, height: endY - startY }); break;
+                case 'circle': currentShape.set({ radius: Math.abs(endX - startX) / 2 }); break;
             }
             canvas.renderAll();
         });
 
         canvas.on('object:modified', (e) => {
-            if (e.target) {
-                const modifiedObject = e.target;
-                if (window.socket && window.socket.readyState === WebSocket.OPEN) {
-                    window.socket.send(JSON.stringify({
-                        type: 'fabric-update-object',
-                        payload: modifiedObject.toJSON(['id'])
-                    }));
+            if (e.target && !e.target.isFog) {
+                if (window.socket?.readyState === WebSocket.OPEN) {
+                    window.socket.send(JSON.stringify({ type: 'fabric-update-object', payload: e.target.toJSON(['id']) }));
                 }
                 sendCanvasStateToServer();
             }
         });
 
         canvas.on('mouse:up', () => {
-            if (isDrawing && currentShape) {
-                const shapeJson = currentShape.toJSON(['id']);
-                if (window.socket && window.socket.readyState === WebSocket.OPEN) {
-                    window.socket.send(JSON.stringify({
-                        type: 'fabric-add-object',
-                        payload: shapeJson
-                    }));
+            if (isErasingFog && currentShape) {
+                canvas.remove(currentShape); // remove the temp path
+                addFogEraserPath(currentShape);
+                if (window.socket?.readyState === WebSocket.OPEN) {
+                    window.socket.send(JSON.stringify({ type: 'fabric-fog-erase', payload: currentShape.toJSON(['id', 'isEraserPath']) }));
+                }
+            } else if (isDrawing && currentShape) {
+                if (window.socket?.readyState === WebSocket.OPEN) {
+                    window.socket.send(JSON.stringify({ type: 'fabric-add-object', payload: currentShape.toJSON(['id']) }));
                 }
                 sendCanvasStateToServer();
-                isDrawing = false;
-                currentShape = null;
             }
+            isDrawing = false;
+            isErasingFog = false;
+            currentShape = null;
         });
 
-        const addObjectToCanvas = (objJson) => {
-            fabric.util.enlivenObjects([objJson], function (objects) {
-                objects.forEach(function (obj) {
-                    canvas.add(obj);
-                });
-                canvas.renderAll();
-            });
+        // --- Remote Event Handlers ---
+        const remoteActionHandler = (handler) => (event) => {
+            if (!canvas) return;
+            handler(event.detail.payload);
         };
 
-        window.addEventListener('fabric-remote-add-object', (event) => {
-            if (canvas) {
-                const objJson = event.detail.payload;
-                addObjectToCanvas(objJson);
-            }
-        });
+        window.addEventListener('fabric-remote-add-object', remoteActionHandler((payload) => {
+            fabric.util.enlivenObjects([payload], (objects) => {
+                canvas.add(objects[0]);
+                canvas.renderAll();
+            });
+        }));
 
-        window.addEventListener('fabric-remote-update-object', (event) => {
-            if (canvas) {
-                const objJson = event.detail.payload;
-                const objToUpdate = canvas.getObjects().find(obj => obj.id === objJson.id);
-                if (objToUpdate) {
-                    canvas.remove(objToUpdate);
-                    fabric.util.enlivenObjects([objJson], (newObjects) => {
-                        canvas.add(newObjects[0]);
-                        canvas.renderAll();
-                    });
-                }
-            }
-        });
-
-        window.addEventListener('fabric-remote-remove-object', (event) => {
-            if (canvas) {
-                const { id } = event.detail.payload;
-                const objToRemove = canvas.getObjects().find(obj => obj.id === id);
-                if (objToRemove) {
-                    canvas.remove(objToRemove);
-                    canvas.renderAll();
-                }
-            }
-        });
-
-        window.addEventListener('fabric-load', (event) => {
-            if (canvas) {
-                const state = JSON.parse(event.detail.payload);
-                canvas.loadFromJSON(state, () => {
+        window.addEventListener('fabric-remote-update-object', remoteActionHandler((payload) => {
+            const objToUpdate = canvas.getObjects().find(obj => obj.id === payload.id);
+            if (objToUpdate) {
+                canvas.remove(objToUpdate);
+                fabric.util.enlivenObjects([payload], (newObjects) => {
+                    canvas.add(newObjects[0]);
                     canvas.renderAll();
                 });
             }
-        });
+        }));
 
-        window.addEventListener('pointer-move', (event) => {
-            if (canvas) {
-                const { sender, payload } = event.detail;
-                if (!remotePointers[sender]) {
-                    remotePointers[sender] = new fabric.Circle({
-                        radius: 5,
-                        fill: 'red',
-                        left: payload.x,
-                        top: payload.y,
-                        selectable: false,
-                        evented: false,
-                    });
-                    canvas.add(remotePointers[sender]);
-                } else {
-                    remotePointers[sender].set({ left: payload.x, top: payload.y });
+        window.addEventListener('fabric-remote-remove-object', remoteActionHandler((payload) => {
+            const objToRemove = canvas.getObjects().find(obj => obj.id === payload.id);
+            if (objToRemove) canvas.remove(objToRemove);
+            canvas.renderAll();
+        }));
+
+        window.addEventListener('fabric-fog-remote-toggle', remoteActionHandler((payload) => {
+            toggleFog(payload.active);
+        }));
+
+        window.addEventListener('fabric-fog-remote-erase', remoteActionHandler((payload) => {
+            fabric.util.enlivenObjects([payload], (objects) => {
+                addFogEraserPath(objects[0]);
+            });
+        }));
+
+        window.addEventListener('fabric-load', remoteActionHandler((payload) => {
+            canvas.loadFromJSON(payload, () => {
+                fogLayer = canvas.getObjects().find(o => o.isFog && o.type === 'group') || null;
+                if (fogLayer) {
+                    const fogBase = fogLayer.getObjects('rect')[0];
+                    fogBase.set('fill', isMJ ? 'rgba(0,0,0,0.5)' : 'black');
                 }
                 canvas.renderAll();
+            });
+        }));
+
+
+        window.addEventListener('pointer-move', (event) => {
+            if (!canvas) return;
+            const { sender, payload } = event.detail;
+            if (!remotePointers[sender]) {
+                remotePointers[sender] = new fabric.Circle({ radius: 5, fill: 'red', left: payload.x, top: payload.y, selectable: false, evented: false });
+                canvas.add(remotePointers[sender]);
+            } else {
+                remotePointers[sender].set({ left: payload.x, top: payload.y });
             }
+            canvas.renderAll();
         });
 
         window.addEventListener('pointer-disconnect', (event) => {
-            if (canvas) {
-                const { sender } = event.detail;
-                if (remotePointers[sender]) {
-                    canvas.remove(remotePointers[sender]);
-                    delete remotePointers[sender];
-                    canvas.renderAll();
-                }
+            if (canvas?.remotePointers[event.detail.sender]) {
+                canvas.remove(remotePointers[event.detail.sender]);
+                delete remotePointers[event.detail.sender];
+                canvas.renderAll();
             }
         });
 
 
         // --- Toolbar Logic ---
-        const selectTool = document.getElementById('fabric-select-tool');
-        selectTool.addEventListener('click', () => setActiveTool('select'));
+        document.getElementById('fabric-select-tool').addEventListener('click', () => setActiveTool('select'));
+        document.getElementById('fabric-pencil-tool').addEventListener('click', () => setActiveTool('pencil'));
+        document.getElementById('fabric-line-tool').addEventListener('click', () => setActiveTool('line'));
+        document.getElementById('fabric-rect-tool').addEventListener('click', () => setActiveTool('rect'));
+        document.getElementById('fabric-circle-tool').addEventListener('click', () => setActiveTool('circle'));
+        document.getElementById('fabric-pointer-tool').addEventListener('click', () => setActiveTool('pointer'));
+        document.getElementById('fabric-fog-tool').addEventListener('click', () => {
+            const willBeActive = !canvas.getObjects().find(o => o.isFog);
+            toggleFog();
+            if (window.socket?.readyState === WebSocket.OPEN) {
+                window.socket.send(JSON.stringify({ type: 'fabric-fog-toggle', payload: { active: willBeActive } }));
+            }
+        });
+        document.getElementById('fabric-fog-eraser-tool').addEventListener('click', () => setActiveTool('fog-eraser'));
 
-        const deleteTool = document.getElementById('fabric-delete-tool');
-        deleteTool.addEventListener('click', () => {
+        const brushSizeSlider = document.getElementById('fabric-fog-brush-size');
+        brushSizeSlider.addEventListener('input', (e) => {
+            fogBrushSize = parseInt(e.target.value, 10);
+            if (activeTool === 'fog-eraser') {
+                // Update cursor preview
+                setActiveTool('fog-eraser');
+            }
+        });
+
+        document.getElementById('fabric-delete-tool').addEventListener('click', () => {
             const activeObject = canvas.getActiveObject();
-            if (activeObject) {
+            if (activeObject && !activeObject.isFog) {
                 canvas.remove(activeObject);
-                if (window.socket && window.socket.readyState === WebSocket.OPEN) {
-                    window.socket.send(JSON.stringify({
-                        type: 'fabric-remove-object',
-                        payload: { id: activeObject.id }
-                    }));
+                if (window.socket?.readyState === WebSocket.OPEN) {
+                    window.socket.send(JSON.stringify({ type: 'fabric-remove-object', payload: { id: activeObject.id } }));
                 }
                 sendCanvasStateToServer();
             }
@@ -408,54 +446,30 @@
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Delete' || e.key === 'Backspace') {
                 const activeObject = canvas.getActiveObject();
-                if (activeObject) {
+                if (activeObject && !activeObject.isFog) {
                     canvas.remove(activeObject);
-                    if (window.socket && window.socket.readyState === WebSocket.OPEN) {
-                        window.socket.send(JSON.stringify({
-                            type: 'fabric-remove-object',
-                            payload: { id: activeObject.id }
-                        }));
+                    if (window.socket?.readyState === WebSocket.OPEN) {
+                        window.socket.send(JSON.stringify({ type: 'fabric-remove-object', payload: { id: activeObject.id } }));
                     }
                     sendCanvasStateToServer();
                 }
             }
         });
 
-        const colorPicker = document.getElementById('fabric-color-picker');
-        colorPicker.addEventListener('input', (e) => {
-            const color = e.target.value;
-            currentColor = color;
-            if (canvas) {
-                canvas.freeDrawingBrush.color = color;
-                const activeObject = canvas.getActiveObject();
-                if (activeObject) {
-                    activeObject.set('stroke', color);
-                    if (activeObject.type !== 'line') {
-                        activeObject.set('fill', 'transparent'); // Keep shapes transparent
-                    }
-                    canvas.renderAll();
-
-                    if (window.socket && window.socket.readyState === WebSocket.OPEN) {
-                        window.socket.send(JSON.stringify({
-                            type: 'fabric-update-object',
-                            payload: activeObject.toJSON(['id'])
-                        }));
-                    }
+        document.getElementById('fabric-color-picker').addEventListener('input', (e) => {
+            currentColor = e.target.value;
+            if (!canvas) return;
+            canvas.freeDrawingBrush.color = currentColor;
+            const activeObject = canvas.getActiveObject();
+            if (activeObject && !activeObject.isFog) {
+                activeObject.set('stroke', currentColor);
+                if (activeObject.type !== 'line') activeObject.set('fill', 'transparent');
+                canvas.renderAll();
+                if (window.socket?.readyState === WebSocket.OPEN) {
+                    window.socket.send(JSON.stringify({ type: 'fabric-update-object', payload: activeObject.toJSON(['id']) }));
                 }
             }
         });
-
-        const pencilTool = document.getElementById('fabric-pencil-tool');
-        const lineTool = document.getElementById('fabric-line-tool');
-        const rectTool = document.getElementById('fabric-rect-tool');
-        const circleTool = document.getElementById('fabric-circle-tool');
-        const pointerTool = document.getElementById('fabric-pointer-tool');
-
-        pencilTool.addEventListener('click', () => setActiveTool('pencil'));
-        lineTool.addEventListener('click', () => setActiveTool('line'));
-        rectTool.addEventListener('click', () => setActiveTool('rect'));
-        circleTool.addEventListener('click', () => setActiveTool('circle'));
-        pointerTool.addEventListener('click', () => setActiveTool('pointer'));
     };
 
     const observer = new MutationObserver((mutations) => {
@@ -473,26 +487,26 @@
         const fabricContent = document.getElementById('fabric-content');
         if (fabricContent) {
             observer.observe(fabricContent, { attributes: true });
-            // Initial check in case the tab is already visible on load
-            if (fabricContent.style.display !== 'none') {
-                initializeCanvas();
-            }
+            if (fabricContent.style.display !== 'none') initializeCanvas();
         }
 
         let resizeTimeout;
         window.addEventListener('resize', () => {
-            if (canvas) {
-                clearTimeout(resizeTimeout);
-                resizeTimeout = setTimeout(() => {
-                    const controls = document.querySelector('.whiteboard-controls');
-                    const containerRect = fabricContent.getBoundingClientRect();
-                    const controlsRect = controls.getBoundingClientRect();
-                    const newWidth = containerRect.width;
-                    const newHeight = containerRect.height - controlsRect.height;
-                    canvas.setDimensions({ width: newWidth, height: newHeight });
-                    canvas.renderAll();
-                }, 100);
-            }
+            if (!canvas) return;
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                const controls = document.querySelector('.whiteboard-controls');
+                const containerRect = fabricContent.getBoundingClientRect();
+                const controlsRect = controls.getBoundingClientRect();
+                const newWidth = containerRect.width;
+                const newHeight = containerRect.height - controlsRect.height;
+                canvas.setDimensions({ width: newWidth, height: newHeight });
+                if (fogLayer) {
+                    const fogBase = fogLayer.getObjects('rect')[0];
+                    fogBase.set({ width: newWidth, height: newHeight });
+                }
+                canvas.renderAll();
+            }, 100);
         });
     });
 })();
