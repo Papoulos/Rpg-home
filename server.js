@@ -268,8 +268,7 @@ wss.on('connection', (ws) => {
             case 'fabric-update-object':
             case 'fabric-remove-object':
             case 'fabric-set-background':
-            case 'fabric-fog-toggle':
-            case 'fabric-fog-erase':
+            case 'fabric-fog-update':
                 const clientSync = clients.get(ws);
                 if(clientSync && clientSync.isMJ) {
                     broadcastToOthers(ws, data);

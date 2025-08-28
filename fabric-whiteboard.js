@@ -91,6 +91,7 @@
 
     const toggleFog = (forceState) => {
         const fogExists = !!canvas.getObjects().find(o => o.isFog);
+        let fogIsOn = fogExists;
 
         if ((forceState === undefined && fogExists) || forceState === false) {
             canvas.getObjects().forEach(obj => {
@@ -99,10 +100,19 @@
                 }
             });
             fogLayer = null;
+            fogIsOn = false;
         } else if ((forceState === undefined && !fogExists) || forceState === true) {
             createFogLayer();
+            fogIsOn = true;
         }
+
         canvas.renderAll();
+
+        if (window.socket?.readyState === WebSocket.OPEN) {
+            const payload = fogIsOn ? fogLayer.toJSON(['id', 'isFog', 'isEraserPath', 'selectable', 'evented']) : null;
+            window.socket.send(JSON.stringify({ type: 'fabric-fog-update', payload: payload }));
+        }
+
         sendCanvasStateToServer();
     };
 
@@ -343,7 +353,9 @@
                 addFogEraserPath(path);
 
                 if (window.socket?.readyState === WebSocket.OPEN) {
-                    window.socket.send(JSON.stringify({ type: 'fabric-fog-erase', payload: path.toJSON(['id', 'isEraserPath', 'left', 'top']) }));
+                    // Send the entire updated fog layer
+                    const payload = fogLayer.toJSON(['id', 'isFog', 'isEraserPath', 'selectable', 'evented']);
+                    window.socket.send(JSON.stringify({ type: 'fabric-fog-update', payload: payload }));
                 }
 
             } else if (isDrawing && currentShape) {
@@ -389,14 +401,36 @@
             canvas.renderAll();
         }));
 
-        window.addEventListener('fabric-fog-remote-toggle', remoteActionHandler((payload) => {
-            toggleFog(payload.active);
-        }));
+        window.addEventListener('fabric-remote-fog-update', remoteActionHandler((payload) => {
+            // Remove the old fog layer if it exists
+            if (fogLayer) {
+                canvas.remove(fogLayer);
+            }
 
-        window.addEventListener('fabric-fog-remote-erase', remoteActionHandler((payload) => {
-            fabric.util.enlivenObjects([payload], (objects) => {
-                addFogEraserPath(objects[0]);
-            });
+            if (payload) {
+                // Enliven the new fog layer from the payload
+                fabric.util.enlivenObjects([payload], (objects) => {
+                    const newFogLayer = objects[0];
+                    fogLayer = newFogLayer;
+                    canvas.add(fogLayer);
+
+                    // Ensure properties are correct on the remote client
+                    fogLayer.set({
+                        selectable: false,
+                        evented: false,
+                    });
+                    const fogBase = fogLayer.getObjects('rect')[0];
+                    if (fogBase) {
+                        fogBase.set('fill', isMJ ? 'rgba(0,0,0,0.5)' : 'black');
+                    }
+                    fogLayer.moveTo(999);
+                    canvas.renderAll();
+                });
+            } else {
+                // If the payload is null, it means the fog was turned off
+                fogLayer = null;
+                canvas.renderAll();
+            }
         }));
 
         window.addEventListener('fabric-load', remoteActionHandler((payload) => {
