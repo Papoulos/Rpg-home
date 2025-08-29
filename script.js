@@ -20,8 +20,10 @@
         ],
     };
 
-    const socket = new WebSocket(`wss://${window.location.host}`);
-    window.socket = socket; // Expose socket globally for other scripts
+    let socket;
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 10;
+    let reconnectTimeoutId = null;
 
     // --- User and Chat Management ---
     function askForUsername() {
@@ -99,7 +101,11 @@
 
     // --- Messaging ---
     function sendMessage(payload) {
-        socket.send(JSON.stringify({ sender: getUsername(), ...payload }));
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ sender: getUsername(), ...payload }));
+        } else {
+            console.error("WebSocket is not connected. Message not sent:", payload);
+        }
     }
 
     function rollDice(dieType) {
@@ -197,96 +203,127 @@
         });
     }
 
-    // --- WebSocket Event Listeners ---
-    socket.onmessage = async (event) => {
-        const data = JSON.parse(event.data);
-
-        switch (data.type) {
-            case 'history':
-                // Prepend history messages so they appear in the correct order
-                data.messages.forEach(msg => {
-                    if (msg.type === 'chat' || msg.type === 'dice' || msg.type === 'game-roll') {
-                        addMessage({ ...msg, prepend: true });
-                    }
-                });
-                break;
-            case 'mj-status':
-                window.dispatchEvent(new CustomEvent('mj-status', { detail: { isMJ: data.isMJ } }));
-                break;
-            case 'image-list-update':
-                window.dispatchEvent(new CustomEvent('image-list-update', { detail: { list: data.list } }));
-                break;
-            case 'show-image':
-                displayImage(data.url);
-                break;
-            case 'user-list':
-                await handleUserList(data.users);
-                break;
-            case 'chat':
-            case 'dice':
-            case 'game-roll':
-                addMessage({ ...data, prepend: true });
-                break;
-            case 'offer':
-                // The peer connection should already be created by handleUserList, but as a fallback:
-                if (!peerConnections[data.sender]) {
-                    await createPeerConnection(data.sender, false);
-                }
-                const pc = peerConnections[data.sender];
-                if (pc && pc.signalingState === 'stable') {
-                    await pc.setRemoteDescription(new RTCSessionDescription(data.message));
-                    const answer = await pc.createAnswer();
-                    await pc.setLocalDescription(answer);
-                    sendMessage({ type: 'answer', target: data.sender, message: pc.localDescription });
-                }
-                break;
-            case 'answer':
-                await peerConnections[data.sender]?.setRemoteDescription(new RTCSessionDescription(data.message));
-                break;
-            case 'ice-candidate':
-                await peerConnections[data.sender]?.addIceCandidate(new RTCIceCandidate(data.message));
-                break;
-
-            case 'fabric-path-created':
-                window.dispatchEvent(new CustomEvent('fabric-remote-path-created', { detail: data }));
-                break;
-
-            case 'fabric-set-background':
-                window.dispatchEvent(new CustomEvent('fabric-remote-set-background', { detail: data }));
-                break;
-
-            case 'fabric-add-object':
-                window.dispatchEvent(new CustomEvent('fabric-remote-add-object', { detail: data }));
-                break;
-
-            case 'fabric-update-object':
-                window.dispatchEvent(new CustomEvent('fabric-remote-update-object', { detail: data }));
-                break;
-
-            case 'fabric-remove-object':
-                window.dispatchEvent(new CustomEvent('fabric-remote-remove-object', { detail: data }));
-                break;
-
-            case 'fabric-fog-toggle':
-                window.dispatchEvent(new CustomEvent('fabric-remote-fog-toggle', { detail: data }));
-                break;
-
-            case 'fabric-fog-erase-raw':
-                window.dispatchEvent(new CustomEvent('fabric-remote-fog-erase-raw', { detail: data }));
-                break;
-
-            case 'fabric-load':
-                window.dispatchEvent(new CustomEvent('fabric-load', { detail: data }));
-                break;
-
-            case 'pointer-move':
-                window.dispatchEvent(new CustomEvent('pointer-move', { detail: data }));
-                break;
+    // --- WebSocket Connection Management ---
+    function connect() {
+        if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+            console.log("WebSocket is already open or connecting.");
+            return;
         }
-    };
 
-    socket.onclose = () => addMessage({ sender: 'System', message: 'Connection lost. Please refresh.', prepend: true });
-    socket.onerror = (error) => console.error('WebSocket error:', error);
+        socket = new WebSocket(`wss://${window.location.host}`);
+        window.socket = socket;
+
+        socket.onopen = () => {
+            console.log("WebSocket connection established.");
+            if (reconnectAttempts > 0) {
+                addMessage({ sender: 'System', message: 'Reconnected successfully.', prepend: true });
+            }
+            reconnectAttempts = 0;
+            if (reconnectTimeoutId) {
+                clearTimeout(reconnectTimeoutId);
+                reconnectTimeoutId = null;
+            }
+            sendMessage({ type: 'register', username: getUsername() });
+        };
+
+        socket.onclose = () => {
+            if (reconnectAttempts === 0) {
+                addMessage({ sender: 'System', message: 'Connection lost. Attempting to reconnect...', prepend: true });
+            }
+
+            if (reconnectAttempts < maxReconnectAttempts) {
+                const delay = Math.pow(2, reconnectAttempts) * 1000 + (Math.random() * 1000); // Jitter
+                console.log(`WebSocket closed. Retrying in ${Math.round(delay / 1000)}s.`);
+                reconnectTimeoutId = setTimeout(connect, delay);
+                reconnectAttempts++;
+            } else {
+                addMessage({ sender: 'System', message: 'Could not reconnect to the server. Please refresh the page.', prepend: true });
+                console.error('WebSocket reconnection failed after max attempts.');
+            }
+        };
+
+        socket.onerror = (error) => {
+            console.error('WebSocket error:', error);
+            // onclose will be triggered automatically, which handles reconnection.
+        };
+
+        socket.onmessage = async (event) => {
+            const data = JSON.parse(event.data);
+
+            switch (data.type) {
+                case 'history':
+                    data.messages.forEach(msg => {
+                        if (msg.type === 'chat' || msg.type === 'dice' || msg.type === 'game-roll') {
+                            addMessage({ ...msg, prepend: true });
+                        }
+                    });
+                    break;
+                case 'mj-status':
+                    window.dispatchEvent(new CustomEvent('mj-status', { detail: { isMJ: data.isMJ } }));
+                    break;
+                case 'image-list-update':
+                    window.dispatchEvent(new CustomEvent('image-list-update', { detail: { list: data.list } }));
+                    break;
+                case 'show-image':
+                    displayImage(data.url);
+                    break;
+                case 'user-list':
+                    await handleUserList(data.users);
+                    break;
+                case 'chat':
+                case 'dice':
+                case 'game-roll':
+                    addMessage({ ...data, prepend: true });
+                    break;
+                case 'offer':
+                    if (!peerConnections[data.sender]) {
+                        await createPeerConnection(data.sender, false);
+                    }
+                    const pc = peerConnections[data.sender];
+                    if (pc && pc.signalingState === 'stable') {
+                        await pc.setRemoteDescription(new RTCSessionDescription(data.message));
+                        const answer = await pc.createAnswer();
+                        await pc.setLocalDescription(answer);
+                        sendMessage({ type: 'answer', target: data.sender, message: pc.localDescription });
+                    }
+                    break;
+                case 'answer':
+                    await peerConnections[data.sender]?.setRemoteDescription(new RTCSessionDescription(data.message));
+                    break;
+                case 'ice-candidate':
+                    await peerConnections[data.sender]?.addIceCandidate(new RTCIceCandidate(data.message));
+                    break;
+
+                case 'fabric-path-created':
+                    window.dispatchEvent(new CustomEvent('fabric-remote-path-created', { detail: data }));
+                    break;
+                case 'fabric-set-background':
+                    window.dispatchEvent(new CustomEvent('fabric-remote-set-background', { detail: data }));
+                    break;
+                case 'fabric-add-object':
+                    window.dispatchEvent(new CustomEvent('fabric-remote-add-object', { detail: data }));
+                    break;
+                case 'fabric-update-object':
+                    window.dispatchEvent(new CustomEvent('fabric-remote-update-object', { detail: data }));
+                    break;
+                case 'fabric-remove-object':
+                    window.dispatchEvent(new CustomEvent('fabric-remote-remove-object', { detail: data }));
+                    break;
+                case 'fabric-fog-toggle':
+                    window.dispatchEvent(new CustomEvent('fabric-remote-fog-toggle', { detail: data }));
+                    break;
+                case 'fabric-fog-erase-raw':
+                    window.dispatchEvent(new CustomEvent('fabric-remote-fog-erase-raw', { detail: data }));
+                    break;
+                case 'fabric-load':
+                    window.dispatchEvent(new CustomEvent('fabric-load', { detail: data }));
+                    break;
+                case 'pointer-move':
+                    window.dispatchEvent(new CustomEvent('pointer-move', { detail: data }));
+                    break;
+            }
+        };
+    }
 
     // --- Initial Setup ---
     async function setupLocalMedia() {
@@ -407,12 +444,7 @@
         askForUsername();
         await setupLocalMedia();
 
-        const registerUser = () => sendMessage({ type: 'register', username: getUsername() });
-        if (socket.readyState === WebSocket.OPEN) {
-            registerUser();
-        } else {
-            socket.addEventListener('open', registerUser);
-        }
+        connect(); // Start the WebSocket connection and set up listeners
 
         setupEventListeners();
         setupToggle();
