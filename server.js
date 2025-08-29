@@ -356,19 +356,13 @@ wss.on('connection', (ws) => {
             case 'fabric-set-background':
             case 'fabric-fog-toggle':
             case 'fabric-fog-erase-raw':
-                const clientSync = clients.get(ws);
-                if(clientSync && clientSync.isMJ) {
-                    broadcastToOthers(ws, data);
-                }
+                broadcastToOthers(ws, data);
                 break;
 
             // Persistence: save the full state received from a client
             case 'fabric-state-update':
-                const clientState = clients.get(ws);
-                if (clientState && clientState.isMJ) {
-                    whiteboardState = data.payload;
-                    saveWhiteboardState(whiteboardState);
-                }
+                whiteboardState = data.payload;
+                saveWhiteboardState(whiteboardState);
                 break;
 
             case 'pointer-move':
