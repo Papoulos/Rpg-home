@@ -38,30 +38,36 @@
                 const target = difficulty * 3;
                 const modifiedRoll = roll + (effort * 3) - (malus * 3);
 
-                resultText = `Difficulté ${difficulty} (cible > ${target}).`;
-                resultText += ` Jet : <strong>${roll}</strong>`;
+                resultText = `Difficulté ${difficulty} (${target}).`;
+                resultText += `<br>Jet : <strong>${roll}</strong>`;
 
+              
                 if (effort > 0) resultText += ` + ${effort * 3} (Effort)`;
                 if (malus > 0) resultText += ` - ${malus * 3} (Malus)`;
                 if (effort > 0 || malus > 0) resultText += `. Total modifié : <strong>${modifiedRoll}</strong>`;
 
-                if (roll === 1) {
-                    resultText += '<br><strong>Échec critique !</strong> Le MJ peut introduire une intrusion.';
-                } else if (roll === 20) {
-                    resultText += '<br><strong>Réussite critique !</strong> Le joueur gagne un bénéfice majeur.';
-                } else {
-                    if (modifiedRoll > target) {
-                        resultText += `<br><strong>Réussite !</strong> Le total de ${modifiedRoll} bat la cible de ${target}.`;
-                    } else {
-                        resultText += `<br><strong>Échec.</strong> Le total de ${modifiedRoll} n'atteint pas la cible de ${target}.`;
-                    }
-                }
+
+                if (effort > 0) resultText += ` + ${effort * 3} (E)`;
+                if (hindrance > 0) resultText += ` - ${hindrance * 3} (M)`;
+                if (effort > 0 || hindrance > 0) resultText += `<br>Total modifié : <strong>${modifiedRoll}</strong>`;
 
                 if (effort > 0) {
                     let cost = 0;
                     if (effort >= 1) cost += 3;
                     if (effort > 1) cost += (effort - 1) * 2;
                     resultText += `<br><em>Coût de l'effort : ${cost} points.</em>`;
+                }
+                
+                if (roll === 1) {
+                    resultText += '<br><br><strong>Échec critique !</strong> Le MJ peut introduire une intrusion.';
+                } else if (roll === 20) {
+                    resultText += '<br><br><strong>Réussite critique !</strong> Le joueur gagne un bénéfice majeur.';
+                } else {
+                    if (modifiedRoll > target) {
+                        resultText += `<br><br><strong>Réussite !</strong>`;
+                    } else {
+                        resultText += `<br><br><strong>Échec.</strong>`;
+                    }
                 }
 
                 return resultText;
