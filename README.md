@@ -66,20 +66,75 @@ The right-hand panel contains a multi-user video conference feature powered by W
 - **Global Media Controls**: A set of buttons in the header of the video panel allows users to toggle their own microphone and camera on or off. The buttons turn red to indicate when a device is muted or disabled.
 
 ### 5. AI Chatbot
-The chat is integrated with a configurable AI chatbot.
-- **Command-based Triggers**: Users can activate the chatbot by starting a message with a configured command (e.g., `#ask` or `#gemini`).
-- **Configurable Commands**: You can define multiple commands in the `api.config.js` file. Each command word is a key that maps to a specific API configuration.
-- **Custom Naming**: You can set a `displayName` in the configuration for each bot. If not set, the service name (e.g., "gemini") will be used.
-- **Response Limiting**: Chatbot responses are automatically truncated to 900 characters to keep the chat tidy.
-- **API Support**: The configuration file includes examples for:
-  - A custom URL endpoint (triggered by `#ask`).
-  - Google Gemini (triggered by `#gemini`, requires a `model` name).
-  - A placeholder for Mistral AI.
-- **Secure API Keys**: To use paid services, you must create an `apikeys.js` file (from the `apikeys.js.example` template) and add your secret keys. This file is ignored by git to keep your keys safe.
-- **Dice Buttons**: Buttons for rolling 4, 6, 10, 20, and 100-sided dice.
-- **Public Results**: The dice roll result is posted to the chat for all users to see.
-- **Critical Roll Styling**: Dice rolls for the minimum (1) or maximum possible value are highlighted in green and red, respectively, to easily spot critical successes and failures.
+The chat is integrated with a configurable AI chatbot, allowing you to connect to various AI services.
 
-### 4. Main Display & Menu
+- **Command-based Triggers**: Users activate a chatbot by starting a message with a configured command (e.g., `#ask`, `#gemini`, `#custombot`).
+- **Configuration**: All chatbot behaviors are defined in `api.config.js`. You can add, remove, or modify chatbot configurations in this file.
+- **Secure API Keys**: For services that require an API key, you must create an `apikeys.js` file in the root directory. This file is not tracked by git, keeping your keys secure.
+
+#### How to Configure a Chatbot
+
+1.  **Create `apikeys.js` (if needed)**
+
+    If you are using a service that requires an API key, create a file named `apikeys.js` and export your keys using `module.exports`.
+
+    *Example `apikeys.js`:*
+    ```javascript
+    module.exports = {
+        gemini: 'YOUR_GEMINI_API_KEY',
+        custombot: 'YOUR_CUSTOM_BOT_API_KEY'
+    };
+    ```
+
+2.  **Edit `api.config.js`**
+
+    Open `api.config.js` and add or uncomment a configuration block for the chatbot you want to use. The key of the object (e.g., `'#ask'`) is the command that triggers the bot.
+
+    The application supports several service types:
+
+    **A) `url` type (Simple Custom API)**
+    This type sends a POST request to a custom endpoint with a simple JSON payload: `{ "prompt": "user's message" }`.
+
+    *Example Configuration:*
+    ```javascript
+    '#ask': {
+        type: 'url',
+        displayName: 'Assistant',
+        endpoint: 'https://api.your-service.com/chat'
+    },
+    ```
+
+    **B) `openai-compatible` type (Advanced Custom API)**
+    This type is for services that are compatible with the OpenAI `v1/chat/completions` API format. It sends a more complex JSON payload and requires an API key.
+
+    *Example Configuration:*
+    ```javascript
+    '#custombot': {
+        type: 'paid',
+        service: 'openai-compatible',
+        displayName: 'Custom Bot',
+        model: 'chat-model-name',
+        apiKey: apiKeys.custombot, // This must match a key in apikeys.js
+        endpoint: 'http://YOUR_BOT_URL/v1/chat/completions',
+        systemPrompt: 'You are a helpful assistant.'
+    },
+    ```
+
+    **C) `gemini` type (Google Gemini)**
+    This type is specifically for Google's Gemini models.
+
+    *Example Configuration:*
+    ```javascript
+    '#gemini': {
+        type: 'paid',
+        service: 'gemini',
+        model: 'gemini-1.5-flash',
+        apiKey: apiKeys.gemini // This must match a key in apikeys.js
+    },
+    ```
+
+    **Important**: When adding a new configuration block, ensure it is separated from the previous block by a **comma (`,`)**, as shown in the examples.
+
+### 6. Main Display & Menu
 The central area is designed for displaying primary content.
 - **macOS-style Menu Bar**: At the bottom of the central panel, a sleek menu bar provides navigation options for "Carte", "PJ", and "Prez" (currently placeholders for future features).
