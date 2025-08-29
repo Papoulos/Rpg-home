@@ -44,12 +44,7 @@
               
                 if (effort > 0) resultText += ` + ${effort * 3} (Effort)`;
                 if (malus > 0) resultText += ` - ${malus * 3} (Malus)`;
-                if (effort > 0 || malus > 0) resultText += `. Total modifié : <strong>${modifiedRoll}</strong>`;
-
-
-                if (effort > 0) resultText += ` + ${effort * 3} (E)`;
-                if (hindrance > 0) resultText += ` - ${hindrance * 3} (M)`;
-                if (effort > 0 || hindrance > 0) resultText += `<br>Total modifié : <strong>${modifiedRoll}</strong>`;
+                if (effort > 0 || malus > 0) resultText += `<br>Total modifié : <strong>${modifiedRoll}</strong>`;
 
                 if (effort > 0) {
                     let cost = 0;
@@ -63,7 +58,7 @@
                 } else if (roll === 20) {
                     resultText += '<br><br><strong>Réussite critique !</strong> Le joueur gagne un bénéfice majeur.';
                 } else {
-                    if (modifiedRoll > target) {
+                    if (modifiedRoll >= target) {
                         resultText += `<br><br><strong>Réussite !</strong>`;
                     } else {
                         resultText += `<br><br><strong>Échec.</strong>`;
