@@ -205,7 +205,7 @@ function loadChatHistory() {
 
 function appendToHistory(message) {
     try {
-        if (message.type === 'chat' || message.type === 'dice') {
+        if (message.type === 'chat' || message.type === 'dice' || message.type === 'game-roll') {
             fs.appendFileSync(CHAT_LOG_FILE, JSON.stringify(message) + '\n');
         }
     } catch (error) {
@@ -338,6 +338,7 @@ wss.on('connection', (ws) => {
 
             case 'chat':
             case 'dice':
+            case 'game-roll':
                 data.timestamp = new Date().toISOString();
                 chatHistory.push(data);
                 appendToHistory(data);
