@@ -178,7 +178,7 @@ async function handleChatbotRequest(prompt, config, trigger, originalMessage, se
         responseMessage = `Désolé, une erreur est survenue en contactant l'IA. (${error.message})`;
     }
 
-    const formattedMessage = `> **${senderUsername}:** ${originalMessage}\n\n${responseMessage}`;
+    const formattedMessage = `> **${prompt}**\n\n${responseMessage}`;
 
     const finalMessage = {
         type: 'chat',
