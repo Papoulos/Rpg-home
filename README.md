@@ -25,7 +25,15 @@ You need to have [Node.js](https://nodejs.org/) and [npm](https://www.npmjs.com/
     ```sh
     node server.js
     ```
-    The server will start and be accessible at `https://localhost:3000`.
+
+    The server will start in HTTPS mode by default.
+
+    #### Running without SSL (for Gitpod, Codespaces, etc.)
+    If you are running this application behind a reverse proxy that already provides SSL (like GitHub Codespaces or Gitpod), you may get a "502 Bad Gateway" error. To solve this, run the server with the `--nossl` flag to disable the built-in HTTPS:
+    ```sh
+    node server.js --nossl
+    ```
+    The server will start in HTTP mode and should be accessible through your proxy's secure URL.
 
 3.  **Open the Application**
 

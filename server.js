@@ -1,4 +1,5 @@
 const express = require('express');
+const http = require('http');
 const https = require('https');
 const WebSocket = require('ws');
 const path = require('path');
@@ -7,12 +8,21 @@ const fetch = require('node-fetch');
 const chatbotConfig = require('./api.config.js');
 const app = express();
 
-const options = {
-    key: fs.readFileSync(path.join(__dirname, 'certs/key.pem')),
-    cert: fs.readFileSync(path.join(__dirname, 'certs/cert.pem'))
-};
+const useSSL = !process.argv.includes('--nossl');
+let server;
 
-const server = https.createServer(options, app);
+if (useSSL) {
+    console.log('[SERVER] Starting in HTTPS mode.');
+    const options = {
+        key: fs.readFileSync(path.join(__dirname, 'certs/key.pem')),
+        cert: fs.readFileSync(path.join(__dirname, 'certs/cert.pem'))
+    };
+    server = https.createServer(options, app);
+} else {
+    console.log('[SERVER] Starting in HTTP mode (SSL disabled).');
+    server = http.createServer(app);
+}
+
 const wss = new WebSocket.Server({ server });
 
 const PORT = process.env.PORT || 3000;
