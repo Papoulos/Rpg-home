@@ -3,10 +3,10 @@
     const gameSystems = {
         cypher: {
             name: 'Cypher System',
-            help: '<strong>/cypher</strong> [/D difficulté] [/E effort] [/H malus] - Lance un dé pour le Cypher System.',
+            help: '<strong>/cypher</strong> [/D difficulté] [/E effort] [/M malus] - Lance un dé pour le Cypher System.',
             roll: (args) => {
                 // --- Argument Parsing ---
-                const params = { D: 0, E: 0, H: 0 };
+                const params = { D: 0, E: 0, M: 0 };
                 for (let i = 0; i < args.length; i++) {
                     const param = args[i].toUpperCase();
                     if (params.hasOwnProperty(param.substring(1))) {
@@ -17,13 +17,13 @@
                         }
                     }
                 }
-                const { D: difficulty, E: effort, H: hindrance } = params;
+                const { D: difficulty, E: effort, M: malus } = params;
 
                 const roll = Math.floor(Math.random() * 20) + 1;
                 let resultText = `Jet : <strong>${roll}</strong>. `;
 
                 // --- Case 1: No parameters provided ---
-                if (difficulty === 0 && effort === 0 && hindrance === 0) {
+                if (difficulty === 0 && effort === 0 && malus === 0) {
                     const beatenDifficulty = Math.floor(roll / 3);
                     resultText += `Le jet brut bat une difficulté de <strong>${beatenDifficulty}</strong> (cible ${beatenDifficulty * 3}).`;
                      if (roll === 1) {
@@ -36,10 +36,15 @@
 
                 // --- Case 2: Parameters are provided ---
                 const target = difficulty * 3;
-                const modifiedRoll = roll + (effort * 3) - (hindrance * 3);
+                const modifiedRoll = roll + (effort * 3) - (malus * 3);
 
                 resultText = `Difficulté ${difficulty} (${target}).`;
                 resultText += `<br>Jet : <strong>${roll}</strong>`;
+
+              
+                if (effort > 0) resultText += ` + ${effort * 3} (Effort)`;
+                if (malus > 0) resultText += ` - ${malus * 3} (Malus)`;
+                if (effort > 0 || malus > 0) resultText += `. Total modifié : <strong>${modifiedRoll}</strong>`;
 
 
                 if (effort > 0) resultText += ` + ${effort * 3} (E)`;
