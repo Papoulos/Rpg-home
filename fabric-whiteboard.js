@@ -31,27 +31,31 @@
 
     const setActiveTool = (tool) => {
         activeTool = tool;
-        if (canvas) {
-            canvas.isDrawingMode = tool === 'pencil';
-            if (tool === 'select') {
-                canvas.selection = true;
-                canvas.defaultCursor = 'default';
-                canvas.hoverCursor = 'move';
-            } else if (tool === 'pointer') {
-                canvas.selection = false;
-                canvas.defaultCursor = 'none';
-                canvas.hoverCursor = 'none';
+        if (!canvas) return;
+
+        canvas.isDrawingMode = tool === 'pencil' || tool === 'fog-eraser';
+
+        if (canvas.isDrawingMode) {
+            canvas.selection = false;
+            if (tool === 'pencil') {
+                canvas.freeDrawingBrush.color = currentColor;
+                canvas.freeDrawingBrush.width = 5;
             } else if (tool === 'fog-eraser') {
-                canvas.selection = false;
-                // Custom cursor for the eraser
-                const cursorUrl = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="${fogBrushSize}" height="${fogBrushSize}" viewBox="0 0 ${fogBrushSize} ${fogBrushSize}"><circle cx="${fogBrushSize/2}" cy="${fogBrushSize/2}" r="${fogBrushSize/2 - 1}" fill="rgba(255,255,255,0.5)" stroke="black" stroke-width="1"/></svg>`;
-                canvas.defaultCursor = `url(${cursorUrl}) ${fogBrushSize/2} ${fogBrushSize/2}, crosshair`;
-                canvas.hoverCursor = canvas.defaultCursor;
-            } else {
-                canvas.selection = false;
-                canvas.defaultCursor = 'crosshair';
-                canvas.hoverCursor = 'crosshair';
+                canvas.freeDrawingBrush.color = 'white'; // Color doesn't matter, but must be opaque
+                canvas.freeDrawingBrush.width = fogBrushSize;
             }
+        } else if (tool === 'select') {
+            canvas.selection = true;
+            canvas.defaultCursor = 'default';
+            canvas.hoverCursor = 'move';
+        } else if (tool === 'pointer') {
+            canvas.selection = false;
+            canvas.defaultCursor = 'none';
+            canvas.hoverCursor = 'none';
+        } else {
+            canvas.selection = false;
+            canvas.defaultCursor = 'crosshair';
+            canvas.hoverCursor = 'crosshair';
         }
 
         const toolButtons = document.querySelectorAll('#fabric-toolbar .control-btn');
@@ -107,13 +111,9 @@
         }
 
         canvas.renderAll();
-
-        if (window.socket?.readyState === WebSocket.OPEN) {
-            const payload = fogIsOn ? fogLayer.toJSON(['id', 'isFog', 'isEraserPath', 'selectable', 'evented']) : null;
-            window.socket.send(JSON.stringify({ type: 'fabric-fog-update', payload: payload }));
-        }
-
         sendCanvasStateToServer();
+        // Return the final state for the toolbar logic to use
+        return fogIsOn;
     };
 
     const addFogEraserPath = (path) => {
@@ -182,15 +182,38 @@
 
         // --- Collaboration Logic ---
         canvas.on('path:created', (e) => {
-            const path = e.path;
-            path.id = getNextId();
-            if (window.socket && window.socket.readyState === WebSocket.OPEN) {
-                window.socket.send(JSON.stringify({
-                    type: 'fabric-path-created',
-                    payload: path.toJSON(['id'])
-                }));
+            if (activeTool === 'fog-eraser') {
+                if (!fogLayer) {
+                    canvas.remove(e.path); // Don't allow erasing if fog doesn't exist
+                    return;
+                }
+                const path = e.path;
+                path.id = getNextId();
+                // Prevent the path from being added to the main canvas
+                canvas.remove(path);
+                // Add it to the fog layer instead
+                addFogEraserPath(path);
+
+                // Broadcast the raw path data for other clients
+                if (window.socket?.readyState === WebSocket.OPEN) {
+                    const payload = {
+                        pathData: path.path,
+                        id: path.id
+                    };
+                    window.socket.send(JSON.stringify({ type: 'fabric-fog-erase-raw', payload: payload }));
+                }
+
+            } else { // It's the regular pencil tool
+                const path = e.path;
+                path.id = getNextId();
+                if (window.socket && window.socket.readyState === WebSocket.OPEN) {
+                    window.socket.send(JSON.stringify({
+                        type: 'fabric-path-created',
+                        payload: path.toJSON(['id'])
+                    }));
+                }
+                sendCanvasStateToServer();
             }
-            sendCanvasStateToServer();
         });
 
         window.addEventListener('fabric-remote-path-created', (event) => {
@@ -252,25 +275,15 @@
         // --- Drawing Logic ---
         let isDrawing = false;
         let startX, startY, currentShape;
-        let isErasingFog = false;
-        let currentEraserPathData = [];
 
         canvas.on('mouse:down', (o) => {
-            if (!o.pointer) return;
+            if (canvas.isDrawingMode || !o.pointer) return;
             isDrawing = true;
             const pointer = canvas.getPointer(o.e);
             startX = pointer.x;
             startY = pointer.y;
 
-            if (activeTool === 'fog-eraser') {
-                if (!fogLayer) return;
-                isErasingFog = true;
-                currentEraserPathData = [[ 'M', startX, startY ]];
-                // No temporary shape is added to the canvas, we'll draw it manually for feedback.
-                return;
-            }
-
-            if (activeTool === 'pencil' || activeTool === 'select' || activeTool === 'pointer') return;
+            if (activeTool === 'select' || activeTool === 'pointer') return;
 
             const id = getNextId();
             switch (activeTool) {
@@ -294,33 +307,10 @@
                 }
             }
 
-            if (!isDrawing || !o.pointer) return;
+            if (!isDrawing || !o.pointer || !currentShape) return;
             const pointer = canvas.getPointer(o.e);
             const endX = pointer.x;
             const endY = pointer.y;
-
-            if (isErasingFog) {
-                currentEraserPathData.push(['L', endX, endY]);
-                // Manually render the feedback on the canvas
-                canvas.clearContext(canvas.contextTop);
-                const ctx = canvas.getContext('2d'); // get the main context
-                ctx.save();
-                ctx.globalAlpha = 0.5;
-                ctx.strokeStyle = 'white';
-                ctx.lineWidth = fogBrushSize;
-                ctx.lineCap = 'round';
-                ctx.lineJoin = 'round';
-                ctx.beginPath();
-                currentEraserPathData.forEach(p => {
-                    if (p[0] === 'M') ctx.moveTo(p[1], p[2]);
-                    else ctx.lineTo(p[1], p[2]);
-                });
-                ctx.stroke();
-                ctx.restore();
-                return;
-            }
-
-            if (!currentShape) return;
 
             switch (activeTool) {
                 case 'line': currentShape.set({ x2: endX, y2: endY }); break;
@@ -340,35 +330,14 @@
         });
 
         canvas.on('mouse:up', () => {
-            canvas.clearContext(canvas.contextTop); // Clear feedback drawing
-            if (isErasingFog && currentEraserPathData.length > 1) {
-                const path = new fabric.Path(currentEraserPathData, {
-                    stroke: 'white',
-                    strokeWidth: fogBrushSize,
-                    strokeLineCap: 'round',
-                    strokeLineJoin: 'round',
-                    fill: null,
-                });
-                path.id = getNextId();
-                addFogEraserPath(path);
-
-                if (window.socket?.readyState === WebSocket.OPEN) {
-                    // Send the entire updated fog layer
-                    const payload = fogLayer.toJSON(['id', 'isFog', 'isEraserPath', 'selectable', 'evented']);
-                    window.socket.send(JSON.stringify({ type: 'fabric-fog-update', payload: payload }));
-                }
-
-            } else if (isDrawing && currentShape) {
+            if (isDrawing && currentShape) {
                 if (window.socket?.readyState === WebSocket.OPEN) {
                     window.socket.send(JSON.stringify({ type: 'fabric-add-object', payload: currentShape.toJSON(['id']) }));
                 }
                 sendCanvasStateToServer();
             }
-
             isDrawing = false;
-            isErasingFog = false;
             currentShape = null;
-            currentEraserPathData = [];
         });
 
         // --- Remote Event Handlers ---
@@ -401,36 +370,21 @@
             canvas.renderAll();
         }));
 
-        window.addEventListener('fabric-remote-fog-update', remoteActionHandler((payload) => {
-            // Remove the old fog layer if it exists
-            if (fogLayer) {
-                canvas.remove(fogLayer);
-            }
+        window.addEventListener('fabric-remote-fog-toggle', remoteActionHandler((payload) => {
+            toggleFog(payload.active);
+        }));
 
-            if (payload) {
-                // Enliven the new fog layer from the payload
-                fabric.util.enlivenObjects([payload], (objects) => {
-                    const newFogLayer = objects[0];
-                    fogLayer = newFogLayer;
-                    canvas.add(fogLayer);
-
-                    // Ensure properties are correct on the remote client
-                    fogLayer.set({
-                        selectable: false,
-                        evented: false,
-                    });
-                    const fogBase = fogLayer.getObjects('rect')[0];
-                    if (fogBase) {
-                        fogBase.set('fill', isMJ ? 'rgba(0,0,0,0.5)' : 'black');
-                    }
-                    fogLayer.moveTo(999);
-                    canvas.renderAll();
-                });
-            } else {
-                // If the payload is null, it means the fog was turned off
-                fogLayer = null;
-                canvas.renderAll();
-            }
+        window.addEventListener('fabric-remote-fog-erase-raw', remoteActionHandler((payload) => {
+            if (!fogLayer) return;
+            const path = new fabric.Path(payload.pathData, {
+                stroke: 'white',
+                strokeWidth: fogBrushSize,
+                strokeLineCap: 'round',
+                strokeLineJoin: 'round',
+                fill: null,
+                id: payload.id
+            });
+            addFogEraserPath(path);
         }));
 
         window.addEventListener('fabric-load', remoteActionHandler((payload) => {
@@ -479,10 +433,9 @@
         document.getElementById('fabric-circle-tool').addEventListener('click', () => setActiveTool('circle'));
         document.getElementById('fabric-pointer-tool').addEventListener('click', () => setActiveTool('pointer'));
         document.getElementById('fabric-fog-tool').addEventListener('click', () => {
-            const willBeActive = !canvas.getObjects().find(o => o.isFog);
-            toggleFog();
+            const isNowActive = toggleFog();
             if (window.socket?.readyState === WebSocket.OPEN) {
-                window.socket.send(JSON.stringify({ type: 'fabric-fog-toggle', payload: { active: willBeActive } }));
+                window.socket.send(JSON.stringify({ type: 'fabric-fog-toggle', payload: { active: isNowActive } }));
             }
         });
         document.getElementById('fabric-fog-eraser-tool').addEventListener('click', () => setActiveTool('fog-eraser'));

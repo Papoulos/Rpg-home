@@ -235,8 +235,12 @@
                 window.dispatchEvent(new CustomEvent('fabric-remote-remove-object', { detail: data }));
                 break;
 
-            case 'fabric-fog-update':
-                window.dispatchEvent(new CustomEvent('fabric-remote-fog-update', { detail: data }));
+            case 'fabric-fog-toggle':
+                window.dispatchEvent(new CustomEvent('fabric-remote-fog-toggle', { detail: data }));
+                break;
+
+            case 'fabric-fog-erase-raw':
+                window.dispatchEvent(new CustomEvent('fabric-remote-fog-erase-raw', { detail: data }));
                 break;
 
             case 'fabric-load':
