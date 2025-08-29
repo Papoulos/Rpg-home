@@ -3,34 +3,47 @@
     const gameSystems = {
         cypher: {
             name: 'Cypher System',
-            help: '/cypher <difficulty> [effort] [hindrance]',
+            help: '<strong>/cypher</strong> [/D difficulté] [/E effort] [/H malus] - Lance un dé pour le Cypher System.',
             roll: (args) => {
-                const difficulty = parseInt(args[0], 10);
-                const effort = parseInt(args[1], 10) || 0;
-                const hindrance = parseInt(args[2], 10) || 0;
+                // --- Argument Parsing ---
+                const params = { D: 0, E: 0, H: 0 };
+                for (let i = 0; i < args.length; i++) {
+                    const param = args[i].toUpperCase();
+                    if (params.hasOwnProperty(param.substring(1))) {
+                        const value = parseInt(args[i + 1], 10);
+                        if (!isNaN(value)) {
+                            params[param.substring(1)] = value;
+                            i++; // Skip the value in the next iteration
+                        }
+                    }
+                }
+                const { D: difficulty, E: effort, H: hindrance } = params;
 
-                if (isNaN(difficulty)) {
-                    return 'Erreur : La difficulté doit être un nombre.';
+                const roll = Math.floor(Math.random() * 20) + 1;
+                let resultText = `Jet : <strong>${roll}</strong>. `;
+
+                // --- Case 1: No parameters provided ---
+                if (difficulty === 0 && effort === 0 && hindrance === 0) {
+                    const beatenDifficulty = Math.floor(roll / 3);
+                    resultText += `Le jet brut bat une difficulté de <strong>${beatenDifficulty}</strong> (cible ${beatenDifficulty * 3}).`;
+                     if (roll === 1) {
+                        resultText += '<br><strong>Échec critique !</strong> Le MJ peut introduire une intrusion.';
+                    } else if (roll === 20) {
+                        resultText += '<br><strong>Réussite critique !</strong> Le joueur gagne un bénéfice majeur.';
+                    }
+                    return resultText;
                 }
 
+                // --- Case 2: Parameters are provided ---
                 const target = difficulty * 3;
-                const roll = Math.floor(Math.random() * 20) + 1;
                 const modifiedRoll = roll + (effort * 3) - (hindrance * 3);
 
-                let resultText = `Difficulté ${difficulty} (cible > ${target}).`;
+                resultText = `Difficulté ${difficulty} (cible > ${target}).`;
                 resultText += ` Jet : <strong>${roll}</strong>`;
 
-                if (effort > 0) {
-                    resultText += ` + ${effort * 3} (Effort)`;
-                }
-                if (hindrance > 0) {
-                    resultText += ` - ${hindrance * 3} (Malus)`;
-                }
-
-                if (effort > 0 || hindrance > 0) {
-                    resultText += `. Total modifié : <strong>${modifiedRoll}</strong>`;
-                }
-
+                if (effort > 0) resultText += ` + ${effort * 3} (Effort)`;
+                if (hindrance > 0) resultText += ` - ${hindrance * 3} (Malus)`;
+                if (effort > 0 || hindrance > 0) resultText += `. Total modifié : <strong>${modifiedRoll}</strong>`;
 
                 if (roll === 1) {
                     resultText += '<br><strong>Échec critique !</strong> Le MJ peut introduire une intrusion.';
@@ -46,12 +59,8 @@
 
                 if (effort > 0) {
                     let cost = 0;
-                    if (effort >= 1) {
-                        cost += 3;
-                    }
-                    if (effort > 1) {
-                        cost += (effort - 1) * 2;
-                    }
+                    if (effort >= 1) cost += 3;
+                    if (effort > 1) cost += (effort - 1) * 2;
                     resultText += `<br><em>Coût de l'effort : ${cost} points.</em>`;
                 }
 
