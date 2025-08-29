@@ -367,6 +367,12 @@ body, html {
     font-weight: bold;
 }
 
+.game-roll-message {
+    background-color: #ffffe0; /* lightyellow */
+    color: #000000;
+    border-left-color: #fbc02d; /* A darker yellow/gold for the border */
+}
+
 /* --- Styles pour le panneau Vidéo --- */
 #video-grid {
     display: flex;

@@ -35,17 +35,27 @@
     }
 
     // --- DOM Manipulation ---
-    function addMessage({ sender, message, prepend = false }) {
+    function addMessage({ sender, message, type, system, prepend = false }) {
         if (!sender || !message) {
-            console.warn('[UI] Ignoring malformed message object:', { sender, message });
+            console.warn('[UI] Ignoring malformed message object:', { sender, message, type, system });
             return;
         }
         const messageElement = document.createElement('div');
         messageElement.classList.add('chat-message');
+
         const userColor = stringToHslColor(sender, 70, 75);
         const richMessage = parseForRichContent(message);
-        const coloredSender = sender === 'System' ? `<strong style="color: #aaa;">${sender}:</strong>` : `<strong style="color: ${userColor};">${sender}:</strong>`;
+
+        let coloredSender;
+        if (type === 'game-roll') {
+            messageElement.classList.add('game-roll-message');
+            coloredSender = `<strong style="color: ${userColor};">${sender}</strong> lance un dé de <strong>${system}</strong>:`;
+        } else {
+             coloredSender = sender === 'System' ? `<strong style="color: #aaa;">${sender}:</strong>` : `<strong style="color: ${userColor};">${sender}:</strong>`;
+        }
+
         messageElement.innerHTML = `${coloredSender} ${richMessage}`;
+
         if (prepend) {
             chatMessages.prepend(messageElement);
         } else {
@@ -100,12 +110,33 @@
         sendMessage({ type: 'dice', message: `lance un dé ${dieType} : ${resultDisplay}` });
     }
 
+    function handleCommand(command, args) {
+        if (command === 'help') {
+            let helpMessage = '<strong>Commandes disponibles :</strong><br>';
+            helpMessage += '/help - Affiche ce message d\'aide.<br>';
+            Object.keys(window.gameSystems).forEach(key => {
+                helpMessage += `${window.gameSystems[key].help}<br>`;
+            });
+            addMessage({ sender: 'System', message: helpMessage, prepend: true });
+        } else if (window.gameSystems[command]) {
+            const result = window.gameSystems[command].roll(args);
+            sendMessage({ type: 'game-roll', message: result, system: window.gameSystems[command].name });
+        } else {
+            addMessage({ sender: 'System', message: `Commande inconnue : /${command}`, prepend: true });
+        }
+    }
+
     function handleSendMessage() {
         const message = chatInput.value.trim();
-        if (message) {
+        if (!message) return;
+
+        if (message.startsWith('/')) {
+            const [command, ...args] = message.substring(1).split(' ');
+            handleCommand(command.toLowerCase(), args);
+        } else {
             sendMessage({ type: 'chat', message });
-            chatInput.value = '';
         }
+        chatInput.value = '';
     }
 
     // --- WebRTC Logic ---
@@ -174,7 +205,7 @@
             case 'history':
                 // Prepend history messages so they appear in the correct order
                 data.messages.forEach(msg => {
-                    if (msg.type === 'chat' || msg.type === 'dice') {
+                    if (msg.type === 'chat' || msg.type === 'dice' || msg.type === 'game-roll') {
                         addMessage({ ...msg, prepend: true });
                     }
                 });
@@ -193,6 +224,7 @@
                 break;
             case 'chat':
             case 'dice':
+            case 'game-roll':
                 addMessage({ ...data, prepend: true });
                 break;
             case 'offer':
