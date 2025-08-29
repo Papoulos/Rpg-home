@@ -236,11 +236,11 @@
                 break;
 
             case 'fabric-fog-toggle':
-                window.dispatchEvent(new CustomEvent('fabric-fog-remote-toggle', { detail: data }));
+                window.dispatchEvent(new CustomEvent('fabric-remote-fog-toggle', { detail: data }));
                 break;
 
-            case 'fabric-fog-erase':
-                window.dispatchEvent(new CustomEvent('fabric-fog-remote-erase', { detail: data }));
+            case 'fabric-fog-erase-raw':
+                window.dispatchEvent(new CustomEvent('fabric-remote-fog-erase-raw', { detail: data }));
                 break;
 
             case 'fabric-load':
