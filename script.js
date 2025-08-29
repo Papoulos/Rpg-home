@@ -301,21 +301,32 @@
 
     function setupToggle() {
         const toggleButtons = [
-            { btn: document.getElementById('toggle-chat-btn'), panel: document.querySelector('.left-panel'), resizer: document.getElementById('resizer-left'), class: 'chat-hidden' },
-            { btn: document.getElementById('toggle-video-panel-btn'), panel: document.querySelector('.right-panel'), resizer: document.getElementById('resizer-right'), class: 'video-hidden' }
+            { btn: document.getElementById('toggle-chat-btn'), panel: document.querySelector('.left-panel'), resizer: document.getElementById('resizer-left'), class: 'chat-hidden', side: 'left' },
+            { btn: document.getElementById('toggle-video-panel-btn'), panel: document.querySelector('.right-panel'), resizer: document.getElementById('resizer-right'), class: 'video-hidden', side: 'right' }
         ];
 
         toggleButtons.forEach(item => {
             if (item.btn && item.panel && item.resizer) {
                 item.btn.addEventListener('click', () => {
-                    const isHidden = item.panel.classList.toggle(item.class);
-                    item.resizer.style.display = isHidden ? 'none' : 'block';
+                    item.panel.classList.toggle(item.class);
+                    const isNowHidden = item.panel.classList.contains(item.class);
+
+                    item.resizer.style.display = isNowHidden ? 'none' : 'block';
+
+                    if (isNowHidden) {
+                        // Remove inline style so the CSS class can position the button at the edge
+                        item.btn.style[item.side] = '';
+                    } else {
+                        // Re-apply the inline style to position the button next to the restored panel
+                        const panelWidthVar = getComputedStyle(item.panel).getPropertyValue(`--${item.side}-panel-width`);
+                        item.btn.style[item.side] = `calc(${panelWidthVar} - ${item.btn.offsetWidth}px)`;
+                    }
 
                     // Update button text/icon based on state
                     if (item.btn.id === 'toggle-chat-btn') {
-                        item.btn.textContent = isHidden ? '»' : '«';
+                        item.btn.textContent = isNowHidden ? '»' : '«';
                     } else {
-                        item.btn.textContent = isHidden ? '«' : '»';
+                        item.btn.textContent = isNowHidden ? '«' : '»';
                     }
                 });
 
@@ -432,6 +443,8 @@
             const mouseDownHandler = (e) => {
                 x = e.clientX;
                 panelWidth = panel.getBoundingClientRect().width;
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
 
                 document.addEventListener('mousemove', mouseMoveHandler);
                 document.addEventListener('mouseup', mouseUpHandler);
@@ -452,6 +465,8 @@
             };
 
             const mouseUpHandler = () => {
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
                 document.removeEventListener('mousemove', mouseMoveHandler);
                 document.removeEventListener('mouseup', mouseUpHandler);
             };
