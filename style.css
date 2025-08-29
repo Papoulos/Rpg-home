@@ -16,29 +16,36 @@ body, html {
 
 /* Panneaux latéraux */
 .panel {
-    flex: 1;
     padding: 20px;
     background-color: #2a2a2a;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    border-right: 1px solid #333;
     transition: all 0.3s ease-in-out;
-    min-width: 0;
+    min-width: 200px; /* Set a minimum width */
+    flex-shrink: 0; /* Prevent panels from shrinking automatically */
+}
+
+.left-panel {
+    --left-panel-width: 25%;
+    flex-basis: var(--left-panel-width);
+    border-right: 1px solid #333;
+}
+
+.right-panel {
+    --right-panel-width: 25%;
+    flex-basis: var(--right-panel-width);
+    border-left: 1px solid #333;
 }
 
 .left-panel.chat-hidden,
 .right-panel.video-hidden {
-    flex-basis: 0;
-    flex-grow: 0;
+    flex-basis: 0 !important; /* Use important to override inline styles */
+    min-width: 0;
     padding-left: 0;
     padding-right: 0;
     overflow: hidden;
-}
-
-.right-panel {
-    border-right: none;
-    border-left: 1px solid #333;
+    border: none;
 }
 
 .panel h2 {
@@ -59,42 +66,59 @@ body, html {
 /* --- Panel Toggle Buttons --- */
 #toggle-chat-btn, #toggle-video-panel-btn {
     position: fixed;
-    bottom: 15px;
+    top: 50%;
+    transform: translateY(-50%);
     z-index: 100;
-    background: #333;
+    background: #2a2a2a;
     color: #eee;
-    border: 1px solid #555;
-    border-radius: 50%;
-    width: 30px;
-    height: 30px;
-    line-height: 28px;
+    border: 1px solid #333;
+    border-radius: 0 4px 4px 0; /* Rounded on one side */
+    width: 20px;
+    height: 60px;
+    line-height: 60px;
     text-align: center;
     cursor: pointer;
     box-shadow: 0 2px 5px rgba(0,0,0,0.5);
-    transition: background-color 0.2s;
+    transition: all 0.3s ease-in-out;
+    writing-mode: vertical-rl; /* Vertical text */
+    text-orientation: mixed;
+    font-size: 14px;
+    padding: 5px;
 }
 
 #toggle-chat-btn {
-    left: 15px;
+    left: calc(var(--left-panel-width, 25%) - 20px);
+    border-left: none;
+}
+
+.left-panel.chat-hidden ~ #toggle-chat-btn {
+    left: 0;
 }
 
 #toggle-video-panel-btn {
-    right: 15px;
+    right: calc(var(--right-panel-width, 25%) - 20px);
+    border-radius: 4px 0 0 4px;
+    border-right: none;
+}
+
+.right-panel.video-hidden ~ #toggle-video-panel-btn {
+    right: 0;
 }
 
 #toggle-chat-btn:hover, #toggle-video-panel-btn:hover {
-    background: #444;
+    background: #3a3a3a;
 }
 
 
 /* Contenu principal */
 .main-content {
-    flex: 3;
+    flex-grow: 1; /* Allow it to take up the remaining space */
     padding: 10px;
     display: flex;
     flex-direction: column;
     gap: 10px; /* Replaces justify-content for consistent spacing */
     background-color: #1e1e1e;
+    min-width: 0; /* Prevent content from pushing layout */
 }
 
 .main-display {
@@ -530,4 +554,18 @@ body, html {
 
 .hidden {
     display: none !important;
+}
+
+/* --- Resizer Styles --- */
+.resizer {
+    background: #444;
+    cursor: col-resize;
+    flex-shrink: 0;
+    width: 5px;
+    z-index: 99;
+    transition: background-color 0.2s;
+}
+
+.resizer:hover {
+    background: #555;
 }

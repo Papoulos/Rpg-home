@@ -300,24 +300,35 @@
     }
 
     function setupToggle() {
-        // This function now handles both toggle buttons
         const toggleButtons = [
-            { btn: document.getElementById('toggle-chat-btn'), panel: document.querySelector('.left-panel'), class: 'chat-hidden' },
-            { btn: document.getElementById('toggle-video-panel-btn'), panel: document.querySelector('.right-panel'), class: 'video-hidden' }
+            { btn: document.getElementById('toggle-chat-btn'), panel: document.querySelector('.left-panel'), resizer: document.getElementById('resizer-left'), class: 'chat-hidden' },
+            { btn: document.getElementById('toggle-video-panel-btn'), panel: document.querySelector('.right-panel'), resizer: document.getElementById('resizer-right'), class: 'video-hidden' }
         ];
 
         toggleButtons.forEach(item => {
-            if (item.btn && item.panel) {
+            if (item.btn && item.panel && item.resizer) {
                 item.btn.addEventListener('click', () => {
-                    item.panel.classList.toggle(item.class);
+                    const isHidden = item.panel.classList.toggle(item.class);
+                    item.resizer.style.display = isHidden ? 'none' : 'block';
+
                     // Update button text/icon based on state
-                    const isHidden = item.panel.classList.contains(item.class);
                     if (item.btn.id === 'toggle-chat-btn') {
                         item.btn.textContent = isHidden ? '»' : '«';
                     } else {
                         item.btn.textContent = isHidden ? '«' : '»';
                     }
                 });
+
+                // Initial state check
+                const initiallyHidden = item.panel.classList.contains(item.class);
+                if (initiallyHidden) {
+                    item.resizer.style.display = 'none';
+                    if (item.btn.id === 'toggle-chat-btn') {
+                        item.btn.textContent = '»';
+                    } else {
+                        item.btn.textContent = '«';
+                    }
+                }
             }
         });
     }
@@ -404,5 +415,51 @@
 
         setupEventListeners();
         setupToggle();
+        setupResizing(); // Add this call
     });
+
+    // --- Panel Resizing Logic ---
+    function setupResizing() {
+        const resizerLeft = document.getElementById('resizer-left');
+        const resizerRight = document.getElementById('resizer-right');
+        const leftPanel = document.querySelector('.left-panel');
+        const rightPanel = document.querySelector('.right-panel');
+
+        const resize = (resizer, panel, button, panelSide) => {
+            let x = 0;
+            let panelWidth = 0;
+
+            const mouseDownHandler = (e) => {
+                x = e.clientX;
+                panelWidth = panel.getBoundingClientRect().width;
+
+                document.addEventListener('mousemove', mouseMoveHandler);
+                document.addEventListener('mouseup', mouseUpHandler);
+            };
+
+            const mouseMoveHandler = (e) => {
+                const dx = e.clientX - x;
+                const newPanelWidth = panelSide === 'left' ? panelWidth + dx : panelWidth - dx;
+
+                const minWidthPx = 150;
+                const maxWidthPx = window.innerWidth * 0.5;
+                const clampedWidthPx = Math.max(minWidthPx, Math.min(newPanelWidth, maxWidthPx));
+
+                const newWidthPercent = (clampedWidthPx / window.innerWidth) * 100;
+
+                panel.style.setProperty(`--${panelSide}-panel-width`, `${newWidthPercent}%`);
+                button.style[panelSide] = `calc(${newWidthPercent}% - ${button.offsetWidth}px)`;
+            };
+
+            const mouseUpHandler = () => {
+                document.removeEventListener('mousemove', mouseMoveHandler);
+                document.removeEventListener('mouseup', mouseUpHandler);
+            };
+
+            resizer.addEventListener('mousedown', mouseDownHandler);
+        };
+
+        resize(resizerLeft, leftPanel, document.getElementById('toggle-chat-btn'), 'left');
+        resize(resizerRight, rightPanel, document.getElementById('toggle-video-panel-btn'), 'right');
+    }
 })();

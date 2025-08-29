@@ -26,6 +26,7 @@
                 <button class="dice-button" data-die="100">100</button>
             </div>
         </aside>
+        <div class="resizer" id="resizer-left"></div>
         <main class="main-content">
             <div class="main-display">
                 <div id="carte-content" class="tab-content">
@@ -122,6 +123,7 @@
                 <a href="#fabric" class="menu-item" data-target="fabric-content">Fabric</a>
             </nav>
         </main>
+        <div class="resizer" id="resizer-right"></div>
         <aside class="panel right-panel">
             <div class="panel-header">
                 <h2>Vidéo</h2>
@@ -134,11 +136,11 @@
                 <!-- Les flux vidéo apparaîtront ici -->
             </div>
         </aside>
-    </div>
 
-    <!-- Panel Toggles -->
-    <button id="toggle-chat-btn" title="Cacher le panneau de chat">«</button>
-    <button id="toggle-video-panel-btn" title="Cacher le panneau de vidéo">»</button>
+        <!-- Panel Toggles -->
+        <button id="toggle-chat-btn" title="Cacher le panneau de chat">«</button>
+        <button id="toggle-video-panel-btn" title="Cacher le panneau de vidéo">»</button>
+    </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <script src="navigation.js" defer></script>
