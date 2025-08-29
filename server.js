@@ -67,6 +67,15 @@ let currentImageUrl = null; // Track the currently displayed image
 const clients = new Map();
 let whiteboardState = null; // Will store the JSON string of the fabric canvas
 
+// --- Music State ---
+let musicState = {
+    videoId: null,
+    isPlaying: false,
+    volume: 100,
+    startTime: null, // Server time when video started playing
+    pauseTime: null  // Server time when video was paused
+};
+
 // --- Utility Functions ---
 function broadcast(message) {
     const data = JSON.stringify(message);
@@ -338,11 +347,52 @@ wss.on('connection', (ws) => {
                     ws.send(JSON.stringify({ type: 'fabric-load', payload: whiteboardState }));
                 }
 
+                // Sync music for the new client
+                if (musicState.videoId) {
+                    let currentTime = 0;
+                    if (musicState.isPlaying) {
+                        currentTime = (Date.now() - musicState.startTime) / 1000;
+                    } else if (musicState.pauseTime) {
+                        currentTime = (musicState.pauseTime - musicState.startTime) / 1000;
+                    }
+                    ws.send(JSON.stringify({
+                        type: 'music-sync',
+                        action: 'sync',
+                        value: { ...musicState, currentTime }
+                    }));
+                }
+
+
                 if (isMJ) {
                     ws.send(JSON.stringify({ type: 'mj-status', isMJ: true }));
                 }
 
                 broadcastUserList();
+                break;
+
+            case 'music-control':
+                const musicClient = clients.get(ws);
+                if (musicClient && musicClient.isMJ) {
+                    const { action, value } = data;
+                    let broadcastPayload = { type: 'music-control', action, value };
+
+                    switch(action) {
+                        case 'play':
+                            musicState.videoId = value;
+                            musicState.isPlaying = true;
+                            musicState.startTime = Date.now();
+                            musicState.pauseTime = null;
+                            break;
+                        case 'pause':
+                            musicState.isPlaying = false;
+                            musicState.pauseTime = Date.now();
+                            break;
+                        case 'volume':
+                            musicState.volume = value;
+                            break;
+                    }
+                    broadcast(broadcastPayload);
+                }
                 break;
 
             case 'add-image':

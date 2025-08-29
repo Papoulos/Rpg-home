@@ -321,6 +321,10 @@
                 case 'pointer-move':
                     window.dispatchEvent(new CustomEvent('pointer-move', { detail: data }));
                     break;
+                case 'music-control':
+                case 'music-sync':
+                    window.dispatchEvent(new CustomEvent('music-control', { detail: data }));
+                    break;
             }
         };
     }

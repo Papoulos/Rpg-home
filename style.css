@@ -577,3 +577,44 @@ body, html {
 .resizer:hover {
     background: #555;
 }
+
+/* Music Tab Styles */
+.music-controls {
+    padding: 10px;
+    background-color: #2c2c2c;
+    border-bottom: 1px solid #444;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap; /* Allow wrapping on smaller screens */
+}
+
+.music-controls.hidden {
+    display: none;
+}
+
+#youtube-url-input {
+    flex-grow: 1;
+    min-width: 200px;
+}
+
+.volume-control {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+#music-title {
+    width: 100%;
+    text-align: center;
+    padding: 5px 0;
+    color: #ccc;
+    font-style: italic;
+}
+
+/* Hide the actual YouTube player iframe */
+#youtube-player {
+    width: 0;
+    height: 0;
+    overflow: hidden;
+}
