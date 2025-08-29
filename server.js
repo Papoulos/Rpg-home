@@ -8,6 +8,36 @@ const fetch = require('node-fetch');
 const chatbotConfig = require('./api.config.js');
 const app = express();
 
+// --- Dynamic Configuration Loading ---
+// Allows overriding or extending the base config with files from a secrets path,
+// which is common in deployment environments like Render.
+
+// Load API keys from secrets, falling back to local file
+let apiKeys = {};
+try {
+    // First, try loading from the conventional secrets path
+    apiKeys = require('/etc/secrets/apikeys.js');
+    console.log('[CONFIG] Loaded API keys from /etc/secrets/apikeys.js');
+} catch (e) {
+    // If that fails, try loading the local file for development
+    try {
+        apiKeys = require('./apikeys.js');
+        console.log('[CONFIG] Loaded local API keys from apikeys.js');
+    } catch (e) {
+        console.warn('[CONFIG] No apikeys.js file found. Paid chatbot features may be disabled.');
+    }
+}
+
+// Load and merge custom user config from secrets, falling back to base config
+try {
+    const userConfig = require('/etc/secrets/api.user.js');
+    console.log('[CONFIG] Loaded user config from /etc/secrets/api.user.js. Merging...');
+    // Merge user config over the base config.
+    Object.assign(chatbotConfig, userConfig);
+} catch (e) {
+    console.log('[CONFIG] No /etc/secrets/api.user.js file found. Using default config.');
+}
+
 const useSSL = !process.argv.includes('--nossl');
 let server;
 

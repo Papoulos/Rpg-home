@@ -1,0 +1,31 @@
+// This is an example of a custom user configuration file for chatbots.
+// It should be a JavaScript module that exports an object.
+// In a deployment environment like Render, you would create this file
+// as a "Secret File" at the path /etc/secrets/api.user.js
+
+// The properties in this exported object will be merged over the base
+// configuration from api.config.js.
+
+const userChatbotConfig = {
+  // This is an example of adding a new bot.
+  // The API key for this bot should be defined in your /etc/secrets/apikeys.js file.
+  '#ubot': {
+    type: 'paid',
+    service: 'openai-compatible',
+    displayName: 'U-Bot (Production)',
+    model: 'gpt-4',
+    // The 'apiKey' property will be looked for in the 'apiKeys' object
+    // loaded from your secrets file.
+    apiKey: 'ubot_production_key',
+    endpoint: 'https://api.my-production-bot.com/v1/chat/completions',
+    systemPrompt: 'You are U-Bot, a highly advanced assistant for production environments.'
+  },
+
+  // This is an example of overriding an existing bot from the base config.
+  '#ask': {
+    displayName: 'Assistant (Overridden)',
+    endpoint: 'https://api.my-other-service.com/chat/ask'
+  }
+};
+
+module.exports = userChatbotConfig;
