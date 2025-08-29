@@ -82,107 +82,59 @@ The chat is integrated with a configurable AI chatbot, allowing you to connect t
 
 #### How to Configure a Chatbot
 
-There are two ways to configure chatbots:
-1.  Editing the local `api.config.js` file directly.
-2.  Using an external JSON file for deployment environments like Render or Docker.
+The application uses a layered approach for configuration, making it flexible for both local development and production deployments.
 
-**Method 1: Local Configuration (`api.config.js`)**
+**1. Base Configuration**
 
-For local development, you can directly edit `api.config.js`. If your bot requires an API key, you should create an `apikeys.js` file (this is kept out of git).
+The default chatbot triggers and settings are defined in `api.config.js`. This file should be considered the base configuration for the project.
 
-*Example `apikeys.js`:*
+**2. Local Development Configuration**
+
+For local development, you can create the following files in the root of the project. These files are not tracked by git, so your local settings and secrets are safe.
+
+-   **`apikeys.js`**: Use this file to store your API keys for paid services. It should be a Node.js module that exports an object of keys.
+    *Example `apikeys.js`:*
+    ```javascript
+    module.exports = {
+        gemini: 'YOUR_LOCAL_GEMINI_KEY',
+        ubot_key: 'YOUR_LOCAL_UBOT_KEY'
+    };
+    ```
+-   The `apiKey` value in your chatbot configuration in `api.config.js` should then reference a key from this object (e.g., `apiKey: apiKeys.ubot_key`).
+
+**3. Production / Deployment Configuration (Render, etc.)**
+
+For deployment environments, the application will automatically look for configuration files in the `/etc/secrets/` directory. This is compatible with Render's "Secret Files" feature.
+
+The server will attempt to load the following files if they exist:
+-   **`/etc/secrets/apikeys.js`**: This file should contain your production API keys. It will be loaded *instead* of the local `apikeys.js`.
+-   **`/etc/secrets/api.user.js`**: This file should contain your custom chatbot configurations. Its contents will be **merged over** the base `api.config.js`, allowing you to add new bots or override existing ones for your production environment.
+
+*Example `api.user.js` for Production:*
+See the `api.user.js.example` file for a template.
 ```javascript
-module.exports = {
-    gemini: 'YOUR_GEMINI_API_KEY',
-    custombot: 'YOUR_CUSTOM_BOT_API_KEY'
-};
-```
-
-Then, in `api.config.js`, you can reference these keys:
-```javascript
-'#custombot': {
+// /etc/secrets/api.user.js
+const userChatbotConfig = {
+  '#ubot': {
     type: 'paid',
     service: 'openai-compatible',
-    apiKey: apiKeys.custombot, // References the key from apikeys.js
-    //...
-},
+    displayName: 'U-Bot (Production)',
+    // The apiKey value 'ubot_prod_key' must have a corresponding
+    // entry in your /etc/secrets/apikeys.js file.
+    apiKey: 'ubot_prod_key',
+    endpoint: 'https://my-chatbot-url.com/v1/chat/completions'
+  }
+};
+module.exports = userChatbotConfig;
 ```
-
-**Method 2: External Configuration (for Deployment)**
-
-For deployment environments like Render, it's better to use an external configuration file. This allows you to manage your production configuration without changing the code.
-
-1.  **Set the `CHATBOT_CONFIG_PATH` Environment Variable**
-
-    In your deployment service (e.g., Render), set an environment variable named `CHATBOT_CONFIG_PATH` to the path of your custom configuration file. For Render's "Secret Files", this path might be `/etc/secrets/your-config-filename`.
-
-2.  **Create a Custom Configuration File**
-
-    Create a JSON file with your custom chatbot configurations. This file will be **merged** over the base `api.config.js`, meaning you can add new bots or override existing ones. See `custom-chatbot-config.json.example` for a template.
-
-    *Example Custom `my-render-config.json`:*
-    ```json
-    {
-      "#ubot": {
-        "type": "paid",
-        "service": "openai-compatible",
-        "displayName": "U-Bot (Production)",
-        "apiKey": "ENV:UBOT_API_KEY",
-        "endpoint": "https://my-chatbot-url.com/v1/chat/completions"
-      }
-    }
-    ```
-
-3.  **Provide API Keys via Environment Variables**
-
-    In your custom JSON file, for any `apiKey`, use the format `"ENV:YOUR_ENV_VARIABLE_NAME"`. The server will replace this placeholder with the actual value of the environment variable at runtime.
-
-    In the example above, you would need to set an environment variable named `UBOT_API_KEY` in your deployment service with the actual secret key. This is the most secure way to handle API keys in production.
-
-    The application supports several service types:
-
-    **A) `url` type (Simple Custom API)**
-    This type sends a POST request to a custom endpoint with a simple JSON payload: `{ "prompt": "user's message" }`.
-
-    *Example Configuration:*
-    ```javascript
-    '#ask': {
-        type: 'url',
-        displayName: 'Assistant',
-        endpoint: 'https://api.your-service.com/chat'
-    },
-    ```
-
-    **B) `openai-compatible` type (Advanced Custom API)**
-    This type is for services that are compatible with the OpenAI `v1/chat/completions` API format. It sends a more complex JSON payload and requires an API key.
-
-    *Example Configuration:*
-    ```javascript
-    '#custombot': {
-        type: 'paid',
-        service: 'openai-compatible',
-        displayName: 'Custom Bot',
-        model: 'chat-model-name',
-        apiKey: apiKeys.custombot, // This must match a key in apikeys.js
-        endpoint: 'http://YOUR_BOT_URL/v1/chat/completions',
-        systemPrompt: 'You are a helpful assistant.'
-    },
-    ```
-
-    **C) `gemini` type (Google Gemini)**
-    This type is specifically for Google's Gemini models.
-
-    *Example Configuration:*
-    ```javascript
-    '#gemini': {
-        type: 'paid',
-        service: 'gemini',
-        model: 'gemini-1.5-flash',
-        apiKey: apiKeys.gemini // This must match a key in apikeys.js
-    },
-    ```
-
-    **Important**: When adding a new configuration block, ensure it is separated from the previous block by a **comma (`,`)**, as shown in the examples.
+*Example `apikeys.js` for Production:*
+```javascript
+// /etc/secrets/apikeys.js
+module.exports = {
+    ubot_prod_key: 'PASTE_YOUR_PRODUCTION_API_KEY_HERE'
+};
+```
+This layered system allows you to maintain a clean separation between your base code, local development settings, and production configuration.
 
 ### 6. Main Display & Menu
 The central area is designed for displaying primary content.

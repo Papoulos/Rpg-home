@@ -5,26 +5,37 @@ const WebSocket = require('ws');
 const path = require('path');
 const fs = require('fs');
 const fetch = require('node-fetch');
-let chatbotConfig = require('./api.config.js'); // Use 'let' to allow reassignment
+const chatbotConfig = require('./api.config.js');
 const app = express();
 
 // --- Dynamic Configuration Loading ---
-// Allows overriding or extending the base chatbot config using a file specified
-// by an environment variable. This is useful for deployments (e.g., Render).
-const customConfigPath = process.env.CHATBOT_CONFIG_PATH;
-if (customConfigPath) {
-    console.log(`[CONFIG] Loading custom chatbot configuration from: ${customConfigPath}`);
+// Allows overriding or extending the base config with files from a secrets path,
+// which is common in deployment environments like Render.
+
+// Load API keys from secrets, falling back to local file
+let apiKeys = {};
+try {
+    // First, try loading from the conventional secrets path
+    apiKeys = require('/etc/secrets/apikeys.js');
+    console.log('[CONFIG] Loaded API keys from /etc/secrets/apikeys.js');
+} catch (e) {
+    // If that fails, try loading the local file for development
     try {
-        const customConfigRaw = fs.readFileSync(customConfigPath, 'utf-8');
-        const customConfig = JSON.parse(customConfigRaw);
-        // Merge custom config over the base config.
-        // Properties in customConfig will overwrite properties in chatbotConfig.
-        chatbotConfig = { ...chatbotConfig, ...customConfig };
-        console.log('[CONFIG] Custom chatbot configuration loaded and merged successfully.');
-    } catch (error) {
-        console.error(`[CONFIG] FAILED to load or parse custom chatbot configuration:`, error);
-        // We proceed with the base config if the custom one fails.
+        apiKeys = require('./apikeys.js');
+        console.log('[CONFIG] Loaded local API keys from apikeys.js');
+    } catch (e) {
+        console.warn('[CONFIG] No apikeys.js file found. Paid chatbot features may be disabled.');
     }
+}
+
+// Load and merge custom user config from secrets, falling back to base config
+try {
+    const userConfig = require('/etc/secrets/api.user.js');
+    console.log('[CONFIG] Loaded user config from /etc/secrets/api.user.js. Merging...');
+    // Merge user config over the base config.
+    Object.assign(chatbotConfig, userConfig);
+} catch (e) {
+    console.log('[CONFIG] No /etc/secrets/api.user.js file found. Using default config.');
 }
 
 const useSSL = !process.argv.includes('--nossl');
@@ -90,12 +101,6 @@ async function handleChatbotRequest(prompt, config, trigger) {
     const finalPrompt = `${systemPrompt}\n\nUser question: ${prompt}`;
 
     try {
-        // Resolve API key from environment variable if the config value is a string like "ENV:VAR_NAME"
-        if (typeof config.apiKey === 'string' && config.apiKey.startsWith('ENV:')) {
-            const envVarName = config.apiKey.substring(4);
-            config.apiKey = process.env[envVarName];
-        }
-
         if (config.type === 'url') {
             const response = await fetch(config.endpoint, {
                 method: 'POST',
