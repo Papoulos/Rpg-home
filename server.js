@@ -263,7 +263,46 @@ function loadWhiteboardState() {
 
 
 // --- WebSocket Server ---
+
+// Heartbeat function to detect and close dead connections.
+// This prevents idle connections from being dropped by intermediaries
+// and cleans up connections that are no longer responsive.
+const heartbeatInterval = setInterval(function ping() {
+  // Use wss.clients which is the raw Set of sockets from the 'ws' library
+  wss.clients.forEach(function each(ws) {
+    // Retrieve our associated client metadata from the Map
+    const client = clients.get(ws);
+
+    // If the client hasn't responded to the last ping, terminate.
+    if (client && client.isAlive === false) {
+      console.log(`[HEARTBEAT] Terminating unresponsive connection for user: ${client.username || 'N/A'}`);
+      return ws.terminate();
+    }
+
+    // Mark as potentially unresponsive and send a new ping.
+    // The 'pong' handler will mark it as 'alive' again.
+    if (client) {
+        client.isAlive = false;
+        ws.ping(() => {}); // The callback is optional but good practice
+    }
+  });
+}, 30000); // Run every 30 seconds
+
+// Clean up the interval when the server is shut down
+wss.on('close', function close() {
+  clearInterval(heartbeatInterval);
+});
+
+
 wss.on('connection', (ws) => {
+    // When a pong is received, mark the client as alive. This is part of the heartbeat mechanism.
+    ws.on('pong', () => {
+        const client = clients.get(ws);
+        if (client) {
+            client.isAlive = true;
+        }
+    });
+
     ws.on('message', (message) => {
         const data = JSON.parse(message);
 
@@ -289,7 +328,8 @@ wss.on('connection', (ws) => {
         switch (data.type) {
             case 'register':
                 const isMJ = data.username.toLowerCase() === 'mj';
-                clients.set(ws, { username: data.username, ws: ws, isMJ });
+                // Initialize client with isAlive property for heartbeat mechanism
+                clients.set(ws, { username: data.username, ws: ws, isMJ, isAlive: true });
 
                 ws.send(JSON.stringify({ type: 'history', messages: chatHistory }));
                 ws.send(JSON.stringify({ type: 'image-list-update', list: imageList }));
