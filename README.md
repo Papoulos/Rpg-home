@@ -113,14 +113,13 @@ The server will attempt to load the following files if they exist:
 *Example `api.user.js` for Production:*
 See the `api.user.js.example` file for a template.
 ```javascript
-// /etc/secrets/api.user.js
+// In /etc/secrets/api.user.js
 const userChatbotConfig = {
   '#ubot': {
     type: 'paid',
     service: 'openai-compatible',
     displayName: 'U-Bot (Production)',
-    // The apiKey value 'ubot_prod_key' must have a corresponding
-    // entry in your /etc/secrets/apikeys.js file.
+    // This string MUST match a key in your apikeys.js file.
     apiKey: 'ubot_prod_key',
     endpoint: 'https://my-chatbot-url.com/v1/chat/completions'
   }
@@ -129,8 +128,9 @@ module.exports = userChatbotConfig;
 ```
 *Example `apikeys.js` for Production:*
 ```javascript
-// /etc/secrets/apikeys.js
+// In /etc/secrets/apikeys.js
 module.exports = {
+    // This key is referenced by the 'apiKey' string in api.user.js
     ubot_prod_key: 'PASTE_YOUR_PRODUCTION_API_KEY_HERE'
 };
 ```

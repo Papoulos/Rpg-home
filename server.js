@@ -269,7 +269,15 @@ wss.on('connection', (ws) => {
             const trigger = Object.keys(chatbotConfig).find(key => data.message.startsWith(key));
             if (trigger) {
                 const prompt = data.message.substring(trigger.length).trim();
-                handleChatbotRequest(prompt, chatbotConfig[trigger], trigger);
+                const config = { ...chatbotConfig[trigger] }; // Clone to avoid modifying the original object
+
+                // If the apiKey is a string, it's treated as a key name to look up in the apiKeys object.
+                // This allows configs to refer to keys without having direct access to the apiKeys object.
+                if (typeof config.apiKey === 'string' && apiKeys[config.apiKey]) {
+                    config.apiKey = apiKeys[config.apiKey];
+                }
+
+                handleChatbotRequest(prompt, config, trigger);
                 return;
             }
         }
