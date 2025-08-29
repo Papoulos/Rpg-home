@@ -1,0 +1,21 @@
+{
+  "//": "This is an example of a custom chatbot configuration file.",
+  "//": "You can use this to add new chatbots or override the default ones from api.config.js.",
+  "//": "The keys and values here will be merged over the base configuration.",
+
+  "#ubot": {
+    "type": "paid",
+    "service": "openai-compatible",
+    "displayName": "U-Bot (Production)",
+    "model": "gpt-4",
+    "apiKey": "ENV:MY_UBOT_API_KEY",
+    "endpoint": "https://api.my-production-bot.com/v1/chat/completions",
+    "systemPrompt": "You are U-Bot, a highly advanced assistant for production environments."
+  },
+
+  "//": "The #ask bot below is an example of overriding an existing bot from the base config.",
+  "#ask": {
+    "displayName": "Assistant (Overridden)",
+    "endpoint": "https://api.my-other-service.com/chat/ask"
+  }
+}

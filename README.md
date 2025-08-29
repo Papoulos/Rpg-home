@@ -82,21 +82,62 @@ The chat is integrated with a configurable AI chatbot, allowing you to connect t
 
 #### How to Configure a Chatbot
 
-1.  **Create `apikeys.js` (if needed)**
+There are two ways to configure chatbots:
+1.  Editing the local `api.config.js` file directly.
+2.  Using an external JSON file for deployment environments like Render or Docker.
 
-    If you are using a service that requires an API key, create a file named `apikeys.js` and export your keys using `module.exports`.
+**Method 1: Local Configuration (`api.config.js`)**
 
-    *Example `apikeys.js`:*
-    ```javascript
-    module.exports = {
-        gemini: 'YOUR_GEMINI_API_KEY',
-        custombot: 'YOUR_CUSTOM_BOT_API_KEY'
-    };
+For local development, you can directly edit `api.config.js`. If your bot requires an API key, you should create an `apikeys.js` file (this is kept out of git).
+
+*Example `apikeys.js`:*
+```javascript
+module.exports = {
+    gemini: 'YOUR_GEMINI_API_KEY',
+    custombot: 'YOUR_CUSTOM_BOT_API_KEY'
+};
+```
+
+Then, in `api.config.js`, you can reference these keys:
+```javascript
+'#custombot': {
+    type: 'paid',
+    service: 'openai-compatible',
+    apiKey: apiKeys.custombot, // References the key from apikeys.js
+    //...
+},
+```
+
+**Method 2: External Configuration (for Deployment)**
+
+For deployment environments like Render, it's better to use an external configuration file. This allows you to manage your production configuration without changing the code.
+
+1.  **Set the `CHATBOT_CONFIG_PATH` Environment Variable**
+
+    In your deployment service (e.g., Render), set an environment variable named `CHATBOT_CONFIG_PATH` to the path of your custom configuration file. For Render's "Secret Files", this path might be `/etc/secrets/your-config-filename`.
+
+2.  **Create a Custom Configuration File**
+
+    Create a JSON file with your custom chatbot configurations. This file will be **merged** over the base `api.config.js`, meaning you can add new bots or override existing ones. See `custom-chatbot-config.json.example` for a template.
+
+    *Example Custom `my-render-config.json`:*
+    ```json
+    {
+      "#ubot": {
+        "type": "paid",
+        "service": "openai-compatible",
+        "displayName": "U-Bot (Production)",
+        "apiKey": "ENV:UBOT_API_KEY",
+        "endpoint": "https://my-chatbot-url.com/v1/chat/completions"
+      }
+    }
     ```
 
-2.  **Edit `api.config.js`**
+3.  **Provide API Keys via Environment Variables**
 
-    Open `api.config.js` and add or uncomment a configuration block for the chatbot you want to use. The key of the object (e.g., `'#ask'`) is the command that triggers the bot.
+    In your custom JSON file, for any `apiKey`, use the format `"ENV:YOUR_ENV_VARIABLE_NAME"`. The server will replace this placeholder with the actual value of the environment variable at runtime.
+
+    In the example above, you would need to set an environment variable named `UBOT_API_KEY` in your deployment service with the actual secret key. This is the most secure way to handle API keys in production.
 
     The application supports several service types:
 

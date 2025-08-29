@@ -5,8 +5,27 @@ const WebSocket = require('ws');
 const path = require('path');
 const fs = require('fs');
 const fetch = require('node-fetch');
-const chatbotConfig = require('./api.config.js');
+let chatbotConfig = require('./api.config.js'); // Use 'let' to allow reassignment
 const app = express();
+
+// --- Dynamic Configuration Loading ---
+// Allows overriding or extending the base chatbot config using a file specified
+// by an environment variable. This is useful for deployments (e.g., Render).
+const customConfigPath = process.env.CHATBOT_CONFIG_PATH;
+if (customConfigPath) {
+    console.log(`[CONFIG] Loading custom chatbot configuration from: ${customConfigPath}`);
+    try {
+        const customConfigRaw = fs.readFileSync(customConfigPath, 'utf-8');
+        const customConfig = JSON.parse(customConfigRaw);
+        // Merge custom config over the base config.
+        // Properties in customConfig will overwrite properties in chatbotConfig.
+        chatbotConfig = { ...chatbotConfig, ...customConfig };
+        console.log('[CONFIG] Custom chatbot configuration loaded and merged successfully.');
+    } catch (error) {
+        console.error(`[CONFIG] FAILED to load or parse custom chatbot configuration:`, error);
+        // We proceed with the base config if the custom one fails.
+    }
+}
 
 const useSSL = !process.argv.includes('--nossl');
 let server;
@@ -71,6 +90,12 @@ async function handleChatbotRequest(prompt, config, trigger) {
     const finalPrompt = `${systemPrompt}\n\nUser question: ${prompt}`;
 
     try {
+        // Resolve API key from environment variable if the config value is a string like "ENV:VAR_NAME"
+        if (typeof config.apiKey === 'string' && config.apiKey.startsWith('ENV:')) {
+            const envVarName = config.apiKey.substring(4);
+            config.apiKey = process.env[envVarName];
+        }
+
         if (config.type === 'url') {
             const response = await fetch(config.endpoint, {
                 method: 'POST',
