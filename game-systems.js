@@ -41,17 +41,18 @@
                 resultText = `Difficulté ${difficulty} (${target}).`;
                 resultText += `<br>Jet : <strong>${roll}</strong>`;
 
+
+                if (effort > 0) resultText += ` + ${effort * 3} (E)`;
+                if (hindrance > 0) resultText += ` - ${hindrance * 3} (M)`;
+                if (effort > 0 || hindrance > 0) resultText += `<br>Total modifié : <strong>${modifiedRoll}</strong>`;
+
                 if (effort > 0) {
                     let cost = 0;
                     if (effort >= 1) cost += 3;
                     if (effort > 1) cost += (effort - 1) * 2;
                     resultText += `<br><em>Coût de l'effort : ${cost} points.</em>`;
                 }
-
-                if (effort > 0) resultText += ` + ${effort * 3} (E)`;
-                if (hindrance > 0) resultText += ` - ${hindrance * 3} (M)`;
-                if (effort > 0 || hindrance > 0) resultText += `<br>Total modifié : <strong>${modifiedRoll}</strong>`;
-
+                
                 if (roll === 1) {
                     resultText += '<br><br><strong>Échec critique !</strong> Le MJ peut introduire une intrusion.';
                 } else if (roll === 20) {
