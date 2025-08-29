@@ -51,9 +51,9 @@
                     resultText += '<br><strong>Réussite critique !</strong> Le joueur gagne un bénéfice majeur.';
                 } else {
                     if (modifiedRoll > target) {
-                        resultText += `<br><strong>Réussite !</strong> Le total de ${modifiedRoll} bat la cible de ${target}.`;
+                        resultText += `<br><strong>Réussite !</strong>`;
                     } else {
-                        resultText += `<br><strong>Échec.</strong> Le total de ${modifiedRoll} n'atteint pas la cible de ${target}.`;
+                        resultText += `<br><strong>Échec.</strong>`;
                     }
                 }
 
