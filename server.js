@@ -92,7 +92,7 @@ function broadcastToOthers(ws, message) {
 }
 
 // --- Chatbot Functions ---
-async function handleChatbotRequest(prompt, config, trigger) {
+async function handleChatbotRequest(prompt, config, trigger, originalMessage, senderUsername) {
     const chatbotName = config.displayName || config.service || 'Chatbot';
     let responseMessage;
 
@@ -178,11 +178,13 @@ async function handleChatbotRequest(prompt, config, trigger) {
         responseMessage = `Désolé, une erreur est survenue en contactant l'IA. (${error.message})`;
     }
 
+    const formattedMessage = `> **${senderUsername}:** ${originalMessage}\n\n${responseMessage}`;
+
     const finalMessage = {
         type: 'chat',
         sender: chatbotName,
         timestamp: new Date().toISOString(),
-        message: responseMessage
+        message: formattedMessage
     };
     broadcast(finalMessage);
     appendToHistory(finalMessage);
@@ -268,21 +270,6 @@ wss.on('connection', (ws) => {
         if (data.type === 'chat') {
             const trigger = Object.keys(chatbotConfig).find(key => data.message.startsWith(key));
             if (trigger) {
-                // First, broadcast the user's original message so it appears in the chat
-                const clientInfo = clients.get(ws);
-                if (clientInfo) {
-                    const userMessage = {
-                        type: 'chat',
-                        sender: clientInfo.username,
-                        message: data.message,
-                        timestamp: new Date().toISOString()
-                    };
-                    chatHistory.push(userMessage);
-                    appendToHistory(userMessage);
-                    broadcast(userMessage);
-                }
-
-                // Then, handle the chatbot request
                 const prompt = data.message.substring(trigger.length).trim();
                 const config = { ...chatbotConfig[trigger] }; // Clone to avoid modifying the original object
 
@@ -292,7 +279,9 @@ wss.on('connection', (ws) => {
                     config.apiKey = apiKeys[config.apiKey];
                 }
 
-                handleChatbotRequest(prompt, config, trigger);
+                const clientInfo = clients.get(ws);
+                const senderUsername = clientInfo ? clientInfo.username : 'User';
+                handleChatbotRequest(prompt, config, trigger, data.message, senderUsername);
                 return;
             }
         }
