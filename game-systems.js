@@ -38,12 +38,12 @@
                 const target = difficulty * 3;
                 const modifiedRoll = roll + (effort * 3) - (hindrance * 3);
 
-                resultText = `Difficulté ${difficulty} (cible > ${target}).`;
-                resultText += ` Jet : <strong>${roll}</strong>`;
+                resultText = `Difficulté ${difficulty} (${target}).`;
+                resultText += `<br>Jet : <strong>${roll}</strong>`;
 
-                if (effort > 0) resultText += ` + ${effort * 3} (Effort)`;
-                if (hindrance > 0) resultText += ` - ${hindrance * 3} (Malus)`;
-                if (effort > 0 || hindrance > 0) resultText += `. Total modifié : <strong>${modifiedRoll}</strong>`;
+                if (effort > 0) resultText += ` + ${effort * 3} (E)`;
+                if (hindrance > 0) resultText += ` - ${hindrance * 3} (M)`;
+                if (effort > 0 || hindrance > 0) resultText += `<br>Total modifié : <strong>${modifiedRoll}</strong>`;
 
                 if (roll === 1) {
                     resultText += '<br><strong>Échec critique !</strong> Le MJ peut introduire une intrusion.';
