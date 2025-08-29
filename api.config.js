@@ -6,15 +6,9 @@
  * The server will check if a message starts with any of these keywords.
  */
 
-let apiKeys = {};
-try {
-    apiKeys = require('./apikeys');
-} catch (error) {
-    console.warn("[CONFIG] 'apikeys.js' not found. Paid chatbot features will be disabled.");
-}
-
 const chatbotConfig = {
     // --- Example for a custom URL API ---
+    // This type of API does not require a key in this configuration.
     // To use, a user would type: "#ask <your prompt>"
     '#ask': {
         type: 'url',
@@ -24,37 +18,38 @@ const chatbotConfig = {
 
     // --- Example for Google Gemini ---
     // To use, a user would type: "#gemini <your prompt>"
-    // To enable, uncomment this section and provide your API key in 'apikeys.js'.
+    // To enable, uncomment this section and set your GEMINI_API_KEY in the .env file.
     /*
     '#gemini': {
         type: 'paid',
         service: 'gemini',
         model: 'gemini-1.5-flash',
-        apiKey: apiKeys.gemini
+        apiKey: 'GEMINI_API_KEY' // This string must match the variable name in .env
     },
     */
 
     // --- Example for Mistral AI ---
+    // This service is not yet implemented in server.js, but this is how you would configure it.
     // To use, a user would type: "#mistral <your prompt>"
-    // To enable, uncomment this section and provide your API key in 'apikeys.js'.
+    // To enable, uncomment this section and set your MISTRAL_API_KEY in the .env file.
     /*
     '#mistral': {
         type: 'paid',
         service: 'mistral',
-        apiKey: apiKeys.mistral
+        apiKey: 'MISTRAL_API_KEY' // This string must match the variable name in .env
     },
     */
 
     // --- Example for a custom OpenAI-compatible API ---
     // To use, a user would type: "#custombot <your prompt>"
-    // To enable, uncomment this section and provide your details.
+    // To enable, uncomment this section and set your CUSTOM_BOT_API_KEY in the .env file.
     /*
     '#custombot': {
         type: 'paid',
         service: 'openai-compatible',
         displayName: 'Custom Bot', // Optional: The name displayed in chat
         model: 'chat', // The model name your API expects
-        apiKey: apiKeys.custombot, // Add your key to apikeys.js
+        apiKey: 'CUSTOM_BOT_API_KEY', // This string must match the variable name in .env
         endpoint: 'http://YOUR_BOT_URL/v1/chat/completions',
         systemPrompt: 'You are a helpful assistant.' // The system message
     },

@@ -5,37 +5,25 @@ const WebSocket = require('ws');
 const path = require('path');
 const fs = require('fs');
 const fetch = require('node-fetch');
+require('dotenv').config(); // Load environment variables from .env file
 const chatbotConfig = require('./api.config.js');
 const app = express();
 
 // --- Dynamic Configuration Loading ---
-// Allows overriding or extending the base config with files from a secrets path,
-// which is common in deployment environments like Render.
-
-// Load API keys from secrets, falling back to local file
-let apiKeys = {};
+// Allows for a base config to be extended by a user-specific config.
+// In production, api.user.js can be provided as a secret file.
 try {
-    // First, try loading from the conventional secrets path
-    apiKeys = require('/etc/secrets/apikeys.js');
-    console.log('[CONFIG] Loaded API keys from /etc/secrets/apikeys.js');
-} catch (e) {
-    // If that fails, try loading the local file for development
-    try {
-        apiKeys = require('./apikeys.js');
-        console.log('[CONFIG] Loaded local API keys from apikeys.js');
-    } catch (e) {
-        console.warn('[CONFIG] No apikeys.js file found. Paid chatbot features may be disabled.');
-    }
-}
-
-// Load and merge custom user config from secrets, falling back to base config
-try {
-    const userConfig = require('/etc/secrets/api.user.js');
-    console.log('[CONFIG] Loaded user config from /etc/secrets/api.user.js. Merging...');
-    // Merge user config over the base config.
+    const userConfig = require('./api.user.js');
+    console.log('[CONFIG] Loaded local api.user.js. Merging...');
     Object.assign(chatbotConfig, userConfig);
 } catch (e) {
-    console.log('[CONFIG] No /etc/secrets/api.user.js file found. Using default config.');
+    try {
+        const userConfig = require('/etc/secrets/api.user.js');
+        console.log('[CONFIG] Loaded user config from /etc/secrets/api.user.js. Merging...');
+        Object.assign(chatbotConfig, userConfig);
+    } catch (e) {
+        console.log('[CONFIG] No user configuration file found. Using default config.');
+    }
 }
 
 const useSSL = !process.argv.includes('--nossl');
@@ -273,10 +261,10 @@ wss.on('connection', (ws) => {
                 const prompt = data.message.substring(trigger.length).trim();
                 const config = { ...chatbotConfig[trigger] }; // Clone to avoid modifying the original object
 
-                // If the apiKey is a string, it's treated as a key name to look up in the apiKeys object.
-                // This allows configs to refer to keys without having direct access to the apiKeys object.
-                if (typeof config.apiKey === 'string' && apiKeys[config.apiKey]) {
-                    config.apiKey = apiKeys[config.apiKey];
+                // If the apiKey in the config is a string (e.g., "GEMINI_API_KEY"),
+                // it's treated as an environment variable name.
+                if (typeof config.apiKey === 'string' && process.env[config.apiKey]) {
+                    config.apiKey = process.env[config.apiKey];
                 }
 
                 const clientInfo = clients.get(ws);

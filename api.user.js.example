@@ -1,5 +1,6 @@
 // This is an example of a custom user configuration file for chatbots.
 // It should be a JavaScript module that exports an object.
+// You can copy this file to `api.user.js` for local development.
 // In a deployment environment like Render, you would create this file
 // as a "Secret File" at the path /etc/secrets/api.user.js
 
@@ -8,15 +9,15 @@
 
 const userChatbotConfig = {
   // This is an example of adding a new bot.
-  // The API key for this bot should be defined in your /etc/secrets/apikeys.js file.
+  // The API key for this bot should be defined in your .env file.
   '#ubot': {
     type: 'paid',
     service: 'openai-compatible',
     displayName: 'U-Bot (Production)',
     model: 'gpt-4',
-    // The 'apiKey' property will be looked for in the 'apiKeys' object
-    // loaded from your secrets file.
-    apiKey: 'ubot_production_key',
+    // The 'apiKey' property should be a string that matches the variable name
+    // in your .env file (e.g., UBOT_PRODUCTION_KEY="...").
+    apiKey: 'UBOT_PRODUCTION_KEY',
     endpoint: 'https://api.my-production-bot.com/v1/chat/completions',
     systemPrompt: 'You are U-Bot, a highly advanced assistant for production environments.'
   },
