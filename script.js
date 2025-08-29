@@ -312,6 +312,7 @@
                     const isNowHidden = item.panel.classList.contains(item.class);
 
                     item.resizer.style.display = isNowHidden ? 'none' : 'block';
+                    item.btn.classList.toggle('collapsed', isNowHidden);
 
                     if (isNowHidden) {
                         // Remove inline style so the CSS class can position the button at the edge
@@ -321,24 +322,13 @@
                         const panelWidthVar = getComputedStyle(item.panel).getPropertyValue(`--${item.side}-panel-width`);
                         item.btn.style[item.side] = `calc(${panelWidthVar} - ${item.btn.offsetWidth}px)`;
                     }
-
-                    // Update button text/icon based on state
-                    if (item.btn.id === 'toggle-chat-btn') {
-                        item.btn.textContent = isNowHidden ? '»' : '«';
-                    } else {
-                        item.btn.textContent = isNowHidden ? '«' : '»';
-                    }
                 });
 
                 // Initial state check
                 const initiallyHidden = item.panel.classList.contains(item.class);
                 if (initiallyHidden) {
                     item.resizer.style.display = 'none';
-                    if (item.btn.id === 'toggle-chat-btn') {
-                        item.btn.textContent = '»';
-                    } else {
-                        item.btn.textContent = '«';
-                    }
+                    item.btn.classList.add('collapsed');
                 }
             }
         });
