@@ -92,6 +92,44 @@ async function handleChatbotRequest(prompt, config, trigger) {
             const data = await response.json();
             responseMessage = data.candidates[0].content.parts[0].text || 'Gemini n\'a pas pu répondre.';
 
+        } else if (config.type === 'paid' && config.service === 'openai-compatible') {
+            if (!config.apiKey || config.apiKey.includes('PASTE_YOUR')) {
+                throw new Error(`API key for ${config.service} is missing or is a placeholder.`);
+            }
+            if (!config.endpoint) {
+                throw new Error(`Endpoint URL for ${config.service} is missing.`);
+            }
+
+            const body = {
+                model: config.model || 'chat',
+                messages: [
+                    { role: 'system', content: config.systemPrompt || 'You are a helpful assistant.' },
+                    { role: 'user', content: prompt }
+                ]
+            };
+
+            const response = await fetch(config.endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': config.apiKey
+                },
+                body: JSON.stringify(body)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`OpenAI-compatible API request failed with status ${response.status}: ${errorText}`);
+            }
+
+            const data = await response.json();
+            // Standard OpenAI format is response.choices[0].message.content
+            if (data.choices && data.choices[0] && data.choices[0].message) {
+                responseMessage = data.choices[0].message.content;
+            } else {
+                responseMessage = 'Le chatbot a répondu dans un format inattendu.';
+            }
+
         } else {
             throw new Error(`The API type '${config.type}' or service '${config.service}' is not implemented.`);
         }

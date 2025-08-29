@@ -44,6 +44,21 @@ const chatbotConfig = {
         apiKey: apiKeys.mistral
     },
     */
+
+    // --- Example for a custom OpenAI-compatible API ---
+    // To use, a user would type: "#custombot <your prompt>"
+    // To enable, uncomment this section and provide your details.
+    /*
+    '#custombot': {
+        type: 'paid',
+        service: 'openai-compatible',
+        displayName: 'Custom Bot', // Optional: The name displayed in chat
+        model: 'chat', // The model name your API expects
+        apiKey: apiKeys.custombot, // Add your key to apikeys.js
+        endpoint: 'http://YOUR_BOT_URL/v1/chat/completions',
+        systemPrompt: 'You are a helpful assistant.' // The system message
+    },
+    */
 };
 
 module.exports = chatbotConfig;
