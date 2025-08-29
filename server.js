@@ -268,6 +268,21 @@ wss.on('connection', (ws) => {
         if (data.type === 'chat') {
             const trigger = Object.keys(chatbotConfig).find(key => data.message.startsWith(key));
             if (trigger) {
+                // First, broadcast the user's original message so it appears in the chat
+                const clientInfo = clients.get(ws);
+                if (clientInfo) {
+                    const userMessage = {
+                        type: 'chat',
+                        sender: clientInfo.username,
+                        message: data.message,
+                        timestamp: new Date().toISOString()
+                    };
+                    chatHistory.push(userMessage);
+                    appendToHistory(userMessage);
+                    broadcast(userMessage);
+                }
+
+                // Then, handle the chatbot request
                 const prompt = data.message.substring(trigger.length).trim();
                 const config = { ...chatbotConfig[trigger] }; // Clone to avoid modifying the original object
 
