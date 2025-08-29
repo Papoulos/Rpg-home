@@ -115,12 +115,28 @@
                     </div>
                     <canvas id="fabric-canvas"></canvas>
                 </div>
+                 <div id="music-content" class="tab-content">
+                    <!-- Contrôles pour le MJ, cachés par défaut -->
+                    <div class="music-controls hidden">
+                        <input type="text" id="youtube-url-input" placeholder="Coller le lien YouTube ici...">
+                        <button id="music-play-btn">Play</button>
+                        <button id="music-pause-btn">Pause</button>
+                        <div class="volume-control">
+                            <span>Volume:</span>
+                            <input type="range" id="music-volume-slider" min="0" max="100" value="100">
+                        </div>
+                        <div id="music-title">Aucune musique en cours</div>
+                    </div>
+                    <!-- Lecteur YouTube qui sera contrôlé par l'API -->
+                    <div id="youtube-player"></div>
+                </div>
             </div>
             <nav class="main-menu">
                 <a href="#carte" class="menu-item" data-target="carte-content">Carte</a>
                 <a href="#pj" class="menu-item" data-target="pj-content">PJ</a>
                 <a href="#prez" class="menu-item" data-target="prez-content">Prez</a>
                 <a href="#fabric" class="menu-item" data-target="fabric-content">Fabric</a>
+                <a href="#music" class="menu-item" data-target="music-content">Musique</a>
             </nav>
         </main>
         <div class="resizer" id="resizer-right"></div>
@@ -153,5 +169,6 @@
     <script src="sheets.js" defer></script>
     <script src="images.js" defer></script>
     <script src="fabric-whiteboard.js" defer></script>
+    <script src="music.js" defer></script>
 </body>
 </html>
