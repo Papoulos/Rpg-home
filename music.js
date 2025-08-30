@@ -1,17 +1,26 @@
 // IIFE to encapsulate the music player logic
 (() => {
+    // --- State ---
     let player;
     let isMJ = false;
+    let playlist = [];
+    let currentIndex = -1;
+    let isLooping = false;
+    let isPlayerReady = false;
 
-    // DOM Elements
-    let musicControls, youtubeUrlInput, musicPlayBtn, musicPauseBtn, musicVolumeSlider, musicTitle;
+    // --- DOM Elements ---
+    let musicContainer, musicMainControls, musicCurrentTitle, musicPlayPauseBtn, playIcon, pauseIcon,
+        musicVolumeSlider, youtubeUrlInput, musicAddBtn, musicLoopToggle, musicPlaylistContainer;
 
-    // This function creates an <iframe> (and YouTube player)
-    // after the API code downloads.
+    // --- YouTube Player API Functions ---
+
     function onYouTubeIframeAPIReady() {
         player = new YT.Player('youtube-player', {
-            height: '0', // Player is invisible
+            height: '0',
             width: '0',
+            playerVars: {
+                'playsinline': 1
+            },
             events: {
                 'onReady': onPlayerReady,
                 'onStateChange': onPlayerStateChange,
@@ -20,32 +29,25 @@
         });
     }
 
-    // The API will call this function when the video player is ready.
     function onPlayerReady(event) {
-        // Player is ready, we can now control it.
-        // We might want to request the current music state from the server here.
         console.log("YouTube Player is ready.");
+        isPlayerReady = true;
+        // Request initial state from server
+        sendMusicControl('request-sync');
     }
 
-    // The API calls this function when the player's state changes.
     function onPlayerStateChange(event) {
-        if (event.data == YT.PlayerState.PLAYING) {
-            // Update the UI with the video title
-            const videoData = player.getVideoData();
-            musicTitle.textContent = videoData.title || 'Lecture en cours...';
-        } else if (event.data == YT.PlayerState.PAUSED) {
-            musicTitle.textContent = 'Musique en pause';
-        } else if (event.data == YT.PlayerState.ENDED) {
-            musicTitle.textContent = 'Aucune musique en cours';
+        updatePlayPauseIcon(event.data);
+        if (event.data === YT.PlayerState.ENDED) {
+            playNextSong();
         }
     }
 
     function onPlayerError(event) {
         console.error("YouTube Player Error:", event.data);
-        musicTitle.textContent = "Erreur de lecture de la vidéo.";
+        musicCurrentTitle.textContent = "Erreur de lecture de la vidéo.";
     }
 
-    // Function to load the YouTube Iframe API
     function loadYoutubeAPI() {
         const tag = document.createElement('script');
         tag.src = "https://www.youtube.com/iframe_api";
@@ -53,124 +55,271 @@
         firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
     }
 
-    // Helper to send control messages to the server
-    function sendMusicControl(action, value = null) {
-        if (window.socket && window.socket.readyState === WebSocket.OPEN) {
-            const payload = {
-                type: 'music-control',
-                action: action
-            };
-            if (value !== null) {
-                payload.value = value;
+    // --- Logic & Event Handlers ---
+
+    function playNextSong() {
+        if (playlist.length === 0) return;
+
+        let nextIndex = currentIndex + 1;
+        if (nextIndex >= playlist.length) {
+            if (isLooping) {
+                nextIndex = 0;
+            } else {
+                // End of playlist
+                musicCurrentTitle.textContent = "Fin de la playlist.";
+                currentIndex = -1;
+                updatePlaylistUI();
+                return;
             }
-            window.socket.send(JSON.stringify(payload));
+        }
+        sendMusicControl('play', { index: nextIndex });
+    }
+
+    function handlePlayPauseClick() {
+        const playerState = player && typeof player.getPlayerState === 'function' ? player.getPlayerState() : -1;
+
+        if (playerState === YT.PlayerState.PLAYING) {
+            sendMusicControl('pause');
         } else {
-            console.error("WebSocket is not connected. Music control not sent.");
+            // If paused, resume. If stopped, play current or first song.
+            if (currentIndex === -1 && playlist.length > 0) {
+                sendMusicControl('play', { index: 0 });
+            } else {
+                sendMusicControl('play', { index: currentIndex });
+            }
         }
     }
 
-    // Extracts YouTube Video ID from various URL formats
+    function handleAddClick() {
+        const url = youtubeUrlInput.value.trim();
+        if (!url) return;
+        const videoId = getYouTubeVideoId(url);
+        if (videoId) {
+            // To get the title, we have to load it. This is a bit tricky.
+            // We'll let the server handle fetching the title.
+            sendMusicControl('playlist-add', { videoId });
+            youtubeUrlInput.value = '';
+        } else {
+            alert("URL YouTube invalide.");
+        }
+    }
+
+    function handleLoopToggle() {
+        isLooping = musicLoopToggle.checked;
+        sendMusicControl('playlist-toggle-loop', { isLooping });
+    }
+
+    function handleVolumeChange(event) {
+        sendMusicControl('volume', { volume: event.target.value });
+    }
+
     function getYouTubeVideoId(url) {
         const regex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
         const match = url.match(regex);
         return match ? match[1] : null;
     }
 
-    // --- Event Handlers ---
+    // --- UI Rendering ---
 
-    function handlePlayClick() {
-        const url = youtubeUrlInput.value;
-        const videoId = getYouTubeVideoId(url);
-        if (videoId) {
-            sendMusicControl('play', videoId);
-        } else {
-            alert("Veuillez entrer une URL YouTube valide.");
+    function renderPlaylist() {
+        musicPlaylistContainer.innerHTML = '';
+        playlist.forEach((song, index) => {
+            const item = document.createElement('div');
+            item.className = 'playlist-item';
+            item.dataset.index = index;
+            item.dataset.videoId = song.videoId;
+            item.draggable = true;
+
+            if (index === currentIndex) {
+                item.classList.add('playing');
+            }
+
+            item.innerHTML = `
+                <span class="playlist-item-title">${song.title || song.videoId}</span>
+                <div class="playlist-item-controls">
+                    <button class="control-btn btn-delete" title="Supprimer">
+                        <svg viewBox="0 0 24 24" fill="currentColor" style="width:18px; height:18px;"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"></path></svg>
+                    </button>
+                </div>
+            `;
+
+            // Event Listeners for playlist items
+            item.addEventListener('click', () => sendMusicControl('play', { index }));
+            item.querySelector('.btn-delete').addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent playing the song
+                sendMusicControl('playlist-remove', { videoId: song.videoId });
+            });
+
+            // Drag and Drop
+            item.addEventListener('dragstart', handleDragStart);
+            item.addEventListener('dragover', handleDragOver);
+            item.addEventListener('dragleave', handleDragLeave);
+            item.addEventListener('drop', handleDrop);
+
+            musicPlaylistContainer.appendChild(item);
+        });
+    }
+
+    function updatePlaylistUI() {
+        const items = musicPlaylistContainer.querySelectorAll('.playlist-item');
+        items.forEach((item, index) => {
+            if (index === currentIndex) {
+                item.classList.add('playing');
+                musicCurrentTitle.textContent = playlist[index].title;
+            } else {
+                item.classList.remove('playing');
+            }
+        });
+        if (currentIndex === -1) {
+            musicCurrentTitle.textContent = "Aucune musique sélectionnée";
         }
     }
 
-    function handlePauseClick() {
-        sendMusicControl('pause');
+    function updatePlayPauseIcon(state) {
+        if (state === YT.PlayerState.PLAYING) {
+            playIcon.classList.add('hidden');
+            pauseIcon.classList.remove('hidden');
+        } else {
+            playIcon.classList.remove('hidden');
+            pauseIcon.classList.add('hidden');
+        }
     }
 
-    function handleVolumeChange(event) {
-        const volume = event.target.value;
-        sendMusicControl('volume', volume);
+    // --- Drag and Drop Handlers ---
+    let draggedItem = null;
+
+    function handleDragStart(e) {
+        draggedItem = this;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/html', this.innerHTML);
+        setTimeout(() => this.classList.add('dragging'), 0);
     }
 
-    // --- Setup Functions ---
+    function handleDragOver(e) {
+        e.preventDefault();
+        this.classList.add('over');
+    }
+
+    function handleDragLeave(e) {
+        this.classList.remove('over');
+    }
+
+    function handleDrop(e) {
+        e.stopPropagation();
+        this.classList.remove('over');
+
+        if (draggedItem !== this) {
+            const fromIndex = parseInt(draggedItem.dataset.index, 10);
+            const toIndex = parseInt(this.dataset.index, 10);
+
+            // Reorder array
+            const item = playlist.splice(fromIndex, 1)[0];
+            playlist.splice(toIndex, 0, item);
+
+            sendMusicControl('playlist-reorder', { playlist });
+        }
+        draggedItem.classList.remove('dragging');
+        draggedItem = null;
+    }
+
+    // --- Communication ---
+
+    function sendMusicControl(action, value = {}) {
+        if (isMJ && window.socket && window.socket.readyState === WebSocket.OPEN) {
+            window.socket.send(JSON.stringify({ type: 'music-control', action, value }));
+        }
+    }
 
     function setupMJControls() {
         if (isMJ) {
-            musicControls.classList.remove('hidden');
-            musicPlayBtn.addEventListener('click', handlePlayClick);
-            musicPauseBtn.addEventListener('click', handlePauseClick);
+            musicContainer.classList.remove('hidden');
+            musicPlayPauseBtn.addEventListener('click', handlePlayPauseClick);
+            musicAddBtn.addEventListener('click', handleAddClick);
+            musicLoopToggle.addEventListener('change', handleLoopToggle);
             musicVolumeSlider.addEventListener('input', handleVolumeChange);
         } else {
-            musicControls.classList.add('hidden');
+            musicContainer.classList.add('hidden');
         }
     }
 
-    // --- Global Event Listeners from script.js ---
-
-    window.addEventListener('mj-status', (event) => {
-        isMJ = event.detail.isMJ;
-        setupMJControls();
-    });
+    // --- Global Event Listener from script.js ---
 
     window.addEventListener('music-control', (event) => {
+        if (!isPlayerReady) return;
         const { action, value } = event.detail;
-        if (!player) return;
 
         switch (action) {
             case 'play':
-                player.loadVideoById(value);
-                player.playVideo();
+                if (value.index >= 0 && value.index < playlist.length) {
+                    currentIndex = value.index;
+                    player.loadVideoById(playlist[currentIndex].videoId);
+                    player.playVideo();
+                    updatePlaylistUI();
+                }
                 break;
             case 'pause':
                 player.pauseVideo();
                 break;
             case 'volume':
-                player.setVolume(value);
-                // Also update the MJ's slider if they are not the one who initiated the change
-                // (though in the current model, only the MJ can)
-                if (isMJ) {
-                    musicVolumeSlider.value = value;
-                }
+                player.setVolume(value.volume);
+                if (isMJ) musicVolumeSlider.value = value.volume;
                 break;
-            case 'sync':
-                // Syncs a newly connected client
-                if (value.videoId) {
-                    player.loadVideoById(value.videoId, value.currentTime);
+            case 'playlist-update':
+                playlist = value.playlist || [];
+                isLooping = value.isLooping || false;
+                if (isMJ) musicLoopToggle.checked = isLooping;
+                renderPlaylist();
+                updatePlaylistUI();
+                break;
+            case 'sync': // Full state sync for new joiners or upon request
+                playlist = value.playlist || [];
+                isLooping = value.isLooping || false;
+                currentIndex = value.currentIndex;
+
+                if (isMJ) {
+                    musicLoopToggle.checked = isLooping;
+                    musicVolumeSlider.value = value.volume;
+                }
+
+                renderPlaylist();
+
+                if (currentIndex >= 0 && currentIndex < playlist.length) {
+                    player.loadVideoById(playlist[currentIndex].videoId, value.currentTime);
                     player.setVolume(value.volume);
                     if (value.isPlaying) {
                         player.playVideo();
                     } else {
                         player.pauseVideo();
                     }
-                     if (isMJ) {
-                        musicVolumeSlider.value = value.volume;
-                        youtubeUrlInput.value = `https://www.youtube.com/watch?v=${value.videoId}`;
-                    }
                 }
+                updatePlaylistUI();
                 break;
         }
     });
 
+    window.addEventListener('mj-status', (event) => {
+        isMJ = event.detail.isMJ;
+        setupMJControls();
+    });
 
     // --- Initialization ---
 
     document.addEventListener('DOMContentLoaded', () => {
         // Assign DOM elements
-        musicControls = document.querySelector('.music-controls');
-        youtubeUrlInput = document.getElementById('youtube-url-input');
-        musicPlayBtn = document.getElementById('music-play-btn');
-        musicPauseBtn = document.getElementById('music-pause-btn');
+        musicContainer = document.querySelector('.music-container');
+        musicMainControls = document.getElementById('music-main-controls');
+        musicCurrentTitle = document.getElementById('music-current-title');
+        musicPlayPauseBtn = document.getElementById('music-play-pause-btn');
+        playIcon = document.getElementById('play-icon');
+        pauseIcon = document.getElementById('pause-icon');
         musicVolumeSlider = document.getElementById('music-volume-slider');
-        musicTitle = document.getElementById('music-title');
+        youtubeUrlInput = document.getElementById('youtube-url-input');
+        musicAddBtn = document.getElementById('music-add-btn');
+        musicLoopToggle = document.getElementById('music-loop-toggle');
+        musicPlaylistContainer = document.getElementById('music-playlist');
 
-        // The YouTube API needs a global function to call, so we attach it to window
+        // The YouTube API needs a global function to call
         window.onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
         loadYoutubeAPI();
     });
-
 })();

@@ -67,20 +67,90 @@ let currentImageUrl = null; // Track the currently displayed image
 const clients = new Map();
 let whiteboardState = null; // Will store the JSON string of the fabric canvas
 
+const PLAYLIST_FILE = path.join(__dirname, 'playlist.json');
+
 // --- Music State ---
 let musicState = {
-    videoId: null,
+    playlist: [],
+    currentIndex: -1,
     isPlaying: false,
+    isLooping: false,
     volume: 100,
-    startTime: null, // Server time when video started playing
-    pauseTime: null  // Server time when video was paused
+    startTime: null,
+    pauseTime: null
 };
 
-// --- Utility Functions ---
+// --- Utility & Music Functions ---
+
+async function getYouTubeVideoTitle(videoId) {
+    const apiKey = apiKeys.youtube;
+    if (!apiKey || apiKey.includes('PASTE_YOUR')) {
+        console.warn('[YOUTUBE] YouTube API key is missing or is a placeholder. Using video ID as title.');
+        return videoId;
+    }
+    const url = `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&part=snippet&key=${apiKey}`;
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`YouTube API request failed with status ${response.status}`);
+        }
+        const data = await response.json();
+        if (data.items && data.items.length > 0) {
+            return data.items[0].snippet.title;
+        }
+        return videoId; // Fallback
+    } catch (error) {
+        console.error('[YOUTUBE] Failed to fetch video title:', error);
+        return videoId; // Fallback
+    }
+}
+
+function loadPlaylist() {
+    if (fs.existsSync(PLAYLIST_FILE)) {
+        try {
+            const fileContent = fs.readFileSync(PLAYLIST_FILE, 'utf-8');
+            const savedState = JSON.parse(fileContent);
+            // Basic validation
+            if (savedState && Array.isArray(savedState.playlist)) {
+                musicState = { ...musicState, ...savedState };
+                console.log(`[PLAYLIST] Loaded ${musicState.playlist.length} songs.`);
+            }
+        } catch (error) {
+            console.error('[PLAYLIST] Failed to load or parse playlist.json:', error);
+        }
+    }
+}
+
+function savePlaylist() {
+    try {
+        // Only save the persistent parts of the state
+        const stateToSave = {
+            playlist: musicState.playlist,
+            isLooping: musicState.isLooping,
+            volume: musicState.volume,
+            currentIndex: musicState.currentIndex
+        };
+        fs.writeFileSync(PLAYLIST_FILE, JSON.stringify(stateToSave, null, 2));
+    } catch (error) {
+        console.error('[PLAYLIST] FAILED to save playlist:', error);
+    }
+}
+
+
 function broadcast(message) {
     const data = JSON.stringify(message);
     clients.forEach(client => {
         if (client.ws.readyState === WebSocket.OPEN) {
+            client.ws.send(data);
+        }
+    });
+}
+
+// Broadcasts a message only to the MJ client(s)
+function broadcastToMJ(message) {
+    const data = JSON.stringify(message);
+    clients.forEach(client => {
+        if (client.isMJ && client.ws.readyState === WebSocket.OPEN) {
             client.ws.send(data);
         }
     });
@@ -307,29 +377,23 @@ wss.on('connection', (ws) => {
     // When a pong is received, mark the client as alive. This is part of the heartbeat mechanism.
     ws.on('pong', () => {
         const client = clients.get(ws);
-        if (client) {
-            client.isAlive = true;
-        }
+        if (client) client.isAlive = true;
     });
 
-    ws.on('message', (message) => {
+    ws.on('message', async (message) => {
         const data = JSON.parse(message);
+        const client = clients.get(ws);
 
-        if (data.type === 'chat') {
+        // Handle chat commands separately
+        if (data.type === 'chat' && data.message.startsWith('#')) {
             const trigger = Object.keys(chatbotConfig).find(key => data.message.startsWith(key));
             if (trigger) {
                 const prompt = data.message.substring(trigger.length).trim();
-                const config = { ...chatbotConfig[trigger] }; // Clone to avoid modifying the original object
-
-                // If the apiKey is a string, it's treated as a key name to look up in the apiKeys object.
-                // This allows configs to refer to keys without having direct access to the apiKeys object.
+                const config = { ...chatbotConfig[trigger] };
                 if (typeof config.apiKey === 'string' && apiKeys[config.apiKey]) {
                     config.apiKey = apiKeys[config.apiKey];
                 }
-
-                const clientInfo = clients.get(ws);
-                const senderUsername = clientInfo ? clientInfo.username : 'User';
-                handleChatbotRequest(prompt, config, trigger, data.message, senderUsername);
+                handleChatbotRequest(prompt, config, trigger, data.message, client ? client.username : 'User');
                 return;
             }
         }
@@ -337,66 +401,100 @@ wss.on('connection', (ws) => {
         switch (data.type) {
             case 'register':
                 const isMJ = data.username.toLowerCase() === 'mj';
-                // Initialize client with isAlive property for heartbeat mechanism
                 clients.set(ws, { username: data.username, ws: ws, isMJ, isAlive: true });
 
+                // Send initial state
                 ws.send(JSON.stringify({ type: 'history', messages: chatHistory }));
                 ws.send(JSON.stringify({ type: 'image-list-update', list: imageList }));
-                ws.send(JSON.stringify({ type: 'show-image', url: currentImageUrl })); // Send current image on join
-                if (whiteboardState) {
-                    ws.send(JSON.stringify({ type: 'fabric-load', payload: whiteboardState }));
-                }
-
-                // Sync music for the new client
-                if (musicState.videoId) {
-                    let currentTime = 0;
-                    if (musicState.isPlaying) {
-                        currentTime = (Date.now() - musicState.startTime) / 1000;
-                    } else if (musicState.pauseTime) {
-                        currentTime = (musicState.pauseTime - musicState.startTime) / 1000;
-                    }
-                    ws.send(JSON.stringify({
-                        type: 'music-sync',
-                        action: 'sync',
-                        value: { ...musicState, currentTime }
-                    }));
-                }
-
-
-                if (isMJ) {
-                    ws.send(JSON.stringify({ type: 'mj-status', isMJ: true }));
-                }
+                ws.send(JSON.stringify({ type: 'show-image', url: currentImageUrl }));
+                if (whiteboardState) ws.send(JSON.stringify({ type: 'fabric-load', payload: whiteboardState }));
+                if (isMJ) ws.send(JSON.stringify({ type: 'mj-status', isMJ: true }));
 
                 broadcastUserList();
                 break;
 
             case 'music-control':
-                const musicClient = clients.get(ws);
-                if (musicClient && musicClient.isMJ) {
-                    const { action, value } = data;
-                    let broadcastPayload = { type: 'music-control', action, value };
+                if (!client || !client.isMJ) break; // Only MJ can control music
 
-                    switch(action) {
-                        case 'play':
-                            musicState.videoId = value;
+                const { action, value } = data;
+                let updatePayload = { type: 'music-control' };
+
+                switch (action) {
+                    case 'play':
+                        if (value.index >= 0 && value.index < musicState.playlist.length) {
                             musicState.isPlaying = true;
+                            musicState.currentIndex = value.index;
                             musicState.startTime = Date.now();
                             musicState.pauseTime = null;
-                            break;
-                        case 'pause':
-                            musicState.isPlaying = false;
-                            musicState.pauseTime = Date.now();
-                            break;
-                        case 'volume':
-                            musicState.volume = value;
-                            break;
-                    }
-                    broadcast(broadcastPayload);
+                            updatePayload.action = 'play';
+                            updatePayload.value = { index: musicState.currentIndex };
+                            broadcast(updatePayload);
+                        }
+                        break;
+
+                    case 'pause':
+                        musicState.isPlaying = false;
+                        musicState.pauseTime = Date.now();
+                        updatePayload.action = 'pause';
+                        broadcast(updatePayload);
+                        break;
+
+                    case 'volume':
+                        musicState.volume = value.volume;
+                        updatePayload.action = 'volume';
+                        updatePayload.value = { volume: musicState.volume };
+                        broadcast(updatePayload);
+                        break;
+
+                    case 'playlist-add':
+                        const title = await getYouTubeVideoTitle(value.videoId);
+                        musicState.playlist.push({ videoId: value.videoId, title: title });
+                        // If nothing was playing, start playing the new song
+                        if (!musicState.isPlaying && musicState.currentIndex === -1) {
+                            musicState.currentIndex = musicState.playlist.length - 1;
+                        }
+                        break;
+
+                    case 'playlist-remove':
+                        musicState.playlist = musicState.playlist.filter(song => song.videoId !== value.videoId);
+                        // Adjust currentIndex if needed
+                        if (musicState.currentIndex >= musicState.playlist.length) {
+                            musicState.currentIndex = musicState.playlist.length - 1;
+                        }
+                        break;
+
+                    case 'playlist-reorder':
+                        musicState.playlist = value.playlist;
+                        break;
+
+                    case 'playlist-toggle-loop':
+                        musicState.isLooping = value.isLooping;
+                        break;
+
+                    case 'request-sync':
+                        // MJ requested a sync, send them the full state
+                        let currentTime = 0;
+                        if (musicState.currentIndex !== -1) {
+                            if (musicState.isPlaying) {
+                                currentTime = (Date.now() - musicState.startTime) / 1000;
+                            } else if (musicState.pauseTime) {
+                                currentTime = (musicState.pauseTime - musicState.startTime) / 1000;
+                            }
+                        }
+                        ws.send(JSON.stringify({
+                            type: 'music-control',
+                            action: 'sync',
+                            value: { ...musicState, currentTime }
+                        }));
+                        return; // Don't broadcast or save
                 }
+
+                // After any change, save and broadcast the full playlist to the MJ
+                savePlaylist();
+                broadcastToMJ({ type: 'music-control', action: 'playlist-update', value: { playlist: musicState.playlist, isLooping: musicState.isLooping } });
                 break;
 
             case 'add-image':
-                const client = clients.get(ws);
                 if (client && client.isMJ) {
                     imageList.push({ name: data.name, url: data.url });
                     saveImageList();
@@ -405,9 +503,7 @@ wss.on('connection', (ws) => {
                 break;
 
             case 'delete-image':
-                const clientToDelete = clients.get(ws);
-                if (clientToDelete && clientToDelete.isMJ) {
-                    // If the deleted image is the one being shown, clear the display.
+                if (client && client.isMJ) {
                     if (data.url === currentImageUrl) {
                         currentImageUrl = null;
                         broadcast({ type: 'show-image', url: null });
@@ -419,9 +515,8 @@ wss.on('connection', (ws) => {
                 break;
 
             case 'show-image':
-                const clientToShow = clients.get(ws);
-                if (clientToShow && clientToShow.isMJ) {
-                    currentImageUrl = data.url; // Update current image state
+                if (client && client.isMJ) {
+                    currentImageUrl = data.url;
                     broadcast({ type: 'show-image', url: data.url });
                 }
                 break;
@@ -434,16 +529,14 @@ wss.on('connection', (ws) => {
                 appendToHistory(data);
                 broadcast(data);
                 break;
+
             case 'offer':
             case 'answer':
             case 'ice-candidate':
                 const targetClient = Array.from(clients.values()).find(c => c.username === data.target);
-                if (targetClient) {
-                    targetClient.ws.send(JSON.stringify(data));
-                }
+                if (targetClient) targetClient.ws.send(JSON.stringify(data));
                 break;
 
-            // Real-time sync: broadcast drawing events to other clients
             case 'fabric-path-created':
             case 'fabric-add-object':
             case 'fabric-update-object':
@@ -454,16 +547,14 @@ wss.on('connection', (ws) => {
                 broadcastToOthers(ws, data);
                 break;
 
-            // Persistence: save the full state received from a client
             case 'fabric-state-update':
                 whiteboardState = data.payload;
                 saveWhiteboardState(whiteboardState);
                 break;
 
             case 'pointer-move':
-                const clientInfo = clients.get(ws);
-                if (clientInfo) {
-                    data.sender = clientInfo.username;
+                if (client) {
+                    data.sender = client.username;
                     broadcastToOthers(ws, data);
                 }
                 break;
@@ -484,6 +575,7 @@ app.use(express.static(path.join(__dirname, '/')));
 loadChatHistory();
 loadImageList();
 loadWhiteboardState();
+loadPlaylist();
 server.listen(PORT, () => {
     console.log(`Server is listening on port ${PORT}`);
 });
