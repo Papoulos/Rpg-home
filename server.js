@@ -489,9 +489,9 @@ wss.on('connection', (ws) => {
                         return; // Don't broadcast or save
                 }
 
-                // After any change, save and broadcast the full playlist to the MJ
+                // After any change, save and broadcast the full playlist to all clients
                 savePlaylist();
-                broadcastToMJ({ type: 'music-control', action: 'playlist-update', value: { playlist: musicState.playlist, isLooping: musicState.isLooping } });
+                broadcast({ type: 'music-control', action: 'playlist-update', value: { playlist: musicState.playlist, isLooping: musicState.isLooping } });
                 break;
 
             case 'add-image':
