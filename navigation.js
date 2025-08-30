@@ -57,4 +57,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Show the initial tab
     initialTabDisplay();
+
+    // Listen for MJ status to show/hide the music tab
+    window.addEventListener('mj-status', (event) => {
+        const musicNavItem = document.getElementById('music-nav-item');
+        if (musicNavItem) {
+            if (event.detail.isMJ) {
+                musicNavItem.classList.remove('hidden');
+            } else {
+                musicNavItem.classList.add('hidden');
+                // If the current tab is music, switch to default
+                if (window.location.hash === '#music') {
+                    showTab('carte-content');
+                }
+            }
+        }
+    });
 });

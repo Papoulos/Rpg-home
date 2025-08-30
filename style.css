@@ -618,3 +618,115 @@ body, html {
     height: 0;
     overflow: hidden;
 }
+
+/* New Music Player Styles */
+.music-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding: 10px;
+    height: 100%;
+}
+
+.music-container.hidden {
+    display: none !important;
+}
+
+#music-main-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background-color: #2c2c2c;
+    border-radius: 8px;
+}
+
+#music-current-track {
+    flex-grow: 1;
+    text-align: center;
+    font-style: italic;
+    color: #ccc;
+}
+
+#music-main-controls .main-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+#music-main-controls .volume-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#music-add-section {
+    display: flex;
+    gap: 10px;
+}
+
+#music-add-section input {
+    flex-grow: 1;
+    background-color: #333;
+    border: 1px solid #444;
+    color: #f0f0f0;
+    padding: 8px;
+    border-radius: 5px;
+}
+
+#music-playlist-options {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.loop-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+#music-playlist {
+    flex-grow: 1;
+    overflow-y: auto;
+    background-color: #252525;
+    border-radius: 8px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.playlist-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px;
+    background-color: #3a3a3a;
+    border-radius: 5px;
+    cursor: grab;
+    border-left: 4px solid transparent;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.playlist-item:hover {
+    background-color: #4a4a4a;
+}
+
+.playlist-item.playing {
+    border-left-color: #4CAF50;
+    font-weight: bold;
+}
+
+.playlist-item.dragging {
+    opacity: 0.5;
+    background: #555;
+}
+
+.playlist-item-title {
+    flex-grow: 1;
+}
+
+.playlist-item-controls {
+    display: flex;
+    gap: 8px;
+}
