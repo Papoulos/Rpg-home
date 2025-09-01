@@ -1,5 +1,6 @@
 // IIFE to avoid polluting the global scope
 (() => {
+    window.isMJ = false; // Global flag for MJ status
     let username = '';
     let localStream;
     const peerConnections = {};
@@ -259,6 +260,7 @@
                     });
                     break;
                 case 'mj-status':
+                    window.isMJ = data.isMJ; // Set the global flag
                     window.dispatchEvent(new CustomEvent('mj-status', { detail: { isMJ: data.isMJ } }));
                     break;
                 case 'image-list-update':

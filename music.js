@@ -337,6 +337,12 @@
     // --- Initialization ---
 
     document.addEventListener('DOMContentLoaded', () => {
+        // Check the global flag on load, in case the event was missed
+        if (window.isMJ) {
+            isMJ = true;
+            setupMJControls();
+        }
+
         musicContainer = document.querySelector('.music-container');
         musicMainControls = document.getElementById('music-main-controls');
         musicCurrentTitle = document.getElementById('music-current-title');

@@ -3,6 +3,7 @@
     let activeTool = 'select';
     let currentColor = '#ffffff';
     let remotePointers = {};
+    let localPointer = null;
     let debounceTimeout = null;
     let isMJ = false;
     let fogBrushSize = 50;
@@ -30,8 +31,29 @@
     };
 
     const setActiveTool = (tool) => {
+        // Cleanup previous tool's artifacts
+        if (activeTool === 'pointer' && localPointer) {
+            canvas.remove(localPointer);
+            localPointer = null;
+        }
+
         activeTool = tool;
         if (!canvas) return;
+
+        // Setup for the new tool
+        if (tool === 'pointer' && !localPointer) {
+            localPointer = new fabric.Circle({
+                radius: 5,
+                fill: 'rgba(255, 0, 0, 0.5)',
+                left: -100,
+                top: -100,
+                selectable: false,
+                evented: false,
+                originX: 'center',
+                originY: 'center'
+            });
+            canvas.add(localPointer);
+        }
 
         canvas.isDrawingMode = tool === 'pencil' || tool === 'fog-eraser';
 
@@ -50,8 +72,8 @@
             canvas.hoverCursor = 'move';
         } else if (tool === 'pointer') {
             canvas.selection = false;
-            canvas.defaultCursor = 'none';
-            canvas.hoverCursor = 'none';
+            canvas.defaultCursor = 'crosshair';
+            canvas.hoverCursor = 'crosshair';
         } else {
             canvas.selection = false;
             canvas.defaultCursor = 'crosshair';
@@ -166,9 +188,10 @@
         canvas.freeDrawingBrush.color = '#ffffff';
 
         // --- MJ and FOG Status ---
-        window.addEventListener('mj-status', (event) => {
-            isMJ = event.detail.isMJ;
-            const fogToolbar = document.getElementById('fabric-fog-toolbar');
+        const fogToolbar = document.getElementById('fabric-fog-toolbar');
+
+        function handleMJStatus(isNowMJ) {
+            isMJ = isNowMJ;
             if (isMJ) {
                 fogToolbar.classList.remove('hidden');
             }
@@ -178,6 +201,15 @@
                 fogBase.set('fill', isMJ ? 'rgba(0,0,0,0.5)' : 'black');
                 canvas.renderAll();
             }
+        }
+
+        // Check the global flag immediately on initialization
+        if (window.isMJ) {
+            handleMJStatus(true);
+        }
+
+        window.addEventListener('mj-status', (event) => {
+            handleMJStatus(event.detail.isMJ);
         });
 
         // --- Collaboration Logic ---
@@ -302,6 +334,11 @@
 
         canvas.on('mouse:move', (o) => {
             if (activeTool === 'pointer' && o.pointer) {
+                if (localPointer) {
+                    localPointer.set({ left: o.pointer.x, top: o.pointer.y });
+                    localPointer.setCoords();
+                    canvas.renderAll();
+                }
                 if (window.socket?.readyState === WebSocket.OPEN) {
                     window.socket.send(JSON.stringify({ type: 'pointer-move', payload: { x: o.pointer.x, y: o.pointer.y } }));
                 }
