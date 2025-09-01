@@ -18,9 +18,7 @@
         player = new YT.Player('youtube-player', {
             height: '0',
             width: '0',
-            playerVars: {
-                'playsinline': 1
-            },
+            playerVars: { 'playsinline': 1 },
             events: {
                 'onReady': onPlayerReady,
                 'onStateChange': onPlayerStateChange,
@@ -32,7 +30,6 @@
     function onPlayerReady(event) {
         console.log("YouTube Player is ready.");
         isPlayerReady = true;
-        // Request initial state from server
         sendMusicControl('request-sync');
     }
 
@@ -59,13 +56,11 @@
 
     function playNextSong() {
         if (playlist.length === 0) return;
-
         let nextIndex = currentIndex + 1;
         if (nextIndex >= playlist.length) {
             if (isLooping) {
                 nextIndex = 0;
             } else {
-                // End of playlist
                 musicCurrentTitle.textContent = "Fin de la playlist.";
                 currentIndex = -1;
                 updatePlaylistUI();
@@ -77,11 +72,9 @@
 
     function handlePlayPauseClick() {
         const playerState = player && typeof player.getPlayerState === 'function' ? player.getPlayerState() : -1;
-
         if (playerState === YT.PlayerState.PLAYING) {
             sendMusicControl('pause');
         } else {
-            // If paused, resume. If stopped, play current or first song.
             if (currentIndex === -1 && playlist.length > 0) {
                 sendMusicControl('play', { index: 0 });
             } else {
@@ -94,13 +87,45 @@
         const url = youtubeUrlInput.value.trim();
         if (!url) return;
         const videoId = getYouTubeVideoId(url);
+
         if (videoId) {
-            // To get the title, we have to load it. This is a bit tricky.
-            // We'll let the server handle fetching the title.
-            sendMusicControl('playlist-add', { videoId });
+            musicAddBtn.disabled = true;
             youtubeUrlInput.value = '';
+            youtubeUrlInput.placeholder = 'Récupération du titre...';
+
+            const tempPlayerContainer = document.createElement('div');
+            tempPlayerContainer.id = 'temp-youtube-player';
+            tempPlayerContainer.style.display = 'none';
+            document.body.appendChild(tempPlayerContainer);
+
+            new YT.Player('temp-youtube-player', {
+                height: '0', width: '0', videoId: videoId,
+                events: {
+                    'onReady': (e) => {
+                        const title = e.target.getVideoData().title;
+                        sendMusicControl('playlist-add', { videoId: videoId, title: title });
+                        cleanupTempPlayer(e.target, tempPlayerContainer);
+                    },
+                    'onError': (e) => {
+                        console.error("Failed to fetch title for video:", videoId, "Error:", e.data);
+                        sendMusicControl('playlist-add', { videoId: videoId, title: videoId }); // Fallback
+                        cleanupTempPlayer(e.target, tempPlayerContainer);
+                    }
+                }
+            });
         } else {
             alert("URL YouTube invalide.");
+        }
+    }
+
+    function cleanupTempPlayer(targetPlayer, container) {
+        musicAddBtn.disabled = false;
+        youtubeUrlInput.placeholder = 'Coller une URL YouTube pour l\'ajouter à la playlist...';
+        if (targetPlayer && typeof targetPlayer.destroy === 'function') {
+            targetPlayer.destroy();
+        }
+        if (document.body.contains(container)) {
+            document.body.removeChild(container);
         }
     }
 
@@ -130,10 +155,6 @@
             item.dataset.videoId = song.videoId;
             item.draggable = true;
 
-            if (index === currentIndex) {
-                item.classList.add('playing');
-            }
-
             item.innerHTML = `
                 <span class="playlist-item-title">${song.title || song.videoId}</span>
                 <div class="playlist-item-controls">
@@ -143,14 +164,12 @@
                 </div>
             `;
 
-            // Event Listeners for playlist items
             item.addEventListener('click', () => sendMusicControl('play', { index }));
             item.querySelector('.btn-delete').addEventListener('click', (e) => {
-                e.stopPropagation(); // Prevent playing the song
+                e.stopPropagation();
                 sendMusicControl('playlist-remove', { videoId: song.videoId });
             });
 
-            // Drag and Drop
             item.addEventListener('dragstart', handleDragStart);
             item.addEventListener('dragover', handleDragOver);
             item.addEventListener('dragleave', handleDragLeave);
@@ -158,6 +177,7 @@
 
             musicPlaylistContainer.appendChild(item);
         });
+        updatePlaylistUI();
     }
 
     function updatePlaylistUI() {
@@ -165,7 +185,7 @@
         items.forEach((item, index) => {
             if (index === currentIndex) {
                 item.classList.add('playing');
-                musicCurrentTitle.textContent = playlist[index].title;
+                if (playlist[index]) musicCurrentTitle.textContent = playlist[index].title;
             } else {
                 item.classList.remove('playing');
             }
@@ -191,35 +211,47 @@
     function handleDragStart(e) {
         draggedItem = this;
         e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/html', this.innerHTML);
         setTimeout(() => this.classList.add('dragging'), 0);
     }
 
     function handleDragOver(e) {
         e.preventDefault();
-        this.classList.add('over');
+        const afterElement = getDragAfterElement(musicPlaylistContainer, e.clientY);
+        if (afterElement == null) {
+            musicPlaylistContainer.appendChild(draggedItem);
+        } else {
+            musicPlaylistContainer.insertBefore(draggedItem, afterElement);
+        }
     }
 
-    function handleDragLeave(e) {
-        this.classList.remove('over');
-    }
+    function handleDragLeave(e) { /* No action needed */ }
 
     function handleDrop(e) {
         e.stopPropagation();
-        this.classList.remove('over');
-
-        if (draggedItem !== this) {
-            const fromIndex = parseInt(draggedItem.dataset.index, 10);
-            const toIndex = parseInt(this.dataset.index, 10);
-
-            // Reorder array
-            const item = playlist.splice(fromIndex, 1)[0];
-            playlist.splice(toIndex, 0, item);
-
-            sendMusicControl('playlist-reorder', { playlist });
-        }
         draggedItem.classList.remove('dragging');
+
+        const newOrderedPlaylist = [];
+        const items = musicPlaylistContainer.querySelectorAll('.playlist-item');
+        items.forEach(item => {
+            newOrderedPlaylist.push(playlist.find(song => song.videoId === item.dataset.videoId));
+        });
+        playlist = newOrderedPlaylist;
+
+        sendMusicControl('playlist-reorder', { playlist });
         draggedItem = null;
+    }
+
+    function getDragAfterElement(container, y) {
+        const draggableElements = [...container.querySelectorAll('.playlist-item:not(.dragging)')];
+        return draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            if (offset < 0 && offset > closest.offset) {
+                return { offset: offset, element: child };
+            } else {
+                return closest;
+            }
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
     }
 
     // --- Communication ---
@@ -269,9 +301,8 @@
                 isLooping = value.isLooping || false;
                 if (isMJ) musicLoopToggle.checked = isLooping;
                 renderPlaylist();
-                updatePlaylistUI();
                 break;
-            case 'sync': // Full state sync for new joiners or upon request
+            case 'sync':
                 playlist = value.playlist || [];
                 isLooping = value.isLooping || false;
                 currentIndex = value.currentIndex;
@@ -305,7 +336,6 @@
     // --- Initialization ---
 
     document.addEventListener('DOMContentLoaded', () => {
-        // Assign DOM elements
         musicContainer = document.querySelector('.music-container');
         musicMainControls = document.getElementById('music-main-controls');
         musicCurrentTitle = document.getElementById('music-current-title');
@@ -318,7 +348,6 @@
         musicLoopToggle = document.getElementById('music-loop-toggle');
         musicPlaylistContainer = document.getElementById('music-playlist');
 
-        // The YouTube API needs a global function to call
         window.onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
         loadYoutubeAPI();
     });

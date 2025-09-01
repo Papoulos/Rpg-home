@@ -12,8 +12,7 @@
 
 const apiKeys = {
     gemini: 'PASTE_YOUR_GOOGLE_GEMINI_API_KEY_HERE',
-    mistral: 'PASTE_YOUR_MISTRAL_API_KEY_HERE',
-    youtube: 'PASTE_YOUR_GOOGLE_YOUTUBE_DATA_API_KEY_HERE'
+    mistral: 'PASTE_YOUR_MISTRAL_API_KEY_HERE'
 };
 
 module.exports = apiKeys;
