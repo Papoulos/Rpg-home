@@ -57,9 +57,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- WebSocket Event Listeners (via window events) ---
 
+    function showMJControls() {
+        imageControls.classList.remove('hidden');
+    }
+
     window.addEventListener('mj-status', (e) => {
         if (e.detail.isMJ) {
-            imageControls.classList.remove('hidden');
+            showMJControls();
         }
     });
 
@@ -85,6 +89,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Initial Setup ---
+
+    // Check the global flag on load, in case the event was missed
+    if (window.isMJ) {
+        showMJControls();
+    }
 
     addImageBtn.addEventListener('click', handleAddImage);
     deleteImageBtn.addEventListener('click', handleDeleteImage);
