@@ -82,29 +82,6 @@ let musicState = {
 
 // --- Utility & Music Functions ---
 
-async function getYouTubeVideoTitle(videoId) {
-    const apiKey = apiKeys.youtube;
-    if (!apiKey || apiKey.includes('PASTE_YOUR')) {
-        console.warn('[YOUTUBE] YouTube API key is missing or is a placeholder. Using video ID as title.');
-        return videoId;
-    }
-    const url = `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&part=snippet&key=${apiKey}`;
-    try {
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`YouTube API request failed with status ${response.status}`);
-        }
-        const data = await response.json();
-        if (data.items && data.items.length > 0) {
-            return data.items[0].snippet.title;
-        }
-        return videoId; // Fallback
-    } catch (error) {
-        console.error('[YOUTUBE] Failed to fetch video title:', error);
-        return videoId; // Fallback
-    }
-}
-
 function loadPlaylist() {
     if (fs.existsSync(PLAYLIST_FILE)) {
         try {
@@ -141,16 +118,6 @@ function broadcast(message) {
     const data = JSON.stringify(message);
     clients.forEach(client => {
         if (client.ws.readyState === WebSocket.OPEN) {
-            client.ws.send(data);
-        }
-    });
-}
-
-// Broadcasts a message only to the MJ client(s)
-function broadcastToMJ(message) {
-    const data = JSON.stringify(message);
-    clients.forEach(client => {
-        if (client.isMJ && client.ws.readyState === WebSocket.OPEN) {
             client.ws.send(data);
         }
     });
@@ -447,11 +414,13 @@ wss.on('connection', (ws) => {
                         break;
 
                     case 'playlist-add':
-                        const title = await getYouTubeVideoTitle(value.videoId);
-                        musicState.playlist.push({ videoId: value.videoId, title: title });
-                        // If nothing was playing, start playing the new song
-                        if (!musicState.isPlaying && musicState.currentIndex === -1) {
-                            musicState.currentIndex = musicState.playlist.length - 1;
+                        // The client now provides the title.
+                        if (value.videoId && value.title) {
+                            musicState.playlist.push({ videoId: value.videoId, title: value.title });
+                            // If nothing was playing, set the new song as current, but don't auto-play
+                            if (musicState.currentIndex === -1) {
+                                musicState.currentIndex = musicState.playlist.length - 1;
+                            }
                         }
                         break;
 
