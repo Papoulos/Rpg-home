@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jeu de Rôle en Ligne</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -35,8 +36,8 @@
                         <select id="image-select">
                             <option value="">Choisir une image</option>
                         </select>
-                        <button id="add-image-btn" class="control-btn btn-add" title="Ajouter une image">+</button>
-                        <button id="delete-image-btn" class="control-btn btn-delete" title="Supprimer l'image">-</button>
+                        <button id="add-image-btn" class="control-btn btn-add" title="Ajouter une image"><span class="material-symbols-outlined">add</span></button>
+                        <button id="delete-image-btn" class="control-btn btn-delete" title="Supprimer l'image"><span class="material-symbols-outlined">remove</span></button>
                     </div>
 
                     <!-- Zone d'affichage de l'image, visible par tous -->
@@ -49,8 +50,8 @@
                         <select id="sheet-select">
                             <option value="">Choisir une fiche</option>
                         </select>
-                        <button id="add-sheet-btn" class="control-btn btn-add" title="Ajouter une fiche">+</button>
-                        <button id="delete-sheet-btn" class="control-btn btn-delete" title="Supprimer la fiche">-</button>
+                        <button id="add-sheet-btn" class="control-btn btn-add" title="Ajouter une fiche"><span class="material-symbols-outlined">add</span></button>
+                        <button id="delete-sheet-btn" class="control-btn btn-delete" title="Supprimer la fiche"><span class="material-symbols-outlined">remove</span></button>
                     </div>
                     <div id="sheet-display-area">
                         <!-- L'iframe de la Google Sheet ira ici -->
@@ -62,51 +63,24 @@
                 <div id="fabric-content" class="tab-content">
                     <div class="whiteboard-controls">
                         <div id="fabric-toolbar">
-                            <button id="fabric-select-tool" class="control-btn" title="Select">
-                                <svg fill="currentColor" viewBox="0 0 20 20"><path d="M10.222 2.098a.75.75 0 0 0-1.042.065L4.03 8.754a.75.75 0 0 0 1.118 1.004l4.58-3.962a.75.75 0 0 0 .044-1.084L5.342 1.39a.75.75 0 0 0-1.2.9L8.98 7.25H1.75a.75.75 0 0 0 0 1.5h8.25a.75.75 0 0 0 .53-.22l4.15-4.15a.75.75 0 0 0-.065-1.042L10.222 2.1z M4.75 10.25a.75.75 0 0 0 0 1.5h10.5a.75.75 0 0 0 0-1.5H4.75z"/></svg>
-                            </button>
-                            <button id="fabric-pointer-tool" class="control-btn" title="Pointer">
-                                <svg fill="currentColor" viewBox="0 0 20 20"><path d="M9.25 8.25a.75.75 0 0 0 1.5 0V1.75a.75.75 0 0 0-1.5 0V8.25zM10 18a.75.75 0 0 1 .75-.75h.01a.75.75 0 0 1 0 1.5H10.75A.75.75 0 0 1 10 18zM6.59 6.59a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1-1.06 1.06L6.59 7.65a.75.75 0 0 1 0-1.06zM13.41 6.59a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06l4.25-4.25a.75.75 0 0 1 1.06 0zM18 10a.75.75 0 0 1-.75.75h-.01a.75.75 0 0 1 0-1.5H17.25A.75.75 0 0 1 18 10zM2 10a.75.75 0 0 1-.75.75h-.01a.75.75 0 0 1 0-1.5H1.25A.75.75 0 0 1 2 10zM10 2a.75.75 0 0 1 .75-.75h.01a.75.75 0 0 1 0 1.5H10.75A.75.75 0 0 1 10 2z"/></svg>
-                            </button>
-                            <button id="fabric-pencil-tool" class="control-btn" title="Pencil">
-                                <svg fill="currentColor" viewBox="0 0 20 20"><path d="M17.414 2.586a2 2 0 0 0-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 0 0 0-2.828z M18.828 4L16 1.172 17.414.172a1 1 0 0 1 1.414 0l1.414 1.414a1 1 0 0 1 0 1.414L18.828 4zM4 5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V8.828l-2-2V15H5V6h3.172l2-2H4z"/></svg>
-                            </button>
-                            <button id="fabric-line-tool" class="control-btn" title="Line">
-                                <svg fill="currentColor" viewBox="0 0 20 20"><path d="M3.293 3.293a1 1 0 0 1 1.414 0L16.707 15.293a1 1 0 0 1-1.414 1.414L3.293 4.707a1 1 0 0 1 0-1.414z"/></svg>
-                            </button>
-                            <button id="fabric-rect-tool" class="control-btn" title="Rectangle">
-                                <svg fill="currentColor" viewBox="0 0 20 20"><path d="M4 4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H4zm12 10H4V6h12v8z"/></svg>
-                            </button>
-                            <button id="fabric-circle-tool" class="control-btn" title="Circle">
-                                <svg fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM10 2a6 6 0 1 1 0 12A6 6 0 0 1 10 2z"/></svg>
-                            </button>
+                            <button id="fabric-select-tool" class="control-btn" title="Select"><span class="material-symbols-outlined">pan_tool</span></button>
+                            <button id="fabric-pointer-tool" class="control-btn" title="Pointer"><span class="material-symbols-outlined">ads_click</span></button>
+                            <button id="fabric-pencil-tool" class="control-btn" title="Pencil"><span class="material-symbols-outlined">edit</span></button>
+                            <button id="fabric-line-tool" class="control-btn" title="Line"><span class="material-symbols-outlined">horizontal_rule</span></button>
+                            <button id="fabric-rect-tool" class="control-btn" title="Rectangle"><span class="material-symbols-outlined">rectangle</span></button>
+                            <button id="fabric-circle-tool" class="control-btn" title="Circle"><span class="material-symbols-outlined">circle</span></button>
                             <input type="file" id="fabric-image-input" style="display: none;" accept="image/*" />
-                            <label for="fabric-image-input" class="control-btn" title="Add Image">
-                                <svg fill="currentColor" viewBox="0 0 20 20"><path d="M15 14l-4-4-4 4 1.5 1.5L10 14.086l1.5 1.414L15 14zM4 5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H4zm0-2h12a4 4 0 0 1 4 4v8a4 4 0 0 1-4 4H4a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4z"/></svg>
-                            </label>
+                            <label for="fabric-image-input" class="control-btn" title="Add Image"><span class="material-symbols-outlined">add_photo_alternate</span></label>
                             <input type="file" id="fabric-background-image-input" style="display: none;" accept="image/*" />
-                            <label for="fabric-background-image-input" class="control-btn" title="Set Background Image">
-                                <svg fill="currentColor" viewBox="0 0 20 20"><path d="M3 3a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1H3zm1 1h12v12H4V4zm8 3a1 1 0 0 1 1 1v2h2a1 1 0 1 1 0 2h-2v2a1 1 0 1 1-2 0v-2H8a1 1 0 1 1 0-2h2V8a1 1 0 0 1 1-1z"/></svg>
-                            </label>
+                            <label for="fabric-background-image-input" class="control-btn" title="Set Background Image"><span class="material-symbols-outlined">image</span></label>
                             <input type="color" id="fabric-color-picker" class="control-btn" title="Color Picker" />
-                            <button id="fabric-delete-tool" class="control-btn btn-delete" title="Delete">
-                                <svg fill="currentColor" viewBox="0 0 20 20"><path d="M6 2a1 1 0 0 0-1 1v1H4a2 2 0 0 0-2 2v1h16V6a2 2 0 0 0-2-2h-1V3a1 1 0 0 0-1-1H6zm1 2h6v1H7V4zM4 8v9a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8H4z"/></svg>
-                            </button>
+                            <button id="fabric-delete-tool" class="control-btn btn-delete" title="Delete"><span class="material-symbols-outlined">delete</span></button>
 
                             <!-- FOG OF WAR CONTROLS (MJ-only) -->
                             <div id="fabric-fog-toolbar" class="control-group hidden">
                                 <span class="toolbar-divider"></span>
-                                <button id="fabric-fog-tool" class="control-btn" title="Activer/Désactiver le brouillard">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16">
-                                        <path d="M13.405 4.027a5.001 5.001 0 0 0-9.499-1.004A3.5 3.5 0 1 0 3.5 10H13a3 3 0 0 0 .405-5.973zM8.5 1a4 4 0 0 1 3.976 3.555.5.5 0 0 0 .5.445H13a2 2 0 0 1 0 4H3.5a2.5 2.5 0 1 1 .605-4.926.5.5 0 0 0 .596-.329A4.002 4.002 0 0 1 8.5 1z"/>
-                                    </svg>
-                                </button>
-                                <button id="fabric-fog-eraser-tool" class="control-btn" title="Gomme pour brouillard">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16">
-                                        <path d="M8.086 2.207a2 2 0 0 1 2.828 0l3.879 3.879a2 2 0 0 1 0 2.828l-5.5 5.5A2 2 0 0 1 7.879 15H5.12a2 2 0 0 1-1.414-.586l-2.5-2.5a2 2 0 0 1 0-2.828l6.879-6.879zm.66 1.414-6.879 6.879a1 1 0 0 0 0 1.414l2.5 2.5a1 1 0 0 0 .707.293H7.88a1 1 0 0 0 .707-.293l5.5-5.5a1 1 0 0 0 0-1.414l-3.879-3.879a1 1 0 0 0-1.414 0z"/>
-                                        <path d="M12.5 7.5a.5.5 0 0 1 0-1h1a.5.5 0 0 1 0 1h-1z"/>
-                                    </svg>
-                                </button>
+                                <button id="fabric-fog-tool" class="control-btn" title="Activer/Désactiver le brouillard"><span class="material-symbols-outlined">cloud</span></button>
+                                <button id="fabric-fog-eraser-tool" class="control-btn" title="Gomme pour brouillard"><span class="material-symbols-outlined">ink_eraser</span></button>
                                 <div class="brush-size-container">
                                     <input type="range" id="fabric-fog-brush-size" min="10" max="200" value="50" title="Taille de la gomme">
                                 </div>
@@ -124,12 +98,11 @@
                             </div>
                             <div class="main-buttons">
                                 <button id="music-play-pause-btn" class="control-btn" title="Lecture">
-                                    <svg id="play-icon" viewBox="0 0 24 24" fill="currentColor" style="width:24px; height:24px;"><path d="M8 5v14l11-7z"></path></svg>
-                                    <svg id="pause-icon" class="hidden" viewBox="0 0 24 24" fill="currentColor" style="width:24px; height:24px;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"></path></svg>
+                                    <span class="material-symbols-outlined">play_arrow</span>
                                 </button>
                             </div>
                             <div class="volume-control">
-                                <svg viewBox="0 0 24 24" fill="currentColor" style="width:24px; height:24px;"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"></path></svg>
+                                <span class="material-symbols-outlined">volume_up</span>
                                 <input type="range" id="music-volume-slider" min="0" max="100" value="100" title="Volume">
                             </div>
                         </div>
@@ -138,7 +111,7 @@
                         <div id="music-add-section">
                             <input type="text" id="youtube-url-input" placeholder="Coller une URL YouTube pour l'ajouter à la playlist...">
                             <button id="music-add-btn" class="control-btn" title="Ajouter à la playlist">
-                                <svg viewBox="0 0 24 24" fill="currentColor" style="width:20px; height:20px;"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"></path></svg>
+                                <span class="material-symbols-outlined">playlist_add</span>
                             </button>
                         </div>
 
@@ -146,7 +119,7 @@
                         <div id="music-playlist-options">
                             <label class="loop-control">
                                 <input type="checkbox" id="music-loop-toggle">
-                                <svg class="loop-icon" viewBox="0 0 24 24" fill="currentColor" style="width:20px; height:20px;"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"></path></svg>
+                                <span class="material-symbols-outlined">loop</span>
                                 <span>Boucle</span>
                             </label>
                         </div>
@@ -162,11 +135,11 @@
                 </div>
             </div>
             <nav class="main-menu">
-                <a href="#carte" class="menu-item" data-target="carte-content">Carte</a>
-                <a href="#pj" class="menu-item" data-target="pj-content">PJ</a>
-                <a href="#prez" class="menu-item" data-target="prez-content">Prez</a>
-                <a href="#fabric" class="menu-item" data-target="fabric-content">Fabric</a>
-                <a href="#music" class="menu-item hidden" data-target="music-content" id="music-nav-item">Musique</a>
+                <a href="#carte" class="menu-item" data-target="carte-content" title="Carte"><span class="material-symbols-outlined">map</span></a>
+                <a href="#pj" class="menu-item" data-target="pj-content" title="Personnages"><span class="material-symbols-outlined">group</span></a>
+                <a href="#prez" class="menu-item" data-target="prez-content" title="Présentation"><span class="material-symbols-outlined">slideshow</span></a>
+                <a href="#fabric" class="menu-item" data-target="fabric-content" title="Tableau Blanc"><span class="material-symbols-outlined">draw</span></a>
+                <a href="#music" class="menu-item hidden" data-target="music-content" id="music-nav-item" title="Musique"><span class="material-symbols-outlined">music_note</span></a>
             </nav>
         </main>
         <div class="resizer" id="resizer-right"></div>
@@ -174,8 +147,8 @@
             <div class="panel-header">
                 <h2>Vidéo</h2>
                 <div id="global-controls">
-                    <button id="mute-mic-btn" title="Couper le micro">🎤</button>
-                    <button id="toggle-video-btn" title="Désactiver la caméra">📷</button>
+                    <button id="mute-mic-btn" title="Couper le micro"><span class="material-symbols-outlined">mic</span></button>
+                    <button id="toggle-video-btn" title="Désactiver la caméra"><span class="material-symbols-outlined">videocam</span></button>
                 </div>
             </div>
             <div id="video-grid">
@@ -185,10 +158,10 @@
 
         <!-- Panel Toggles -->
         <button id="toggle-chat-btn" title="Cacher le panneau de chat">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="icon"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+            <span class="material-symbols-outlined">chevron_left</span>
         </button>
         <button id="toggle-video-panel-btn" title="Cacher le panneau de vidéo">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="icon"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+            <span class="material-symbols-outlined">chevron_right</span>
         </button>
     </div>
 

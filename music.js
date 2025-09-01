@@ -9,7 +9,7 @@
     let isPlayerReady = false;
 
     // --- DOM Elements ---
-    let musicContainer, musicMainControls, musicCurrentTitle, musicPlayPauseBtn, playIcon, pauseIcon,
+    let musicContainer, musicMainControls, musicCurrentTitle, musicPlayPauseBtn,
         musicVolumeSlider, youtubeUrlInput, musicAddBtn, musicLoopToggle, musicPlaylistContainer;
 
     // --- YouTube Player API Functions ---
@@ -159,7 +159,7 @@
                 <span class="playlist-item-title">${song.title || song.videoId}</span>
                 <div class="playlist-item-controls">
                     <button class="control-btn btn-delete" title="Supprimer">
-                        <svg viewBox="0 0 24 24" fill="currentColor" style="width:18px; height:18px;"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"></path></svg>
+                        <span class="material-symbols-outlined">delete</span>
                     </button>
                 </div>
             `;
@@ -196,12 +196,13 @@
     }
 
     function updatePlayPauseIcon(state) {
+        const icon = musicPlayPauseBtn.querySelector('.material-symbols-outlined');
+        if (!icon) return;
+
         if (state === YT.PlayerState.PLAYING) {
-            playIcon.classList.add('hidden');
-            pauseIcon.classList.remove('hidden');
+            icon.textContent = 'pause';
         } else {
-            playIcon.classList.remove('hidden');
-            pauseIcon.classList.add('hidden');
+            icon.textContent = 'play_arrow';
         }
     }
 
@@ -340,8 +341,6 @@
         musicMainControls = document.getElementById('music-main-controls');
         musicCurrentTitle = document.getElementById('music-current-title');
         musicPlayPauseBtn = document.getElementById('music-play-pause-btn');
-        playIcon = document.getElementById('play-icon');
-        pauseIcon = document.getElementById('pause-icon');
         musicVolumeSlider = document.getElementById('music-volume-slider');
         youtubeUrlInput = document.getElementById('youtube-url-input');
         musicAddBtn = document.getElementById('music-add-btn');
