@@ -390,6 +390,8 @@
                 audioTrack.enabled = !audioTrack.enabled;
                 muteMicBtn.classList.toggle('muted', !audioTrack.enabled);
                 muteMicBtn.title = audioTrack.enabled ? "Couper le micro" : "Activer le micro";
+                const icon = muteMicBtn.querySelector('.material-symbols-outlined');
+                if (icon) icon.textContent = audioTrack.enabled ? 'mic' : 'mic_off';
             }
         });
 
@@ -399,6 +401,8 @@
                 videoTrack.enabled = !videoTrack.enabled;
                 toggleVideoBtn.classList.toggle('muted', !videoTrack.enabled);
                 toggleVideoBtn.title = videoTrack.enabled ? "Désactiver la caméra" : "Activer la caméra";
+                const icon = toggleVideoBtn.querySelector('.material-symbols-outlined');
+                if (icon) icon.textContent = videoTrack.enabled ? 'videocam' : 'videocam_off';
             }
         });
     }
