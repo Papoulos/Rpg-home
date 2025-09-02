@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let easyMDE;
     let currentPage = null;
     let isMJ = window.isMJ || false;
-    const markdownConverter = new showdown.Converter();
+    const markdownConverter = new showdown.Converter({ tables: true });
     let isNewPageMJ = false;
 
     // --- WebSocket Communication ---
