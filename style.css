@@ -301,6 +301,13 @@ body, html {
     background-color: #45a049;
 }
 
+.btn-play {
+    background-color: #4CAF50;
+}
+.btn-play:hover {
+    background-color: #45a049;
+}
+
 .btn-delete {
     background-color: #f44336;
 }
