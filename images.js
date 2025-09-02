@@ -58,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- WebSocket Event Listeners (via window events) ---
 
     function showMJControls() {
-        imageControls.style.display = 'flex';
+        imageControls.classList.remove('hidden');
     }
 
     window.addEventListener('mj-status', (e) => {
