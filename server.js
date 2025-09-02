@@ -4,6 +4,7 @@ const https = require('https');
 const WebSocket = require('ws');
 const path = require('path');
 const fs = require('fs');
+const fsp = fs.promises;
 const fetch = require('node-fetch');
 const chatbotConfig = require('./api.config.js');
 const app = express();
@@ -99,7 +100,7 @@ function loadPlaylist() {
     }
 }
 
-function savePlaylist() {
+async function savePlaylist() {
     try {
         // Only save the persistent parts of the state
         const stateToSave = {
@@ -108,7 +109,7 @@ function savePlaylist() {
             volume: musicState.volume,
             currentIndex: musicState.currentIndex
         };
-        fs.writeFileSync(PLAYLIST_FILE, JSON.stringify(stateToSave, null, 2));
+        await fsp.writeFile(PLAYLIST_FILE, JSON.stringify(stateToSave, null, 2));
     } catch (error) {
         console.error('[PLAYLIST] FAILED to save playlist:', error);
     }
@@ -250,10 +251,10 @@ function loadChatHistory() {
     }
 }
 
-function appendToHistory(message) {
+async function appendToHistory(message) {
     try {
         if (message.type === 'chat' || message.type === 'dice' || message.type === 'game-roll') {
-            fs.appendFileSync(CHAT_LOG_FILE, JSON.stringify(message) + '\n');
+            await fsp.appendFile(CHAT_LOG_FILE, JSON.stringify(message) + '\n');
         }
     } catch (error) {
         console.error('[HISTORY] FAILED to append message:', error);
@@ -275,24 +276,20 @@ function loadImageList() {
     }
 }
 
-function saveImageList() {
+async function saveImageList() {
     try {
         // Sort alphabetically by name before saving
         imageList.sort((a, b) => a.name.localeCompare(b.name));
-        fs.writeFileSync(IMAGE_LIST_FILE, JSON.stringify(imageList, null, 2));
+        await fsp.writeFile(IMAGE_LIST_FILE, JSON.stringify(imageList, null, 2));
     } catch (error) {
         console.error('[IMAGES] FAILED to save image list:', error);
     }
 }
 
-function broadcastImageList() {
-    broadcast({ type: 'image-list-update', list: imageList });
-}
-
 // --- Whiteboard State Functions ---
-function saveWhiteboardState(state) {
+async function saveWhiteboardState(state) {
     try {
-        fs.writeFileSync(WHITEBOARD_STATE_FILE, state);
+        await fsp.writeFile(WHITEBOARD_STATE_FILE, state);
     } catch (error) {
         console.error('[WHITEBOARD] FAILED to save state:', error);
     }
@@ -371,8 +368,11 @@ wss.on('connection', (ws) => {
                 const isMJ = data.username.toLowerCase() === 'mj';
                 clients.set(ws, { username: data.username, ws: ws, isMJ, isAlive: true });
 
-                // Send initial state
-                ws.send(JSON.stringify({ type: 'history', messages: chatHistory }));
+                // Send initial state (with paginated chat history)
+                const initialHistory = chatHistory.slice(-50);
+                const hasMoreHistory = chatHistory.length > 50;
+                ws.send(JSON.stringify({ type: 'history', messages: initialHistory, hasMore: hasMoreHistory }));
+
                 ws.send(JSON.stringify({ type: 'image-list-update', list: imageList }));
                 ws.send(JSON.stringify({ type: 'show-image', url: currentImageUrl }));
                 if (whiteboardState) ws.send(JSON.stringify({ type: 'fabric-load', payload: whiteboardState }));
@@ -385,7 +385,6 @@ wss.on('connection', (ws) => {
                 if (!client || !client.isMJ) break; // Only MJ can control music
 
                 const { action, value } = data;
-                let updatePayload = { type: 'music-control' };
 
                 switch (action) {
                     case 'play':
@@ -394,34 +393,34 @@ wss.on('connection', (ws) => {
                             musicState.currentIndex = value.index;
                             musicState.startTime = Date.now();
                             musicState.pauseTime = null;
-                            updatePayload.action = 'play';
-                            updatePayload.value = { index: musicState.currentIndex };
-                            broadcast(updatePayload);
+                            savePlaylist();
+                            broadcast({ type: 'music-control', action: 'play', value: { index: musicState.currentIndex } });
                         }
                         break;
 
                     case 'pause':
                         musicState.isPlaying = false;
                         musicState.pauseTime = Date.now();
-                        updatePayload.action = 'pause';
-                        broadcast(updatePayload);
+                        broadcast({ type: 'music-control', action: 'pause' });
                         break;
 
                     case 'volume':
                         musicState.volume = value.volume;
-                        updatePayload.action = 'volume';
-                        updatePayload.value = { volume: musicState.volume };
-                        broadcast(updatePayload);
+                        savePlaylist();
+                        broadcast({ type: 'music-control', action: 'volume', value: { volume: musicState.volume } });
                         break;
 
                     case 'playlist-add':
                         // The client now provides the title.
                         if (value.videoId && value.title) {
-                            musicState.playlist.push({ videoId: value.videoId, title: value.title });
+                            const newSong = { videoId: value.videoId, title: value.title };
+                            musicState.playlist.push(newSong);
                             // If nothing was playing, set the new song as current, but don't auto-play
                             if (musicState.currentIndex === -1) {
                                 musicState.currentIndex = musicState.playlist.length - 1;
                             }
+                            savePlaylist();
+                            broadcast({ type: 'music-control', action: 'playlist-add', value: newSong });
                         }
                         break;
 
@@ -431,14 +430,20 @@ wss.on('connection', (ws) => {
                         if (musicState.currentIndex >= musicState.playlist.length) {
                             musicState.currentIndex = musicState.playlist.length - 1;
                         }
+                        savePlaylist();
+                        broadcast({ type: 'music-control', action: 'playlist-remove', value: { videoId: value.videoId } });
                         break;
 
                     case 'playlist-reorder':
                         musicState.playlist = value.playlist;
+                        savePlaylist();
+                        broadcast({ type: 'music-control', action: 'playlist-reorder', value: { playlist: musicState.playlist } });
                         break;
 
                     case 'playlist-toggle-loop':
                         musicState.isLooping = value.isLooping;
+                        savePlaylist();
+                        broadcast({ type: 'music-control', action: 'playlist-toggle-loop', value: { isLooping: musicState.isLooping } });
                         break;
 
                     case 'request-sync':
@@ -458,17 +463,14 @@ wss.on('connection', (ws) => {
                         }));
                         return; // Don't broadcast or save
                 }
-
-                // After any change, save and broadcast the full playlist to all clients
-                savePlaylist();
-                broadcast({ type: 'music-control', action: 'playlist-update', value: { playlist: musicState.playlist, isLooping: musicState.isLooping } });
                 break;
 
             case 'add-image':
                 if (client && client.isMJ) {
-                    imageList.push({ name: data.name, url: data.url });
-                    saveImageList();
-                    broadcastImageList();
+                    const newImage = { name: data.name, url: data.url };
+                    imageList.push(newImage);
+                    saveImageList(); // This also sorts the list
+                    broadcast({ type: 'image-added', image: newImage });
                 }
                 break;
 
@@ -480,7 +482,7 @@ wss.on('connection', (ws) => {
                     }
                     imageList = imageList.filter(img => img.url !== data.url);
                     saveImageList();
-                    broadcastImageList();
+                    broadcast({ type: 'image-deleted', url: data.url });
                 }
                 break;
 
@@ -527,6 +529,19 @@ wss.on('connection', (ws) => {
                     data.sender = client.username;
                     broadcastToOthers(ws, data);
                 }
+                break;
+
+            case 'request-chat-history':
+                const offset = data.offset || 0;
+                const limit = data.limit || 50;
+                // Slice from the end of the array. The client will prepend these.
+                const startIndex = Math.max(0, chatHistory.length - offset - limit);
+                const endIndex = Math.max(0, chatHistory.length - offset);
+
+                const historyChunk = chatHistory.slice(startIndex, endIndex);
+                const hasMore = startIndex > 0;
+
+                ws.send(JSON.stringify({ type: 'chat-history-chunk', messages: historyChunk, hasMore }));
                 break;
         }
     });

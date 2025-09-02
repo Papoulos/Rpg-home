@@ -37,6 +37,9 @@
         return username;
     }
 
+    let chatMessageCount = 0;
+    let loadMoreButton;
+
     // --- DOM Manipulation ---
     function addMessage({ sender, message, type, system, prepend = false }) {
         if (!sender || !message) {
@@ -60,7 +63,17 @@
         messageElement.innerHTML = `${coloredSender} ${richMessage}`;
 
         if (prepend) {
-            chatMessages.prepend(messageElement);
+            const isScrolledToBottom = chatMessages.scrollHeight - chatMessages.clientHeight <= chatMessages.scrollTop + 1;
+
+            // Find the first message element to insert before
+            const firstMessage = chatMessages.querySelector('.chat-message');
+            chatMessages.insertBefore(messageElement, firstMessage);
+
+            // If user was at the bottom, stay at the bottom. Otherwise, maintain scroll position.
+            if (!isScrolledToBottom) {
+                 chatMessages.scrollTop += messageElement.offsetHeight;
+            }
+
         } else {
             chatMessages.appendChild(messageElement);
         }
@@ -254,11 +267,16 @@
 
             switch (data.type) {
                 case 'history':
-                    data.messages.forEach(msg => {
-                        if (msg.type === 'chat' || msg.type === 'dice' || msg.type === 'game-roll') {
-                            addMessage({ ...msg, prepend: true });
-                        }
-                    });
+                    chatMessages.innerHTML = ''; // Clear chat
+                    loadMoreButton.style.display = data.hasMore ? 'block' : 'none';
+                    data.messages.forEach(msg => addMessage({ ...msg, prepend: false })); // Append initial messages
+                    chatMessageCount = data.messages.length;
+                    chatMessages.scrollTop = chatMessages.scrollHeight; // Scroll to bottom
+                    break;
+                case 'chat-history-chunk':
+                    data.messages.reverse().forEach(msg => addMessage({ ...msg, prepend: true }));
+                    chatMessageCount += data.messages.length;
+                    loadMoreButton.style.display = data.hasMore ? 'block' : 'none';
                     break;
                 case 'mj-status':
                     window.isMJ = data.isMJ; // Set the global flag
@@ -266,6 +284,12 @@
                     break;
                 case 'image-list-update':
                     window.dispatchEvent(new CustomEvent('image-list-update', { detail: { list: data.list } }));
+                    break;
+                case 'image-added':
+                    window.dispatchEvent(new CustomEvent('image-added', { detail: { image: data.image } }));
+                    break;
+                case 'image-deleted':
+                    window.dispatchEvent(new CustomEvent('image-deleted', { detail: { url: data.url } }));
                     break;
                 case 'show-image':
                     displayImage(data.url);
@@ -276,7 +300,8 @@
                 case 'chat':
                 case 'dice':
                 case 'game-roll':
-                    addMessage({ ...data, prepend: true });
+                    addMessage({ ...data, prepend: false });
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
                     break;
                 case 'offer':
                     if (!peerConnections[data.sender]) {
@@ -389,6 +414,10 @@
         chatInput.addEventListener('keydown', e => e.key === 'Enter' && handleSendMessage());
         diceButtons.forEach(button => button.addEventListener('click', () => rollDice(parseInt(button.dataset.die, 10))));
 
+        loadMoreButton.addEventListener('click', () => {
+            sendMessage({ type: 'request-chat-history', offset: chatMessageCount, limit: 50 });
+        });
+
         // Global media controls
         const muteMicBtn = document.getElementById('mute-mic-btn');
         const toggleVideoBtn = document.getElementById('toggle-video-btn');
@@ -457,6 +486,12 @@
         videoGrid = document.getElementById('video-grid');
         imageDisplayArea = document.getElementById('image-display-area');
 
+        // Create and setup the "Load More" button
+        loadMoreButton = document.createElement('button');
+        loadMoreButton.textContent = 'Charger plus de messages';
+        loadMoreButton.id = 'load-more-btn';
+        loadMoreButton.style.display = 'none'; // Hide by default
+        chatMessages.before(loadMoreButton); // Place it right before the chat messages container
 
         askForUsername();
         await setupLocalMedia();

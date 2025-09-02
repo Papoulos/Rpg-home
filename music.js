@@ -297,11 +297,21 @@
                 player.setVolume(value.volume);
                 if (isMJ) musicVolumeSlider.value = value.volume;
                 break;
-            case 'playlist-update':
+            case 'playlist-add':
+                playlist.push(value);
+                renderPlaylist(); // Re-render for simplicity, includes adding the new song
+                break;
+            case 'playlist-remove':
+                playlist = playlist.filter(song => song.videoId !== value.videoId);
+                renderPlaylist(); // Re-render to remove the song
+                break;
+            case 'playlist-reorder':
                 playlist = value.playlist || [];
+                renderPlaylist();
+                break;
+            case 'playlist-toggle-loop':
                 isLooping = value.isLooping || false;
                 if (isMJ) musicLoopToggle.checked = isLooping;
-                renderPlaylist();
                 break;
             case 'sync':
                 playlist = value.playlist || [];

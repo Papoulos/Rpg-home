@@ -67,6 +67,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    function sortImageSelect() {
+        const options = Array.from(imageSelect.options);
+        // Skip the first option which is the placeholder
+        const placeholder = options.shift();
+
+        options.sort((a, b) => a.textContent.localeCompare(b.textContent));
+
+        // Clear the select and re-add the placeholder first
+        imageSelect.innerHTML = '';
+        imageSelect.appendChild(placeholder);
+
+        // Add the sorted options back
+        options.forEach(option => imageSelect.appendChild(option));
+    }
+
     window.addEventListener('image-list-update', (e) => {
         const imageList = e.detail.list;
         const selectedValue = imageSelect.value;
@@ -84,8 +99,33 @@ document.addEventListener('DOMContentLoaded', () => {
             imageSelect.appendChild(option);
         });
 
+        sortImageSelect();
+
         // Restore selection if possible
         imageSelect.value = selectedValue;
+    });
+
+    window.addEventListener('image-added', (e) => {
+        const image = e.detail.image;
+        const selectedValue = imageSelect.value;
+
+        const option = document.createElement('option');
+        option.value = image.url;
+        option.textContent = image.name;
+        imageSelect.appendChild(option);
+
+        sortImageSelect();
+
+        // Restore selection if possible
+        imageSelect.value = selectedValue;
+    });
+
+    window.addEventListener('image-deleted', (e) => {
+        const url = e.detail.url;
+        const optionToRemove = imageSelect.querySelector(`option[value="${url}"]`);
+        if (optionToRemove) {
+            optionToRemove.remove();
+        }
     });
 
     // --- Initial Setup ---
