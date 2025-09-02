@@ -211,7 +211,8 @@
             return;
         }
 
-        socket = new WebSocket(`wss://${window.location.host}`);
+        const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        socket = new WebSocket(`${protocol}://${window.location.host}`);
         window.socket = socket;
 
         socket.onopen = () => {
@@ -326,6 +327,12 @@
                 case 'music-control':
                 case 'music-sync':
                     window.dispatchEvent(new CustomEvent('music-control', { detail: data }));
+                    break;
+                case 'wiki-page-list':
+                    window.dispatchEvent(new CustomEvent('wiki-update-list', { detail: data }));
+                    break;
+                case 'wiki-page-content':
+                    window.dispatchEvent(new CustomEvent('wiki-update-page', { detail: data }));
                     break;
             }
         };
