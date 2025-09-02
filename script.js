@@ -263,6 +263,12 @@
                 case 'mj-status':
                     window.isMJ = data.isMJ; // Set the global flag
                     window.dispatchEvent(new CustomEvent('mj-status', { detail: { isMJ: data.isMJ } }));
+
+                    // Directly control image controls visibility
+                    const imageControls = document.querySelector('.image-controls');
+                    if (imageControls) {
+                        imageControls.classList.toggle('hidden', !data.isMJ);
+                    }
                     break;
                 case 'image-list-update':
                     window.dispatchEvent(new CustomEvent('image-list-update', { detail: { list: data.list } }));

@@ -33,6 +33,13 @@
     margin: 10px 0 0 0;
 }
 
+#wiki-mj-page-list {
+    max-height: 250px; /* Limit the height of the MJ list */
+    overflow-y: auto; /* Make it scrollable if it overflows */
+    padding-right: 5px; /* Add some padding so the scrollbar doesn't hug the text */
+    margin-bottom: 10px;
+}
+
 .wiki-sidebar ul li {
     padding: 8px 10px;
     cursor: pointer;
@@ -55,7 +62,7 @@
     width: 100%;
     padding: 8px;
     margin-bottom: 10px;
-    background-color: #4CAF50;
+    background-color: #2196F3; /* Blue, to distinguish from green active item */
     color: white;
     border: none;
     border-radius: 5px;
@@ -64,7 +71,7 @@
 }
 
 .new-page-btn:hover {
-    background-color: #45a049;
+    background-color: #1e88e5; /* Darker blue on hover */
 }
 
 .wiki-main {
