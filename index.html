@@ -6,6 +6,8 @@
     <title>Jeu de Rôle en Ligne</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
+    <link rel="stylesheet" href="wiki.css">
 </head>
 <body>
     <div class="container">
@@ -130,11 +132,41 @@
                     <!-- The invisible YouTube player -->
                     <div id="youtube-player"></div>
                 </div>
+                <div id="wiki-content" class="tab-content">
+                    <div class="wiki-container">
+                        <div class="wiki-sidebar">
+                            <h3>Pages</h3>
+                            <ul id="wiki-page-list">
+                                <!-- Page list will be populated by JS -->
+                            </ul>
+                            <div class="wiki-sidebar-controls hidden" id="wiki-mj-controls">
+                                <h3>MJ Zone</h3>
+                                <ul id="wiki-mj-page-list">
+                                    <!-- MJ page list will be populated by JS -->
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="wiki-main">
+                            <div id="wiki-viewer">
+                                <h2 id="wiki-title"></h2>
+                                <div id="wiki-body"></div>
+                            </div>
+                            <div id="wiki-editor" style="display: none;">
+                                <input type="text" id="wiki-editor-title" placeholder="Titre de la page" />
+                                <textarea id="wiki-textarea"></textarea>
+                                <button id="wiki-save-btn">Sauvegarder</button>
+                                <button id="wiki-cancel-btn">Annuler</button>
+                            </div>
+                             <button id="wiki-edit-btn">Modifier</button>
+                        </div>
+                    </div>
+                </div>
             </div>
             <nav class="main-menu">
                 <a href="#carte" class="menu-item" data-target="carte-content" title="Carte"><span class="material-symbols-outlined">map</span></a>
                 <a href="#pj" class="menu-item" data-target="pj-content" title="Personnages"><span class="material-symbols-outlined">group</span></a>
                 <a href="#fabric" class="menu-item" data-target="fabric-content" title="Tableau Blanc"><span class="material-symbols-outlined">draw</span></a>
+                <a href="#wiki" class="menu-item" data-target="wiki-content" title="Wiki"><span class="material-symbols-outlined">library_books</span></a>
                 <a href="#music" class="menu-item hidden" data-target="music-content" id="music-nav-item" title="Musique"><span class="material-symbols-outlined">music_note</span></a>
             </nav>
         </main>
@@ -169,5 +201,8 @@
     <script src="images.js" defer></script>
     <script src="fabric-whiteboard.js" defer></script>
     <script src="music.js" defer></script>
+    <script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
+    <script src="wiki.js" defer></script>
 </body>
 </html>

@@ -1,0 +1,231 @@
+/*- Wiki Styles -*/
+
+.wiki-container {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    gap: 10px;
+    background-color: #1e1e1e; /* Match main content background */
+}
+
+.wiki-sidebar {
+    flex-basis: 220px;
+    flex-shrink: 0;
+    padding: 10px;
+    border-right: 1px solid #333;
+    overflow-y: auto;
+    background-color: #2a2a2a; /* Match panel background */
+    border-radius: 8px;
+}
+
+.wiki-sidebar h3 {
+    margin-top: 0;
+    font-size: 1.2em;
+    border-bottom: 1px solid #444;
+    padding-bottom: 5px;
+    color: #ffffff;
+}
+
+.wiki-sidebar ul {
+    list-style: none;
+    padding: 0;
+    margin: 10px 0 0 0;
+}
+
+.wiki-sidebar ul li {
+    padding: 8px 10px;
+    cursor: pointer;
+    border-radius: 4px;
+    margin-bottom: 4px;
+    transition: background-color 0.2s;
+}
+
+.wiki-sidebar ul li:hover {
+    background-color: #3a3a3a;
+}
+
+.wiki-sidebar ul li.active {
+    background-color: #4CAF50; /* Use theme's accent color */
+    color: #ffffff;
+    font-weight: bold;
+}
+
+.new-page-btn {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 10px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.new-page-btn:hover {
+    background-color: #45a049;
+}
+
+.wiki-main {
+    flex-grow: 1;
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    background-color: #2a2a2a; /* Match panel background */
+    border-radius: 8px;
+}
+
+#wiki-viewer {
+    flex-grow: 1;
+}
+
+#wiki-title {
+    margin-top: 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #444;
+}
+
+#wiki-body {
+    margin-top: 15px;
+    line-height: 1.6;
+}
+
+#wiki-body h1, #wiki-body h2, #wiki-body h3 {
+    margin-top: 1.5em;
+    border-bottom: 1px solid #3a3a3a;
+    padding-bottom: 0.3em;
+}
+
+#wiki-body a {
+    color: #68b6ef;
+    text-decoration: none;
+}
+
+#wiki-body a:hover {
+    text-decoration: underline;
+}
+
+#wiki-body code {
+    background-color: #333;
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-family: monospace;
+}
+
+#wiki-body pre {
+    background-color: #333;
+    padding: 10px;
+    border-radius: 4px;
+    overflow-x: auto;
+    border: 1px solid #444;
+}
+
+#wiki-editor {
+    display: none;
+    flex-grow: 1;
+    flex-direction: column;
+}
+
+#wiki-editor-title {
+    font-size: 1.5em;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #444;
+    border-radius: 4px;
+    background-color: #333;
+    color: #f0f0f0;
+}
+
+#wiki-edit-btn,
+#wiki-save-btn,
+#wiki-cancel-btn {
+    align-self: flex-start;
+    padding: 10px 15px;
+    border: none;
+    color: white;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: background-color 0.2s;
+}
+
+#wiki-edit-btn {
+    background-color: #2196F3;
+}
+#wiki-edit-btn:hover {
+    background-color: #1e88e5;
+}
+
+#wiki-save-btn {
+    background-color: #4CAF50;
+    margin-right: 10px;
+}
+#wiki-save-btn:hover {
+    background-color: #45a049;
+}
+
+#wiki-cancel-btn {
+    background-color: #555;
+}
+#wiki-cancel-btn:hover {
+    background-color: #666;
+}
+
+/* EasyMDE Dark Theme */
+.EasyMDEContainer .CodeMirror {
+    background-color: #1e1e1e;
+    color: #f0f0f0;
+    border-color: #444;
+}
+.editor-toolbar {
+    background-color: #2a2a2a;
+    border-color: #444;
+}
+.editor-toolbar button {
+    color: #f0f0f0 !important;
+}
+.editor-toolbar button:hover, .editor-toolbar button.active {
+    background: #3a3a3a;
+    border-color: #555;
+}
+.editor-preview, .editor-preview-side {
+    background: #2a2a2a;
+}
+.cm-s-easymde .CodeMirror-cursor {
+    border-left-color: #f0f0f0;
+}
+.cm-s-easymde .cm-keyword {color: #c586c0;}
+.cm-s-easymde .cm-atom {color: #569cd6;}
+.cm-s-easymde .cm-number {color: #b5cea8;}
+.cm-s-easymde .cm-def {color: #dcdcaa;}
+.cm-s-easymde .cm-variable { color: #9cdcfe; }
+.cm-s-easymde .cm-variable-2 { color: #9cdcfe; }
+.cm-s-easymde .cm-variable-3 { color: #9cdcfe; }
+.cm-s-easymde .cm-property {color: #dcdcaa;}
+.cm-s-easymde .cm-operator {color: #d4d4d4;}
+.cm-s-easymde .cm-comment {color: #6a9955;}
+.cm-s-easymde .cm-string {color: #ce9178;}
+.cm-s-easymde .cm-string-2 {color: #ce9178;}
+.cm-s-easymde .cm-meta {color: #569cd6;}
+.cm-s-easymde .cm-error {background: #f44336; color: #f0f0f0;}
+.cm-s-easymde .cm-qualifier {color: #d7ba7d;}
+.cm-s-easymde .cm-builtin {color: #569cd6;}
+.cm-s-easymde .cm-bracket {color: #d4d4d4;}
+.cm-s-easymde .cm-tag {color: #569cd6;}
+.cm-s-easymde .cm-attribute {color: #9cdcfe;}
+.cm-s-easymde .cm-hr {color: #6a9955;}
+.cm-s-easymde .cm-link {color: #ce9178; text-decoration: underline;}
+.cm-s-easymde .cm-url {color: #969696; text-decoration: none;}
+.cm-s-easymde .cm-quote {color: #6a9955; font-style: italic;}
+.cm-s-easymde .cm-header {color: #569cd6;}
+.cm-s-easymde .cm-em {font-style: italic;}
+.cm-s-easymde .cm-strong {font-weight: bold;}
+.cm-s-easymde .cm-strikethrough {text-decoration: line-through;}
+.cm-s-easymde .cm-table {color: #dcdcaa;}
+.cm-s-easymde .cm-tab {
+    background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAABCAYAAACbLA/MAAAABGdBTUEAALGPC/xhBQAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0SU1FB9sHDh4aBw8AFOgAAAAbSURBVFjhz3BQAQAAAAgD9U9/21h4sQMAAADgLwLRAQEVgQYAAAAASUVORK5CYII=);
+    background-position: right;
+    background-repeat: no-repeat;
+}

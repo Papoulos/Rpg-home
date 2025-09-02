@@ -59,6 +59,7 @@ const PORT = process.env.PORT || 3000;
 const CHAT_LOG_FILE = path.join(__dirname, 'chat_history.log');
 const IMAGE_LIST_FILE = path.join(__dirname, 'images.json');
 const WHITEBOARD_STATE_FILE = path.join(__dirname, 'whiteboard.json');
+const WIKI_DIR = path.join(__dirname, 'wiki');
 
 
 let chatHistory = [];
@@ -541,6 +542,11 @@ wss.on('connection', (ws) => {
 
 // --- HTTP Server ---
 app.use(express.static(path.join(__dirname, '/')));
+
+// Ensure wiki directories exist before loading anything
+if (!fs.existsSync(WIKI_DIR)) fs.mkdirSync(WIKI_DIR);
+if (!fs.existsSync(path.join(WIKI_DIR, 'mj'))) fs.mkdirSync(path.join(WIKI_DIR, 'mj'));
+
 loadChatHistory();
 loadImageList();
 loadWhiteboardState();
