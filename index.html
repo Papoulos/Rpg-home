@@ -133,32 +133,29 @@
                     <div id="youtube-player"></div>
                 </div>
                 <div id="wiki-content" class="tab-content">
-                    <div class="wiki-container">
-                        <div class="wiki-sidebar">
-                            <h3>Pages</h3>
-                            <ul id="wiki-page-list">
-                                <!-- Page list will be populated by JS -->
-                            </ul>
-                            <div class="wiki-sidebar-controls hidden" id="wiki-mj-controls">
-                                <h3>MJ Zone</h3>
-                                <ul id="wiki-mj-page-list">
-                                    <!-- MJ page list will be populated by JS -->
-                                </ul>
-                            </div>
+                    <div class="wiki-controls">
+                        <select id="wiki-page-select">
+                            <option value="">Choisir une page</option>
+                        </select>
+                        <button id="wiki-add-page-btn" class="control-btn btn-add" title="Ajouter une page publique">
+                            <span class="material-symbols-outlined">add</span>
+                        </button>
+                        <button id="wiki-add-mj-page-btn" class="control-btn btn-delete hidden" title="Ajouter une page MJ">
+                            <span class="material-symbols-outlined">add</span>
+                        </button>
+                    </div>
+                    <div class="wiki-main">
+                        <div id="wiki-viewer">
+                            <h2 id="wiki-title"></h2>
+                            <div id="wiki-body"></div>
                         </div>
-                        <div class="wiki-main">
-                            <div id="wiki-viewer">
-                                <h2 id="wiki-title"></h2>
-                                <div id="wiki-body"></div>
-                            </div>
-                            <div id="wiki-editor" style="display: none;">
-                                <input type="text" id="wiki-editor-title" placeholder="Titre de la page" />
-                                <textarea id="wiki-textarea"></textarea>
-                                <button id="wiki-save-btn">Sauvegarder</button>
-                                <button id="wiki-cancel-btn">Annuler</button>
-                            </div>
-                             <button id="wiki-edit-btn">Modifier</button>
+                        <div id="wiki-editor" style="display: none;">
+                            <input type="text" id="wiki-editor-title" placeholder="Titre de la page" />
+                            <textarea id="wiki-textarea"></textarea>
+                            <button id="wiki-save-btn">Sauvegarder</button>
+                            <button id="wiki-cancel-btn">Annuler</button>
                         </div>
+                         <button id="wiki-edit-btn">Modifier</button>
                     </div>
                 </div>
             </div>

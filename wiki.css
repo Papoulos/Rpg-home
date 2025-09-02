@@ -1,87 +1,36 @@
 /*- Wiki Styles -*/
 
-.wiki-container {
+.wiki-controls {
     display: flex;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    gap: 10px;
-    background-color: #1e1e1e; /* Match main content background */
-}
-
-.wiki-sidebar {
-    flex-basis: 220px;
+    align-items: center;
+    gap: 5px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #3a3a3a;
     flex-shrink: 0;
-    padding: 10px;
-    border-right: 1px solid #333;
-    overflow-y: auto;
-    background-color: #2a2a2a; /* Match panel background */
-    border-radius: 8px;
 }
 
-.wiki-sidebar h3 {
-    margin-top: 0;
-    font-size: 1.2em;
-    border-bottom: 1px solid #444;
-    padding-bottom: 5px;
-    color: #ffffff;
-}
-
-.wiki-sidebar ul {
-    list-style: none;
-    padding: 0;
-    margin: 10px 0 0 0;
-}
-
-#wiki-mj-page-list {
-    max-height: 250px; /* Limit the height of the MJ list */
-    overflow-y: auto; /* Make it scrollable if it overflows */
-    padding-right: 5px; /* Add some padding so the scrollbar doesn't hug the text */
-    margin-bottom: 10px;
-}
-
-.wiki-sidebar ul li {
-    padding: 8px 10px;
-    cursor: pointer;
-    border-radius: 4px;
-    margin-bottom: 4px;
-    transition: background-color 0.2s;
-}
-
-.wiki-sidebar ul li:hover {
-    background-color: #3a3a3a;
-}
-
-.wiki-sidebar ul li.active {
-    background-color: #4CAF50; /* Use theme's accent color */
-    color: #ffffff;
-    font-weight: bold;
-}
-
-.new-page-btn {
-    width: 100%;
-    padding: 8px;
-    margin-bottom: 10px;
-    background-color: #2196F3; /* Blue, to distinguish from green active item */
-    color: white;
-    border: none;
+.wiki-controls select {
+    background-color: #3e3e3e;
+    color: #e0e0e0;
+    border: 1px solid #555;
     border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.2s;
+    padding: 4px 8px;
+    font-size: 14px;
+    flex-grow: 1;
 }
 
-.new-page-btn:hover {
-    background-color: #1e88e5; /* Darker blue on hover */
+.wiki-controls select:hover {
+    background-color: #4a4a4a;
 }
 
 .wiki-main {
     flex-grow: 1;
-    padding: 20px;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
     background-color: #2a2a2a; /* Match panel background */
     border-radius: 8px;
+    padding: 10px;
 }
 
 #wiki-viewer {

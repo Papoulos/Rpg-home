@@ -1,30 +1,16 @@
-document.addEventListener('DOMContentLoaded', () => {
-    // Note: The global `socket` is exposed by script.js
-    if (typeof window.socket === 'undefined') {
-        console.error('Socket is not available. Make sure script.js is loaded first.');
-        return;
-    }
+// This script now only defines the handler functions and exposes them globally.
+// The attachment of event listeners is now handled by script.js to ensure correct timing.
 
-    const imageControls = document.querySelector('.image-controls');
-    const addImageBtn = document.getElementById('add-image-btn');
-    const deleteImageBtn = document.getElementById('delete-image-btn');
-    const imageSelect = document.getElementById('image-select');
-
-    if (!imageControls || !addImageBtn || !deleteImageBtn || !imageSelect) {
-        // The user is not the MJ or on a page without these controls.
-        return;
-    }
-
-    // --- Event Handlers ---
-
-    function handleAddImage() {
+window.imageHandlers = {
+    // Handler to add a new image
+    handleAddImage: () => {
+        if (!window.socket) return;
         const name = prompt('Entrez le nom de l\'image :');
         if (!name) return;
 
         const url = prompt('Entrez le lien web de l\'image :');
         if (!url) return;
 
-        // Basic URL validation
         try {
             new URL(url);
         } catch (_) {
@@ -33,10 +19,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         window.socket.send(JSON.stringify({ type: 'add-image', name, url }));
-    }
+    },
 
-    function handleDeleteImage() {
+    // Handler to delete the selected image
+    handleDeleteImage: () => {
+        if (!window.socket) return;
+        const imageSelect = document.getElementById('image-select');
         const selectedUrl = imageSelect.value;
+
         if (selectedUrl) {
             const selectedName = imageSelect.options[imageSelect.selectedIndex].text;
             if (confirm(`Êtes-vous sûr de vouloir supprimer l'image "${selectedName}" ?`)) {
@@ -45,28 +35,28 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             alert('Veuillez sélectionner une image à supprimer.');
         }
-    }
+    },
 
-    function handleShowImage() {
+    // Handler to show the selected image to all users
+    handleShowImage: () => {
+        if (!window.socket) return;
+        const imageSelect = document.getElementById('image-select');
         const selectedUrl = imageSelect.value;
-        // The 'show-image' event is sent even for the placeholder,
-        // which will have an empty value. The server will broadcast this,
-        // and the client will clear the image display.
         window.socket.send(JSON.stringify({ type: 'show-image', url: selectedUrl }));
-    }
+    },
 
-    // --- WebSocket Event Listeners (via window events) ---
+    // Handler to update the image dropdown list
+    handleImageListUpdate: (event) => {
+        const imageSelect = document.getElementById('image-select');
+        if (!imageSelect) return;
 
-    window.addEventListener('image-list-update', (e) => {
-        const imageList = e.detail.list;
+        const imageList = event.detail.list;
         const selectedValue = imageSelect.value;
 
-        // Clear existing options (keeping the placeholder)
         while (imageSelect.options.length > 1) {
             imageSelect.remove(1);
         }
 
-        // Populate with new list
         imageList.forEach(image => {
             const option = document.createElement('option');
             option.value = image.url;
@@ -74,13 +64,10 @@ document.addEventListener('DOMContentLoaded', () => {
             imageSelect.appendChild(option);
         });
 
-        // Restore selection if possible
         imageSelect.value = selectedValue;
-    });
+    }
+};
 
-    // --- Initial Setup ---
-
-    addImageBtn.addEventListener('click', handleAddImage);
-    deleteImageBtn.addEventListener('click', handleDeleteImage);
-    imageSelect.addEventListener('change', handleShowImage);
-});
+// The 'image-list-update' event is still handled here as it's not MJ-specific
+// and needs to be active for all users at all times.
+window.addEventListener('image-list-update', window.imageHandlers.handleImageListUpdate);

@@ -260,16 +260,24 @@
                         }
                     });
                     break;
-                case 'mj-status':
+                case 'mj-status': { // Use block scope
                     window.isMJ = data.isMJ; // Set the global flag
                     window.dispatchEvent(new CustomEvent('mj-status', { detail: { isMJ: data.isMJ } }));
 
-                    // Directly control image controls visibility
+                    // Directly control image controls visibility and attach listeners
                     const imageControls = document.querySelector('.image-controls');
                     if (imageControls) {
+                        const isHidden = imageControls.classList.contains('hidden');
+                        if (data.isMJ && isHidden) {
+                            // First time showing, attach listeners
+                            document.getElementById('add-image-btn')?.addEventListener('click', window.imageHandlers.handleAddImage);
+                            document.getElementById('delete-image-btn')?.addEventListener('click', window.imageHandlers.handleDeleteImage);
+                            document.getElementById('image-select')?.addEventListener('change', window.imageHandlers.handleShowImage);
+                        }
                         imageControls.classList.toggle('hidden', !data.isMJ);
                     }
                     break;
+                }
                 case 'image-list-update':
                     window.dispatchEvent(new CustomEvent('image-list-update', { detail: { list: data.list } }));
                     break;

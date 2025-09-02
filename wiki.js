@@ -2,9 +2,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!document.getElementById('wiki-content')) return;
 
     // --- DOM Elements ---
-    const pageList = document.getElementById('wiki-page-list');
-    const mjPageList = document.getElementById('wiki-mj-page-list');
-    const mjControls = document.getElementById('wiki-mj-controls');
+    const pageSelect = document.getElementById('wiki-page-select');
+    const addPageBtn = document.getElementById('wiki-add-page-btn');
+    const addMJPageBtn = document.getElementById('wiki-add-mj-page-btn');
+
     const viewer = document.getElementById('wiki-viewer');
     const editor = document.getElementById('wiki-editor');
     const wikiTitle = document.getElementById('wiki-title');
@@ -13,14 +14,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const editBtn = document.getElementById('wiki-edit-btn');
     const saveBtn = document.getElementById('wiki-save-btn');
     const cancelBtn = document.getElementById('wiki-cancel-btn');
-    const addPageBtn = document.createElement('button');
-    addPageBtn.textContent = '+ Nouvelle Page';
-    addPageBtn.className = 'new-page-btn';
-    pageList.before(addPageBtn);
-    const addMJPageBtn = document.createElement('button');
-    addMJPageBtn.textContent = '+ Nouvelle Page MJ';
-    addMJPageBtn.className = 'new-page-btn';
-    mjPageList.before(addMJPageBtn);
 
     let easyMDE;
     let currentPage = null;
@@ -74,41 +67,48 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentPage) {
             wikiTitle.textContent = currentPage.pageName.replace(/_/g, ' ');
             wikiBody.innerHTML = markdownConverter.makeHtml(currentPage.content);
-            updateActiveListItem();
+            // Update select dropdown to show the current page
+            pageSelect.value = `${currentPage.pageName}|${currentPage.isMJPage}`;
         } else {
             wikiTitle.textContent = 'Bienvenue sur le Wiki';
-            wikiBody.innerHTML = '<p>Sélectionnez une page sur la gauche pour commencer. Si aucune page n\'existe, créez-en une!</p>';
+            wikiBody.innerHTML = '<p>Sélectionnez une page dans le menu déroulant pour commencer, ou créez-en une nouvelle avec les boutons \'+\'.</p>';
+            pageSelect.value = "";
         }
         showViewer();
     }
 
     function updatePageList(publicPages, mjPages) {
-        const createListItems = (pages, listElement, isMJPage) => {
-            listElement.innerHTML = '';
-            pages.forEach(pageName => {
-                const li = document.createElement('li');
-                li.textContent = pageName.replace(/_/g, ' ');
-                li.dataset.pageName = pageName;
-                li.dataset.isMjPage = isMJPage;
-                li.addEventListener('click', () => requestPage(pageName, isMJPage));
-                listElement.appendChild(li);
-            });
-        };
-        createListItems(publicPages, pageList, false);
-        if (isMJ) {
-            mjControls.classList.remove('hidden');
-            createListItems(mjPages, mjPageList, true);
-        } else {
-            mjControls.classList.add('hidden');
-        }
-        updateActiveListItem();
-    }
+        const selectedValue = pageSelect.value;
 
-    function updateActiveListItem() {
-        document.querySelectorAll('#wiki-page-list li, #wiki-mj-page-list li').forEach(li => {
-            const isTarget = currentPage && li.dataset.pageName === currentPage.pageName && JSON.parse(li.dataset.isMjPage) === currentPage.isMJPage;
-            li.classList.toggle('active', isTarget);
+        // Clear existing options
+        pageSelect.innerHTML = '<option value="">Choisir une page</option>';
+
+        // Create and append public pages
+        const publicOptgroup = document.createElement('optgroup');
+        publicOptgroup.label = 'Pages Publiques';
+        publicPages.forEach(pageName => {
+            const option = document.createElement('option');
+            option.value = `${pageName}|false`;
+            option.textContent = pageName.replace(/_/g, ' ');
+            publicOptgroup.appendChild(option);
         });
+        pageSelect.appendChild(publicOptgroup);
+
+        // Create and append MJ pages if user is MJ
+        if (isMJ && mjPages.length > 0) {
+            const mjOptgroup = document.createElement('optgroup');
+            mjOptgroup.label = 'Pages MJ';
+            mjPages.forEach(pageName => {
+                const option = document.createElement('option');
+                option.value = `${pageName}|true`;
+                option.textContent = pageName.replace(/_/g, ' ');
+                mjOptgroup.appendChild(option);
+            });
+            pageSelect.appendChild(mjOptgroup);
+        }
+
+        // Restore selection if possible
+        pageSelect.value = selectedValue;
     }
 
     // --- Data Logic ---
@@ -116,19 +116,18 @@ document.addEventListener('DOMContentLoaded', () => {
         sendWikiMessage({ type: 'wiki-get-page', pageName, isMJPage });
     }
 
-    function savePage(isMJPage) {
-        const pageName = editorTitle.value.trim().replace(/\s+/g, '_');
-        const content = easyMDE.value();
-        if (!pageName) {
-            alert('Le titre ne peut pas être vide.');
-            return;
-        }
-        sendWikiMessage({ type: 'wiki-save-page', pageName, content, isMJPage });
-    }
-
     // --- Event Listeners ---
+    pageSelect.addEventListener('change', () => {
+        const selected = pageSelect.value;
+        if (selected) {
+            const [pageName, isMJPageStr] = selected.split('|');
+            requestPage(pageName, isMJPageStr === 'true');
+        }
+    });
+
     editBtn.addEventListener('click', () => showEditor(false));
     cancelBtn.addEventListener('click', showViewer);
+
     saveBtn.addEventListener('click', () => {
         let isSaveMJ = isNewPageMJ;
         if (currentPage) {
@@ -144,36 +143,33 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Optimistic UI Update
-        const pageData = {
-            pageName: newTitle,
-            content: newContent,
-            isMJPage: isSaveMJ
-        };
+        const pageData = { pageName: newTitle, content: newContent, isMJPage: isSaveMJ };
         renderPage(pageData);
 
-        // Send data to server in the background
+        // Send data to server
         sendWikiMessage({ type: 'wiki-save-page', pageName: newTitle, content: newContent, isMJPage: isSaveMJ });
     });
+
     addPageBtn.addEventListener('click', () => {
         currentPage = null;
         isNewPageMJ = false;
-        updateActiveListItem();
+        pageSelect.value = "";
         showEditor(true);
     });
+
     addMJPageBtn.addEventListener('click', () => {
         currentPage = null;
         isNewPageMJ = true;
-        updateActiveListItem();
+        pageSelect.value = "";
         showEditor(true);
     });
 
     window.addEventListener('wiki-update-list', (event) => {
         const { publicPages, mjPages } = event.detail;
         updatePageList(publicPages, mjPages);
+        // If no page is selected, and we have pages, request the first public one
         if (!currentPage && publicPages.length > 0) {
             requestPage(publicPages[0], false);
-        } else if (!currentPage && isMJ && mjPages.length > 0) {
-            requestPage(mjPages[0], true);
         }
     });
 
@@ -183,12 +179,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.addEventListener('mj-status', (event) => {
         isMJ = event.detail.isMJ;
-        mjControls.classList.toggle('hidden', !isMJ);
+        // Show/hide the MJ-only add button
         addMJPageBtn.classList.toggle('hidden', !isMJ);
+        // We might need to re-render the list if the user just became MJ
+        // and there are MJ pages to show. A simple request for the list will do.
+        if (isMJ) {
+            sendWikiMessage({ type: 'wiki-get-list' }); // We'll need to implement this simple endpoint
+        }
     });
 
     // --- Initial Load ---
     renderPage(null);
-    mjControls.classList.toggle('hidden', !isMJ);
     addMJPageBtn.classList.toggle('hidden', !isMJ);
 });

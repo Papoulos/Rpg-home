@@ -530,6 +530,10 @@ wss.on('connection', (ws) => {
                 }
                 break;
 
+            case 'wiki-get-list':
+                ws.send(JSON.stringify({ type: 'wiki-page-list', publicPages: publicWikiPages, mjPages: mjWikiPages }));
+                break;
+
             case 'wiki-get-page':
                 try {
                     const { pageName, isMJPage } = data;
