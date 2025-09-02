@@ -376,6 +376,7 @@ wss.on('connection', (ws) => {
                 ws.send(JSON.stringify({ type: 'image-list-update', list: imageList }));
                 ws.send(JSON.stringify({ type: 'show-image', url: currentImageUrl }));
                 if (whiteboardState) ws.send(JSON.stringify({ type: 'fabric-load', payload: whiteboardState }));
+                ws.send(JSON.stringify({ type: 'wiki-page-list', publicPages: publicWikiPages, mjPages: mjWikiPages }));
                 if (isMJ) ws.send(JSON.stringify({ type: 'mj-status', isMJ: true }));
 
                 broadcastUserList();
@@ -528,6 +529,52 @@ wss.on('connection', (ws) => {
                     broadcastToOthers(ws, data);
                 }
                 break;
+
+            case 'wiki-get-page':
+                try {
+                    const { pageName, isMJPage } = data;
+                    const safePageName = path.normalize(pageName).replace(/^(\.\.[\/\\])+/, '');
+                    if (!safePageName || safePageName.includes('..')) throw new Error('Invalid page name.');
+
+                    const dir = isMJPage ? MJ_WIKI_DIR : WIKI_DIR;
+                    const filePath = path.join(dir, `${safePageName}.md`);
+
+                    if (fs.existsSync(filePath)) {
+                        const content = fs.readFileSync(filePath, 'utf-8');
+                        ws.send(JSON.stringify({ type: 'wiki-page-content', pageName: safePageName, content, isMJPage }));
+                    } else {
+                        ws.send(JSON.stringify({ type: 'wiki-page-content', pageName: safePageName, content: `# Page Not Found: ${pageName}`, isMJPage }));
+                    }
+                } catch (error) {
+                    console.error('[WIKI] Error getting page:', error);
+                }
+                break;
+
+            case 'wiki-save-page':
+                if (client) {
+                    try {
+                        const { pageName, content, isMJPage } = data;
+                        if (isMJPage && !client.isMJ) return; // MJ-only check
+
+                        const safePageName = path.normalize(pageName).replace(/^(\.\.[\/\\])+/, '').replace(/[^\w\s-]/g, '');
+                        if (!safePageName || safePageName.includes('..')) throw new Error('Invalid page name for saving.');
+
+                        const dir = isMJPage ? MJ_WIKI_DIR : WIKI_DIR;
+                        const filePath = path.join(dir, `${safePageName}.md`);
+
+                        fs.writeFileSync(filePath, content, 'utf-8');
+                        console.log(`[WIKI] Saved page: ${filePath}`);
+
+                        loadWikiPages();
+                        broadcastWikiPageList();
+
+                        // Confirm save by sending content back to the saver
+                        ws.send(JSON.stringify({ type: 'wiki-page-content', pageName: safePageName, content, isMJPage }));
+                    } catch (error) {
+                        console.error('[WIKI] Error saving page:', error);
+                    }
+                }
+                break;
         }
     });
 
@@ -545,12 +592,40 @@ app.use(express.static(path.join(__dirname, '/')));
 
 // Ensure wiki directories exist before loading anything
 if (!fs.existsSync(WIKI_DIR)) fs.mkdirSync(WIKI_DIR);
-if (!fs.existsSync(path.join(WIKI_DIR, 'mj'))) fs.mkdirSync(path.join(WIKI_DIR, 'mj'));
+const MJ_WIKI_DIR = path.join(WIKI_DIR, 'mj');
+if (!fs.existsSync(MJ_WIKI_DIR)) fs.mkdirSync(MJ_WIKI_DIR);
+
+let publicWikiPages = [];
+let mjWikiPages = [];
+
+function loadWikiPages() {
+    try {
+        const publicFiles = fs.readdirSync(WIKI_DIR).filter(file => file.endsWith('.md') && fs.statSync(path.join(WIKI_DIR, file)).isFile());
+        publicWikiPages = publicFiles.map(file => path.parse(file).name).sort();
+
+        const mjFiles = fs.readdirSync(MJ_WIKI_DIR).filter(file => file.endsWith('.md'));
+        mjWikiPages = mjFiles.map(file => path.parse(file).name).sort();
+
+        console.log(`[WIKI] Loaded ${publicWikiPages.length} public and ${mjWikiPages.length} MJ pages.`);
+    } catch (error) {
+        console.error('[WIKI] Failed to load wiki pages:', error);
+    }
+}
+
+function broadcastWikiPageList() {
+    broadcast({
+        type: 'wiki-page-list',
+        publicPages: publicWikiPages,
+        mjPages: mjWikiPages
+    });
+}
+
 
 loadChatHistory();
 loadImageList();
 loadWhiteboardState();
 loadPlaylist();
+loadWikiPages();
 server.listen(PORT, () => {
     console.log(`Server is listening on port ${PORT}`);
 });
