@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     // Note: The global `socket` is exposed by script.js
-    if (typeof socket === 'undefined') {
+    if (typeof window.socket === 'undefined') {
         console.error('Socket is not available. Make sure script.js is loaded first.');
         return;
     }
@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        socket.send(JSON.stringify({ type: 'add-image', name, url }));
+        window.socket.send(JSON.stringify({ type: 'add-image', name, url }));
     }
 
     function handleDeleteImage() {
@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (selectedUrl) {
             const selectedName = imageSelect.options[imageSelect.selectedIndex].text;
             if (confirm(`Êtes-vous sûr de vouloir supprimer l'image "${selectedName}" ?`)) {
-                socket.send(JSON.stringify({ type: 'delete-image', url: selectedUrl }));
+                window.socket.send(JSON.stringify({ type: 'delete-image', url: selectedUrl }));
             }
         } else {
             alert('Veuillez sélectionner une image à supprimer.');
@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // The 'show-image' event is sent even for the placeholder,
         // which will have an empty value. The server will broadcast this,
         // and the client will clear the image display.
-        socket.send(JSON.stringify({ type: 'show-image', url: selectedUrl }));
+        window.socket.send(JSON.stringify({ type: 'show-image', url: selectedUrl }));
     }
 
     // --- WebSocket Event Listeners (via window events) ---
