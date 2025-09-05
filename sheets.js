@@ -23,7 +23,18 @@ document.addEventListener('DOMContentLoaded', () => {
     function loadSheets() {
         const storedSheets = localStorage.getItem(storageKey);
         if (storedSheets) {
-            sheets = JSON.parse(storedSheets);
+            let loadedSheets = JSON.parse(storedSheets);
+
+            // One-time migration: remove "Cyberpunk" sheets if they exist
+            const initialCount = loadedSheets.length;
+            loadedSheets = loadedSheets.filter(sheet => sheet.name !== 'Cyberpunk');
+
+            // If changes were made, save them back
+            if (loadedSheets.length < initialCount) {
+                localStorage.setItem(storageKey, JSON.stringify(loadedSheets));
+            }
+
+            sheets = loadedSheets;
             populateDropdown();
         }
     }
