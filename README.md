@@ -102,39 +102,30 @@ For local development, you can create the following files in the root of the pro
     ```
 -   The `apiKey` value in your chatbot configuration in `api.config.js` should then reference a key from this object (e.g., `apiKey: apiKeys.ubot_key`).
 
-**3. Production / Deployment Configuration (Render, etc.)**
+**3. Production / Deployment Configuration**
 
-For deployment environments, the application will automatically look for configuration files in the `/etc/secrets/` directory. This is compatible with Render's "Secret Files" feature.
+For deployment environments, the application is configured using **Environment Variables**. This is the standard method for services like Heroku, Render, Google Cloud Run, and Docker.
 
-The server will attempt to load the following files if they exist:
--   **`/etc/secrets/apikeys.js`**: This file should contain your production API keys. It will be loaded *instead* of the local `apikeys.js`.
--   **`/etc/secrets/api.user.js`**: This file should contain your custom chatbot configurations. Its contents will be **merged over** the base `api.config.js`, allowing you to add new bots or override existing ones for your production environment.
+-   **General API Keys**: To configure services like Gemini or Mistral, set environment variables with the prefix `APIKEY_`. The name following the prefix will be used as the key.
+    -   `APIKEY_GEMINI=your_google_gemini_api_key`
+    -   `APIKEY_MISTRAL=your_mistral_api_key`
 
-*Example `api.user.js` for Production:*
-See the `api.user.js.example` file for a template.
-```javascript
-// In /etc/secrets/api.user.js
-const userChatbotConfig = {
-  '#ubot': {
-    type: 'paid',
-    service: 'openai-compatible',
-    displayName: 'U-Bot (Production)',
-    // This string MUST match a key in your apikeys.js file.
-    apiKey: 'ubot_prod_key',
-    endpoint: 'https://my-chatbot-url.com/v1/chat/completions'
-  }
-};
-module.exports = userChatbotConfig;
+-   **Custom Chatbot**: To add a custom, OpenAI-compatible chatbot, you must set both of the following environment variables:
+    -   `CUSTOMBOT_URL`: The full URL to the chat completions endpoint of your custom bot.
+    -   `CUSTOMBOT_KEY`: The API key required to authenticate with your custom bot's API.
+
+When `CUSTOMBOT_URL` and `CUSTOMBOT_KEY` are present, a new chatbot triggered by `#ubot` will be automatically configured and enabled.
+
+*Example Environment Variables for Production:*
+```bash
+# General API Keys for services defined in api.config.js
+APIKEY_GEMINI="ai-key-for-gemini-goes-here"
+
+# Dedicated variables for the custom chatbot
+CUSTOMBOT_URL="https://api.my-production-bot.com/v1/chat/completions"
+CUSTOMBOT_KEY="secret-key-for-custom-bot"
 ```
-*Example `apikeys.js` for Production:*
-```javascript
-// In /etc/secrets/apikeys.js
-module.exports = {
-    // This key is referenced by the 'apiKey' string in api.user.js
-    ubot_prod_key: 'PASTE_YOUR_PRODUCTION_API_KEY_HERE'
-};
-```
-This layered system allows you to maintain a clean separation between your base code, local development settings, and production configuration.
+This system allows you to securely manage your production secrets without hardcoding them or relying on file-based secrets.
 
 ### 6. Main Display & Menu
 The central area is designed for displaying primary content.

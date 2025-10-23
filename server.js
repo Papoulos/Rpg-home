@@ -9,33 +9,50 @@ const chatbotConfig = require('./api.config.js');
 const app = express();
 
 // --- Dynamic Configuration Loading ---
-// Allows overriding or extending the base config with files from a secrets path,
-// which is common in deployment environments like Render.
 
-// Load API keys from secrets, falling back to local file
+// Load API keys from environment variables first, then fall back to a local file.
 let apiKeys = {};
-try {
-    // First, try loading from the conventional secrets path
-    apiKeys = require('/etc/secrets/apikeys.js');
-    console.log('[CONFIG] Loaded API keys from /etc/secrets/apikeys.js');
-} catch (e) {
-    // If that fails, try loading the local file for development
+const apiKeyPrefix = 'APIKEY_';
+for (const envVar in process.env) {
+    if (envVar.startsWith(apiKeyPrefix)) {
+        const keyName = envVar.substring(apiKeyPrefix.length).toLowerCase();
+        apiKeys[keyName] = process.env[envVar];
+        console.log(`[CONFIG] Loaded API key for '${keyName}' from environment variable.`);
+    }
+}
+
+// If no API keys were loaded from env vars, try the local file for development.
+if (Object.keys(apiKeys).length === 0) {
     try {
         apiKeys = require('./apikeys.js');
         console.log('[CONFIG] Loaded local API keys from apikeys.js');
     } catch (e) {
-        console.warn('[CONFIG] No apikeys.js file found. Paid chatbot features may be disabled.');
+        console.warn('[CONFIG] No apikeys.js file or APIKEY_ environment variables found. Paid chatbot features may be disabled.');
     }
 }
 
-// Load and merge custom user config from secrets, falling back to base config
-try {
-    const userConfig = require('/etc/secrets/api.user.js');
-    console.log('[CONFIG] Loaded user config from /etc/secrets/api.user.js. Merging...');
-    // Merge user config over the base config.
-    Object.assign(chatbotConfig, userConfig);
-} catch (e) {
-    console.log('[CONFIG] No /etc/secrets/api.user.js file found. Using default config.');
+
+// --- Dynamic Chatbot Configuration ---
+
+// Check for dedicated environment variables for a custom chatbot
+const customBotUrl = process.env.CUSTOMBOT_URL;
+const customBotKey = process.env.CUSTOMBOT_KEY;
+
+if (customBotUrl && customBotKey) {
+    chatbotConfig['#ubot'] = {
+        type: 'paid',
+        service: 'openai-compatible',
+        displayName: 'Custom Bot',
+        model: 'chat',
+        apiKey: customBotKey, // Use the key directly
+        endpoint: customBotUrl, // Use the URL directly
+        systemPrompt: 'You are a helpful assistant.'
+    };
+    console.log('[CONFIG] Dynamically configured custom chatbot from CUSTOMBOT_URL and CUSTOMBOT_KEY.');
+} else {
+    // Fallback or legacy configuration loading (e.g., from a file) can go here if needed.
+    // For this implementation, we are removing the /etc/secrets/api.user.js logic.
+    console.log('[CONFIG] CUSTOMBOT_URL and CUSTOMBOT_KEY not found. Skipping dynamic bot configuration.');
 }
 
 const useSSL = !process.argv.includes('--nossl');
