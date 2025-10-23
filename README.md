@@ -102,39 +102,72 @@ For local development, you can create the following files in the root of the pro
     ```
 -   The `apiKey` value in your chatbot configuration in `api.config.js` should then reference a key from this object (e.g., `apiKey: apiKeys.ubot_key`).
 
-**3. Production / Deployment Configuration (Render, etc.)**
+**3. Production / Deployment Configuration**
 
-For deployment environments, the application will automatically look for configuration files in the `/etc/secrets/` directory. This is compatible with Render's "Secret Files" feature.
+Configuration for deployment environments is loaded with the following priority:
+1.  **Google Cloud Secret Manager** (if configured)
+2.  **Environment Variables**
+3.  **Local `apikeys.js` file** (for development)
 
-The server will attempt to load the following files if they exist:
--   **`/etc/secrets/apikeys.js`**: This file should contain your production API keys. It will be loaded *instead* of the local `apikeys.js`.
--   **`/etc/secrets/api.user.js`**: This file should contain your custom chatbot configurations. Its contents will be **merged over** the base `api.config.js`, allowing you to add new bots or override existing ones for your production environment.
+---
 
-*Example `api.user.js` for Production:*
-See the `api.user.js.example` file for a template.
-```javascript
-// In /etc/secrets/api.user.js
-const userChatbotConfig = {
-  '#ubot': {
-    type: 'paid',
-    service: 'openai-compatible',
-    displayName: 'U-Bot (Production)',
-    // This string MUST match a key in your apikeys.js file.
-    apiKey: 'ubot_prod_key',
-    endpoint: 'https://my-chatbot-url.com/v1/chat/completions'
+#### Option 1: Google Cloud Secret Manager (Recommended for GCP)
+
+If running on Google Cloud (e.g., Cloud Run, GKE), you can load configuration directly from Secret Manager. The application needs the appropriate IAM permissions to access the secrets.
+
+You need to set the following environment variables to point to the names of your secrets:
+
+-   `GCS_SECRET_NAME_API_KEYS`: The full resource name of the secret containing your API keys as a JSON object.
+    -   *Example Value*: `projects/your-gcp-project-id/secrets/api-keys/versions/latest`
+-   `GCS_SECRET_NAME_CHAT_CONFIG`: The full resource name of the secret containing your user-specific chatbot configuration as a JSON object. This is optional and will be merged with the base configuration.
+    -   *Example Value*: `projects/your-gcp-project-id/secrets/user-chat-config/versions/latest`
+
+*Example `api-keys` secret content (JSON):*
+```json
+{
+  "gemini": "your_gemini_key_from_gcp",
+  "mistral": "your_mistral_key_from_gcp"
+}
+```
+
+*Example `user-chat-config` secret content (JSON):*
+```json
+{
+  "#ubot": {
+    "type": "paid",
+    "service": "openai-compatible",
+    "displayName": "U-Bot (Production)",
+    "apiKey": "ubot_production_key",
+    "endpoint": "https://api.my-production-bot.com/v1/chat/completions"
   }
-};
-module.exports = userChatbotConfig;
+}
 ```
-*Example `apikeys.js` for Production:*
-```javascript
-// In /etc/secrets/apikeys.js
-module.exports = {
-    // This key is referenced by the 'apiKey' string in api.user.js
-    ubot_prod_key: 'PASTE_YOUR_PRODUCTION_API_KEY_HERE'
-};
+**Note**: The `apiKey` value in your chat config should correspond to a key in your `api-keys` secret.
+
+---
+
+#### Option 2: Environment Variables
+
+This is the standard method for other platforms like Heroku, Render, or Docker.
+
+-   **General API Keys**: Set variables with the prefix `APIKEY_`.
+    -   `APIKEY_GEMINI=your_google_gemini_api_key`
+    -   `APIKEY_MISTRAL=your_mistral_api_key`
+
+-   **Custom Chatbot**: Set both of the following variables to enable a custom bot.
+    -   `CUSTOMBOT_URL`: The full URL to the chat completions endpoint.
+    -   `CUSTOMBOT_KEY`: The API key for the custom bot.
+
+*Example Environment Variables:*
+```bash
+# General API Keys
+APIKEY_GEMINI="ai-key-for-gemini-goes-here"
+
+# Dedicated variables for the custom chatbot
+CUSTOMBOT_URL="https://api.my-production-bot.com/v1/chat/completions"
+CUSTOMBOT_KEY="secret-key-for-custom-bot"
 ```
-This layered system allows you to maintain a clean separation between your base code, local development settings, and production configuration.
+This system allows you to securely manage your production secrets without hardcoding them.
 
 ### 6. Main Display & Menu
 The central area is designed for displaying primary content.

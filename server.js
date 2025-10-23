@@ -5,55 +5,41 @@ const WebSocket = require('ws');
 const path = require('path');
 const fs = require('fs');
 const fetch = require('node-fetch');
-const chatbotConfig = require('./api.config.js');
+const { loadApiKeys, loadChatbotConfig } = require('./config-loader');
+let chatbotConfig = require('./api.config.js'); // Load base config
 const app = express();
 
-// --- Dynamic Configuration Loading ---
-// Allows overriding or extending the base config with files from a secrets path,
-// which is common in deployment environments like Render.
-
-// Load API keys from secrets, falling back to local file
 let apiKeys = {};
-try {
-    // First, try loading from the conventional secrets path
-    apiKeys = require('/etc/secrets/apikeys.js');
-    console.log('[CONFIG] Loaded API keys from /etc/secrets/apikeys.js');
-} catch (e) {
-    // If that fails, try loading the local file for development
-    try {
-        apiKeys = require('./apikeys.js');
-        console.log('[CONFIG] Loaded local API keys from apikeys.js');
-    } catch (e) {
-        console.warn('[CONFIG] No apikeys.js file found. Paid chatbot features may be disabled.');
+let server; // To be defined after config is loaded
+
+// --- Main Application Start ---
+async function startServer() {
+    // --- Dynamic Configuration Loading ---
+    apiKeys = await loadApiKeys();
+    chatbotConfig = await loadChatbotConfig(chatbotConfig);
+
+    // --- Server Initialization ---
+    const useSSL = !process.argv.includes('--nossl');
+
+    if (useSSL) {
+        console.log('[SERVER] Starting in HTTPS mode.');
+        try {
+            const options = {
+                key: fs.readFileSync(path.join(__dirname, 'certs/key.pem')),
+                cert: fs.readFileSync(path.join(__dirname, 'certs/cert.pem'))
+            };
+            server = https.createServer(options, app);
+        } catch (e) {
+            console.error('[SERVER] SSL certificate error. Please ensure `certs/key.pem` and `certs/cert.pem` exist.');
+            console.error('[SERVER] To run without SSL, use the --nossl flag.');
+            process.exit(1);
+        }
+    } else {
+        console.log('[SERVER] Starting in HTTP mode (SSL disabled).');
+        server = http.createServer(app);
     }
-}
 
-// Load and merge custom user config from secrets, falling back to base config
-try {
-    const userConfig = require('/etc/secrets/api.user.js');
-    console.log('[CONFIG] Loaded user config from /etc/secrets/api.user.js. Merging...');
-    // Merge user config over the base config.
-    Object.assign(chatbotConfig, userConfig);
-} catch (e) {
-    console.log('[CONFIG] No /etc/secrets/api.user.js file found. Using default config.');
-}
-
-const useSSL = !process.argv.includes('--nossl');
-let server;
-
-if (useSSL) {
-    console.log('[SERVER] Starting in HTTPS mode.');
-    const options = {
-        key: fs.readFileSync(path.join(__dirname, 'certs/key.pem')),
-        cert: fs.readFileSync(path.join(__dirname, 'certs/cert.pem'))
-    };
-    server = https.createServer(options, app);
-} else {
-    console.log('[SERVER] Starting in HTTP mode (SSL disabled).');
-    server = http.createServer(app);
-}
-
-const wss = new WebSocket.Server({ server });
+    const wss = new WebSocket.Server({ server });
 
 const PORT = process.env.PORT || 3000;
 const CHAT_LOG_FILE = path.join(__dirname, 'chat_history.log');
@@ -625,11 +611,18 @@ function broadcastWikiPageList() {
 }
 
 
-loadChatHistory();
-loadImageList();
-loadWhiteboardState();
-loadPlaylist();
-loadWikiPages();
-server.listen(PORT, () => {
-    console.log(`Server is listening on port ${PORT}`);
+    loadChatHistory();
+    loadImageList();
+    loadWhiteboardState();
+    loadPlaylist();
+    loadWikiPages();
+    server.listen(PORT, () => {
+        console.log(`Server is listening on port ${PORT}`);
+    });
+}
+
+// --- Start the application ---
+startServer().catch(error => {
+    console.error('[FATAL] Failed to start server:', error);
+    process.exit(1);
 });
