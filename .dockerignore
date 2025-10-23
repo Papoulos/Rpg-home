@@ -1,0 +1,23 @@
+# Ignore Git directory
+.git
+.gitignore
+
+# Ignore dependencies, they will be installed within the container
+node_modules
+
+# Ignore local log and state files
+server.log
+chat_history.log
+whiteboard.json
+playlist.json
+images.json
+
+# Ignore example configuration files
+*.example
+
+# Ignore local SSL certificates
+certs/
+
+# Ignore development environment files
+.env
+npm-debug.log
