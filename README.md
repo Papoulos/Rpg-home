@@ -104,28 +104,70 @@ For local development, you can create the following files in the root of the pro
 
 **3. Production / Deployment Configuration**
 
-For deployment environments, the application is configured using **Environment Variables**. This is the standard method for services like Heroku, Render, Google Cloud Run, and Docker.
+Configuration for deployment environments is loaded with the following priority:
+1.  **Google Cloud Secret Manager** (if configured)
+2.  **Environment Variables**
+3.  **Local `apikeys.js` file** (for development)
 
--   **General API Keys**: To configure services like Gemini or Mistral, set environment variables with the prefix `APIKEY_`. The name following the prefix will be used as the key.
+---
+
+#### Option 1: Google Cloud Secret Manager (Recommended for GCP)
+
+If running on Google Cloud (e.g., Cloud Run, GKE), you can load configuration directly from Secret Manager. The application needs the appropriate IAM permissions to access the secrets.
+
+You need to set the following environment variables to point to the names of your secrets:
+
+-   `GCS_SECRET_NAME_API_KEYS`: The full resource name of the secret containing your API keys as a JSON object.
+    -   *Example Value*: `projects/your-gcp-project-id/secrets/api-keys/versions/latest`
+-   `GCS_SECRET_NAME_CHAT_CONFIG`: The full resource name of the secret containing your user-specific chatbot configuration as a JSON object. This is optional and will be merged with the base configuration.
+    -   *Example Value*: `projects/your-gcp-project-id/secrets/user-chat-config/versions/latest`
+
+*Example `api-keys` secret content (JSON):*
+```json
+{
+  "gemini": "your_gemini_key_from_gcp",
+  "mistral": "your_mistral_key_from_gcp"
+}
+```
+
+*Example `user-chat-config` secret content (JSON):*
+```json
+{
+  "#ubot": {
+    "type": "paid",
+    "service": "openai-compatible",
+    "displayName": "U-Bot (Production)",
+    "apiKey": "ubot_production_key",
+    "endpoint": "https://api.my-production-bot.com/v1/chat/completions"
+  }
+}
+```
+**Note**: The `apiKey` value in your chat config should correspond to a key in your `api-keys` secret.
+
+---
+
+#### Option 2: Environment Variables
+
+This is the standard method for other platforms like Heroku, Render, or Docker.
+
+-   **General API Keys**: Set variables with the prefix `APIKEY_`.
     -   `APIKEY_GEMINI=your_google_gemini_api_key`
     -   `APIKEY_MISTRAL=your_mistral_api_key`
 
--   **Custom Chatbot**: To add a custom, OpenAI-compatible chatbot, you must set both of the following environment variables:
-    -   `CUSTOMBOT_URL`: The full URL to the chat completions endpoint of your custom bot.
-    -   `CUSTOMBOT_KEY`: The API key required to authenticate with your custom bot's API.
+-   **Custom Chatbot**: Set both of the following variables to enable a custom bot.
+    -   `CUSTOMBOT_URL`: The full URL to the chat completions endpoint.
+    -   `CUSTOMBOT_KEY`: The API key for the custom bot.
 
-When `CUSTOMBOT_URL` and `CUSTOMBOT_KEY` are present, a new chatbot triggered by `#ubot` will be automatically configured and enabled.
-
-*Example Environment Variables for Production:*
+*Example Environment Variables:*
 ```bash
-# General API Keys for services defined in api.config.js
+# General API Keys
 APIKEY_GEMINI="ai-key-for-gemini-goes-here"
 
 # Dedicated variables for the custom chatbot
 CUSTOMBOT_URL="https://api.my-production-bot.com/v1/chat/completions"
 CUSTOMBOT_KEY="secret-key-for-custom-bot"
 ```
-This system allows you to securely manage your production secrets without hardcoding them or relying on file-based secrets.
+This system allows you to securely manage your production secrets without hardcoding them.
 
 ### 6. Main Display & Menu
 The central area is designed for displaying primary content.

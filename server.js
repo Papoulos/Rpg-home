@@ -5,72 +5,41 @@ const WebSocket = require('ws');
 const path = require('path');
 const fs = require('fs');
 const fetch = require('node-fetch');
-const chatbotConfig = require('./api.config.js');
+const { loadApiKeys, loadChatbotConfig } = require('./config-loader');
+let chatbotConfig = require('./api.config.js'); // Load base config
 const app = express();
 
-// --- Dynamic Configuration Loading ---
-
-// Load API keys from environment variables first, then fall back to a local file.
 let apiKeys = {};
-const apiKeyPrefix = 'APIKEY_';
-for (const envVar in process.env) {
-    if (envVar.startsWith(apiKeyPrefix)) {
-        const keyName = envVar.substring(apiKeyPrefix.length).toLowerCase();
-        apiKeys[keyName] = process.env[envVar];
-        console.log(`[CONFIG] Loaded API key for '${keyName}' from environment variable.`);
+let server; // To be defined after config is loaded
+
+// --- Main Application Start ---
+async function startServer() {
+    // --- Dynamic Configuration Loading ---
+    apiKeys = await loadApiKeys();
+    chatbotConfig = await loadChatbotConfig(chatbotConfig);
+
+    // --- Server Initialization ---
+    const useSSL = !process.argv.includes('--nossl');
+
+    if (useSSL) {
+        console.log('[SERVER] Starting in HTTPS mode.');
+        try {
+            const options = {
+                key: fs.readFileSync(path.join(__dirname, 'certs/key.pem')),
+                cert: fs.readFileSync(path.join(__dirname, 'certs/cert.pem'))
+            };
+            server = https.createServer(options, app);
+        } catch (e) {
+            console.error('[SERVER] SSL certificate error. Please ensure `certs/key.pem` and `certs/cert.pem` exist.');
+            console.error('[SERVER] To run without SSL, use the --nossl flag.');
+            process.exit(1);
+        }
+    } else {
+        console.log('[SERVER] Starting in HTTP mode (SSL disabled).');
+        server = http.createServer(app);
     }
-}
 
-// If no API keys were loaded from env vars, try the local file for development.
-if (Object.keys(apiKeys).length === 0) {
-    try {
-        apiKeys = require('./apikeys.js');
-        console.log('[CONFIG] Loaded local API keys from apikeys.js');
-    } catch (e) {
-        console.warn('[CONFIG] No apikeys.js file or APIKEY_ environment variables found. Paid chatbot features may be disabled.');
-    }
-}
-
-
-// --- Dynamic Chatbot Configuration ---
-
-// Check for dedicated environment variables for a custom chatbot
-const customBotUrl = process.env.CUSTOMBOT_URL;
-const customBotKey = process.env.CUSTOMBOT_KEY;
-
-if (customBotUrl && customBotKey) {
-    chatbotConfig['#ubot'] = {
-        type: 'paid',
-        service: 'openai-compatible',
-        displayName: 'Custom Bot',
-        model: 'chat',
-        apiKey: customBotKey, // Use the key directly
-        endpoint: customBotUrl, // Use the URL directly
-        systemPrompt: 'You are a helpful assistant.'
-    };
-    console.log('[CONFIG] Dynamically configured custom chatbot from CUSTOMBOT_URL and CUSTOMBOT_KEY.');
-} else {
-    // Fallback or legacy configuration loading (e.g., from a file) can go here if needed.
-    // For this implementation, we are removing the /etc/secrets/api.user.js logic.
-    console.log('[CONFIG] CUSTOMBOT_URL and CUSTOMBOT_KEY not found. Skipping dynamic bot configuration.');
-}
-
-const useSSL = !process.argv.includes('--nossl');
-let server;
-
-if (useSSL) {
-    console.log('[SERVER] Starting in HTTPS mode.');
-    const options = {
-        key: fs.readFileSync(path.join(__dirname, 'certs/key.pem')),
-        cert: fs.readFileSync(path.join(__dirname, 'certs/cert.pem'))
-    };
-    server = https.createServer(options, app);
-} else {
-    console.log('[SERVER] Starting in HTTP mode (SSL disabled).');
-    server = http.createServer(app);
-}
-
-const wss = new WebSocket.Server({ server });
+    const wss = new WebSocket.Server({ server });
 
 const PORT = process.env.PORT || 3000;
 const CHAT_LOG_FILE = path.join(__dirname, 'chat_history.log');
@@ -642,11 +611,18 @@ function broadcastWikiPageList() {
 }
 
 
-loadChatHistory();
-loadImageList();
-loadWhiteboardState();
-loadPlaylist();
-loadWikiPages();
-server.listen(PORT, () => {
-    console.log(`Server is listening on port ${PORT}`);
+    loadChatHistory();
+    loadImageList();
+    loadWhiteboardState();
+    loadPlaylist();
+    loadWikiPages();
+    server.listen(PORT, () => {
+        console.log(`Server is listening on port ${PORT}`);
+    });
+}
+
+// --- Start the application ---
+startServer().catch(error => {
+    console.error('[FATAL] Failed to start server:', error);
+    process.exit(1);
 });
