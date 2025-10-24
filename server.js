@@ -335,8 +335,15 @@ wss.on('connection', (ws) => {
     });
 
     ws.on('message', async (message) => {
-        const data = JSON.parse(message);
         const client = clients.get(ws);
+
+        // Any message from the client is a sign of life.
+        if (client) {
+            client.isAlive = true;
+        }
+
+        const data = JSON.parse(message);
+
 
         // Handle chat commands separately
         if (data.type === 'chat' && data.message.startsWith('#')) {
