@@ -4,6 +4,16 @@ FROM node:18-slim
 # Créer un répertoire pour l'application
 WORKDIR /app
 
+# Créez le répertoire que l'application doit écrire
+RUN mkdir -p /app/wiki
+
+# Changez le propriétaire du répertoire /app et /app/wiki
+# Nous utilisons un UID courant comme 1000. Si vous utilisez un utilisateur nommé dans votre image, utilisez son nom.
+RUN chown -R 1000:1000 /app
+
+# Exécutez le conteneur avec l'utilisateur non-root
+USER 1000
+
 # Copier les fichiers de définition des dépendances
 COPY package.json package-lock.json ./
 
