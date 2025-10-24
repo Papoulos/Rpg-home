@@ -117,9 +117,10 @@ If running on Google Cloud (e.g., Cloud Run, GKE), you can load configuration di
 
 You need to set the following environment variables to point to the full resource names of your secrets in Google Cloud Secret Manager:
 
--   `APIKEY_CUSTOM`: The resource name of the secret containing your API keys as a JSON object.
+
+-   `APIKEY_CUSTOM`: The full resource name of the secret containing your API keys as a JSON object.
     -   *Example Value*: `projects/your-gcp-project-id/secrets/api-keys/versions/latest`
--   `APIKEY_CHAT_CONFIG`: The resource name of the secret containing your user-specific chatbot configuration as a JSON object. This is optional and will be merged with the base configuration.
+-   `APIKEY_CHAT_CONFIG`: The full resource name of the secret containing your user-specific chatbot configuration as a JSON object. This is optional and will be merged with the base configuration.
     -   *Example Value*: `projects/your-gcp-project-id/secrets/user-chat-config/versions/latest`
 
 *Example `api-keys` secret content (JSON):*

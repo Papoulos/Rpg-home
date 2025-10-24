@@ -25,4 +25,4 @@ EXPOSE 3000
 ENV PORT=3000
 
 # Commande pour démarrer le serveur en mode HTTP (sans SSL)
-CMD ["node", "server.js", "--nossl"]
+CMD ["npm", "start"]
