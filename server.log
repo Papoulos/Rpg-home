@@ -1,6 +1,6 @@
 [CONFIG] 'apikeys.js' not found. Paid chatbot features will be disabled.
-[CONFIG] No apikeys.js file found. Paid chatbot features may be disabled.
-[CONFIG] No /etc/secrets/api.user.js file found. Using default config.
+[CONFIG] No apikeys.js file or APIKEY_ variables found. Paid features may be disabled.
 [SERVER] Starting in HTTP mode (SSL disabled).
 [IMAGES] Loaded 0 images.
+[WIKI] Loaded 0 public and 0 MJ pages.
 Server is listening on port 3000
