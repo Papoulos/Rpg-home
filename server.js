@@ -353,6 +353,10 @@ wss.on('connection', (ws) => {
         }
 
         switch (data.type) {
+            case 'ping':
+                // Client-side heartbeat check
+                ws.send(JSON.stringify({ type: 'pong' }));
+                return; // Prevent further processing
             case 'register':
                 const isMJ = data.username.toLowerCase() === 'mj';
                 clients.set(ws, { username: data.username, ws: ws, isMJ, isAlive: true });

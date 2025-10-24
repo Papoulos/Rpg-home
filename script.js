@@ -25,6 +25,7 @@
     let reconnectAttempts = 0;
     const maxReconnectAttempts = 10;
     let reconnectTimeoutId = null;
+    let heartbeatInterval = null; // To hold the interval ID for the heartbeat
 
     // --- User and Chat Management ---
     function askForUsername() {
@@ -226,11 +227,20 @@
                 reconnectTimeoutId = null;
             }
             sendMessage({ type: 'register', username: getUsername() });
+
+            // Start the heartbeat
+            if (heartbeatInterval) clearInterval(heartbeatInterval); // Clear any old interval
+            heartbeatInterval = setInterval(() => {
+                if (socket.readyState === WebSocket.OPEN) {
+                    sendMessage({ type: 'ping' });
+                }
+            }, 25000); // Send a ping every 25 seconds
         };
 
         socket.onclose = () => {
             addMessage({ sender: 'System', message: 'Connection lost. Please refresh the page to reconnect.', prepend: true });
             console.error('WebSocket closed. Automatic reconnection is disabled.');
+            if (heartbeatInterval) clearInterval(heartbeatInterval); // Stop the heartbeat
         };
 
         socket.onerror = (error) => {
@@ -242,6 +252,10 @@
             const data = JSON.parse(event.data);
 
             switch (data.type) {
+                case 'pong':
+                    // Heartbeat response from server. We can ignore this,
+                    // the main thing is that traffic is flowing.
+                    break;
                 case 'history':
                     data.messages.forEach(msg => {
                         if (msg.type === 'chat' || msg.type === 'dice' || msg.type === 'game-roll') {
