@@ -21,11 +21,10 @@
         ],
     };
 
-    let socket;
     let reconnectAttempts = 0;
-    const maxReconnectAttempts = 10;
     let reconnectTimeoutId = null;
-    let heartbeatInterval = null; // To hold the interval ID for the heartbeat
+    let heartbeatInterval = null;
+    let socket = null;
 
     // --- User and Chat Management ---
     function askForUsername() {
@@ -217,35 +216,45 @@
         window.socket = socket;
 
         socket.onopen = () => {
-            console.log("WebSocket connection established.");
+            console.log("✅ WebSocket connection established.");
             if (reconnectAttempts > 0) {
                 addMessage({ sender: 'System', message: 'Reconnected successfully.', prepend: true });
             }
+
             reconnectAttempts = 0;
             if (reconnectTimeoutId) {
                 clearTimeout(reconnectTimeoutId);
                 reconnectTimeoutId = null;
             }
+
+            // Enregistre l'utilisateur
             sendMessage({ type: 'register', username: getUsername() });
 
-            // Start the heartbeat
-            if (heartbeatInterval) clearInterval(heartbeatInterval); // Clear any old interval
+            // Démarre le heartbeat (ping)
+            if (heartbeatInterval) clearInterval(heartbeatInterval);
             heartbeatInterval = setInterval(() => {
                 if (socket.readyState === WebSocket.OPEN) {
                     sendMessage({ type: 'ping' });
                 }
-            }, 25000); // Send a ping every 25 seconds
+            }, 25000);
         };
 
         socket.onclose = () => {
-            addMessage({ sender: 'System', message: 'Connection lost. Please refresh the page to reconnect.', prepend: true });
-            console.error('WebSocket closed. Automatic reconnection is disabled.');
-            if (heartbeatInterval) clearInterval(heartbeatInterval); // Stop the heartbeat
+            console.warn('⚠️ WebSocket closed. Attempting to reconnect...');
+            addMessage({ sender: 'System', message: 'Connection lost. Trying to reconnect...', prepend: true });
+
+            if (heartbeatInterval) clearInterval(heartbeatInterval);
+
+            // Tentative de reconnexion exponentielle (max 30s)
+            reconnectAttempts++;
+            const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
+
+            reconnectTimeoutId = setTimeout(connect, delay);
         };
 
         socket.onerror = (error) => {
             console.error('WebSocket error:', error);
-            // onclose will be triggered automatically, which handles reconnection.
+            socket.close(); // forcera le onclose et la reconnexion
         };
 
         socket.onmessage = async (event) => {
