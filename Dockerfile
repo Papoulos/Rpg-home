@@ -16,6 +16,7 @@ COPY . .
 
 # Créer un utilisateur non-root pour des raisons de sécurité
 RUN useradd -m nodeuser
+RUN chown -R nodeuser:nodeuser /app
 USER nodeuser
 
 # Exposer le port sur lequel l'application s'exécute
