@@ -229,19 +229,8 @@
         };
 
         socket.onclose = () => {
-            if (reconnectAttempts === 0) {
-                addMessage({ sender: 'System', message: 'Connection lost. Attempting to reconnect...', prepend: true });
-            }
-
-            if (reconnectAttempts < maxReconnectAttempts) {
-                const delay = Math.pow(2, reconnectAttempts) * 1000 + (Math.random() * 1000); // Jitter
-                console.log(`WebSocket closed. Retrying in ${Math.round(delay / 1000)}s.`);
-                reconnectTimeoutId = setTimeout(connect, delay);
-                reconnectAttempts++;
-            } else {
-                addMessage({ sender: 'System', message: 'Could not reconnect to the server. Please refresh the page.', prepend: true });
-                console.error('WebSocket reconnection failed after max attempts.');
-            }
+            addMessage({ sender: 'System', message: 'Connection lost. Please refresh the page to reconnect.', prepend: true });
+            console.error('WebSocket closed. Automatic reconnection is disabled.');
         };
 
         socket.onerror = (error) => {
