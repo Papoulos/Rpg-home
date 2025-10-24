@@ -3,7 +3,7 @@
     const gameSystems = {
         cypher: {
             name: 'Cypher System',
-            help: '<strong>/cypher</strong> [/D difficulté] [/E effort] [/M malus] - Lance un dé pour le Cypher System.',
+            help: '<strong>/cypher</strong> ou <strong>/c</strong> [/D difficulté] [/E effort] [/M malus] - Lance un dé pour le Cypher System.',
             roll: (args) => {
                 // --- Argument Parsing ---
                 const params = { D: 0, E: 0, M: 0 };
@@ -69,6 +69,10 @@
             }
         }
     };
+
+    // Alias /c to /cypher
+    gameSystems.c = { ...gameSystems.cypher, help: '<strong>/c</strong> ou <strong>/cypher</strong> [/D difficulté] [/E effort] [/M malus] - Lance un dé pour le Cypher System.' };
+
 
     // Expose the game systems to the global window object
     window.gameSystems = gameSystems;
