@@ -580,10 +580,7 @@ wss.on('connection', (ws) => {
 // --- HTTP Server ---
 app.use(express.static(path.join(__dirname, '/')));
 
-// Ensure wiki directories exist before loading anything
-if (!fs.existsSync(WIKI_DIR)) fs.mkdirSync(WIKI_DIR);
 const MJ_WIKI_DIR = path.join(WIKI_DIR, 'mj');
-if (!fs.existsSync(MJ_WIKI_DIR)) fs.mkdirSync(MJ_WIKI_DIR);
 
 let publicWikiPages = [];
 let mjWikiPages = [];

@@ -4,9 +4,6 @@ FROM node:18-slim
 # Créer un répertoire pour l'application
 WORKDIR /app
 
-# Créez le répertoire que l'application doit écrire
-RUN mkdir -p /app/wiki
-
 # Copier les fichiers de définition des dépendances
 COPY package.json package-lock.json ./
 
