@@ -115,7 +115,8 @@ Configuration for deployment environments is loaded with the following priority:
 
 If running on Google Cloud (e.g., Cloud Run, GKE), you can load configuration directly from Secret Manager. The application needs the appropriate IAM permissions to access the secrets.
 
-You need to set the following environment variables to point to the names of your secrets:
+You need to set the following environment variables to point to the full resource names of your secrets in Google Cloud Secret Manager:
+
 
 -   `APIKEY_CUSTOM`: The full resource name of the secret containing your API keys as a JSON object.
     -   *Example Value*: `projects/your-gcp-project-id/secrets/api-keys/versions/latest`
