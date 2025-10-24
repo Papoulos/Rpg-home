@@ -1,8 +1,8 @@
 const { SecretManagerServiceClient } = require('@google-cloud/secret-manager');
 const fs = require('fs');
 
-const GCS_SECRET_NAME_API_KEYS = process.env.GCS_SECRET_NAME_API_KEYS;
-const GCS_SECRET_NAME_CHAT_CONFIG = process.env.GCS_SECRET_NAME_CHAT_CONFIG;
+const GCS_APIKEY_SECRET_NAME = process.env.APIKEY_CUSTOM;
+const GCS_CHAT_CONFIG_SECRET_NAME = process.env.APIKEY_CHAT_CONFIG;
 
 async function accessSecretVersion(name) {
     try {
@@ -21,9 +21,9 @@ async function accessSecretVersion(name) {
 
 async function loadApiKeys() {
     // 1. Try Google Cloud Secret Manager
-    if (GCS_SECRET_NAME_API_KEYS) {
+    if (GCS_APIKEY_SECRET_NAME) {
         console.log('[CONFIG] Attempting to load API keys from Google Cloud Secret Manager...');
-        const secretPayload = await accessSecretVersion(GCS_SECRET_NAME_API_KEYS);
+        const secretPayload = await accessSecretVersion(GCS_APIKEY_SECRET_NAME);
         try {
             return JSON.parse(secretPayload);
         } catch (e) {
@@ -62,9 +62,9 @@ async function loadChatbotConfig(baseConfig) {
     let finalConfig = { ...baseConfig };
 
     // 1. Try Google Cloud Secret Manager for user config
-    if (GCS_SECRET_NAME_CHAT_CONFIG) {
+    if (GCS_CHAT_CONFIG_SECRET_NAME) {
         console.log('[CONFIG] Attempting to load user chatbot config from Google Cloud Secret Manager...');
-        const secretPayload = await accessSecretVersion(GCS_SECRET_NAME_CHAT_CONFIG);
+        const secretPayload = await accessSecretVersion(GCS_CHAT_CONFIG_SECRET_NAME);
         try {
             const userConfig = JSON.parse(secretPayload);
             Object.assign(finalConfig, userConfig);
