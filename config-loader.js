@@ -19,13 +19,26 @@ async function accessSecretVersion(name) {
     }
 }
 
+function validateApiKeys(keys) {
+    const validatedKeys = {};
+    for (const [name, key] of Object.entries(keys)) {
+        if (typeof key === 'string' && key.trim() !== '' && !key.includes('PASTE_YOUR')) {
+            validatedKeys[name] = key;
+        } else {
+            console.warn(`[CONFIG] API key "${name}" is invalid (empty or placeholder) and will be ignored.`);
+        }
+    }
+    return validatedKeys;
+}
+
 async function loadApiKeys() {
+    let keys = {};
     // 1. Try Google Cloud Secret Manager
     if (GCS_APIKEY_SECRET_NAME) {
         console.log('[CONFIG] Attempting to load API keys from Google Cloud Secret Manager...');
         const secretPayload = await accessSecretVersion(GCS_APIKEY_SECRET_NAME);
         try {
-            return JSON.parse(secretPayload);
+            keys = JSON.parse(secretPayload);
         } catch (e) {
             console.error('[CONFIG] Failed to parse API keys from Secret Manager. Ensure it is valid JSON.');
             throw e;
@@ -33,28 +46,33 @@ async function loadApiKeys() {
     }
 
     // 2. Try Environment Variables
-    const apiKeysFromEnv = {};
-    const apiKeyPrefix = 'APIKEY_';
-    for (const envVar in process.env) {
-        if (envVar.startsWith(apiKeyPrefix)) {
-            const keyName = envVar.substring(apiKeyPrefix.length).toLowerCase();
-            apiKeysFromEnv[keyName] = process.env[envVar];
+    if (Object.keys(keys).length === 0) {
+        const apiKeysFromEnv = {};
+        const apiKeyPrefix = 'APIKEY_';
+        for (const envVar in process.env) {
+            if (envVar.startsWith(apiKeyPrefix)) {
+                const keyName = envVar.substring(apiKeyPrefix.length).toLowerCase();
+                apiKeysFromEnv[keyName] = process.env[envVar];
+            }
         }
-    }
-    if (Object.keys(apiKeysFromEnv).length > 0) {
-        console.log('[CONFIG] Loaded API keys from environment variables.');
-        return apiKeysFromEnv;
+        if (Object.keys(apiKeysFromEnv).length > 0) {
+            console.log('[CONFIG] Loaded API keys from environment variables.');
+            keys = apiKeysFromEnv;
+        }
     }
 
     // 3. Fallback to local file
-    try {
-        const localKeys = require('./apikeys.js');
-        console.log('[CONFIG] Loaded local API keys from apikeys.js');
-        return localKeys;
-    } catch (e) {
-        console.warn('[CONFIG] No apikeys.js file or APIKEY_ variables found. Paid features may be disabled.');
-        return {};
+    if (Object.keys(keys).length === 0) {
+        try {
+            const localKeys = require('./apikeys.js');
+            console.log('[CONFIG] Loaded local API keys from apikeys.js');
+            keys = localKeys;
+        } catch (e) {
+            console.warn('[CONFIG] No apikeys.js file or APIKEY_ variables found. Paid features may be disabled.');
+        }
     }
+
+    return validateApiKeys(keys);
 }
 
 async function loadChatbotConfig(baseConfig) {
