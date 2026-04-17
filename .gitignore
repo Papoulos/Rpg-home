@@ -1,2 +1,8 @@
 node_modules/
 apikeys.js
+server.log
+chat_history.log
+whiteboard.json
+playlist.json
+images.json
+*.log

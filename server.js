@@ -5,9 +5,19 @@ const WebSocket = require('ws');
 const path = require('path');
 const fs = require('fs');
 const fetch = require('node-fetch');
+const rateLimit = require('express-rate-limit');
 const { loadApiKeys, loadChatbotConfig } = require('./config-loader');
 let chatbotConfig = require('./api.config.js'); // Load base config
 const app = express();
+
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // limit each IP to 100 requests per windowMs
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+app.use(limiter);
 
 let apiKeys = {};
 let server; // To be defined after config is loaded
@@ -39,7 +49,10 @@ async function startServer() {
         server = http.createServer(app);
     }
 
-    const wss = new WebSocket.Server({ server });
+    const wss = new WebSocket.Server({
+        server,
+        maxPayload: 5 * 1024 * 1024 // 5MB limit
+    });
 
 const PORT = process.env.PORT || 3000;
 const CHAT_LOG_FILE = path.join(__dirname, 'chat_history.log');
@@ -239,11 +252,49 @@ function loadChatHistory() {
 function appendToHistory(message) {
     try {
         if (message.type === 'chat' || message.type === 'dice' || message.type === 'game-roll') {
-            fs.appendFileSync(CHAT_LOG_FILE, JSON.stringify(message) + '\n');
+            let serialized = JSON.stringify(message);
+            if (serialized.length > 1000) {
+                serialized = serialized.substring(0, 1000) + '... [TRUNCATED]';
+            }
+            rotateLogIfNeeded(CHAT_LOG_FILE, 5, (typeof originalConsoleLog !== 'undefined' ? originalConsoleLog : null));
+            fs.appendFileSync(CHAT_LOG_FILE, serialized + '\n');
         }
     } catch (error) {
         console.error('[HISTORY] FAILED to append message:', error);
     }
+}
+
+function rotateLogIfNeeded(filePath, maxSizeMB = 5, originalLogger = null) {
+    try {
+        if (fs.existsSync(filePath)) {
+            const stats = fs.statSync(filePath);
+            const fileSizeMB = stats.size / (1024 * 1024);
+            if (fileSizeMB > maxSizeMB) {
+                if (originalLogger) {
+                    originalLogger(`[SERVER] Rotating log file: ${filePath}`);
+                }
+                fs.renameSync(filePath, `${filePath}.old`);
+            }
+        }
+    } catch (error) {
+        // Fallback to avoid potential issues if something fails during rotation
+    }
+}
+
+// --- Validation Helpers ---
+function isValidFileName(name) {
+    return /^[a-zA-Z0-9_-]+$/.test(name);
+}
+
+function getSafeWikiPath(dir, pageName) {
+    if (!isValidFileName(pageName)) {
+        throw new Error('Invalid file name.');
+    }
+    const resolvedPath = path.resolve(dir, `${pageName}.md`);
+    if (!resolvedPath.startsWith(dir)) {
+        throw new Error('Access denied: path outside of directory.');
+    }
+    return resolvedPath;
 }
 
 // --- Image List Functions ---
@@ -328,6 +379,11 @@ wss.on('close', function close() {
 
 
 wss.on('connection', (ws) => {
+    let messageCount = 0;
+    const rateLimitInterval = setInterval(() => {
+        messageCount = 0;
+    }, 1000);
+
     // When a pong is received, mark the client as alive. This is part of the heartbeat mechanism.
     ws.on('pong', () => {
         const client = clients.get(ws);
@@ -335,6 +391,12 @@ wss.on('connection', (ws) => {
     });
 
     ws.on('message', async (message) => {
+        messageCount++;
+        if (messageCount > 5) {
+            console.warn(`[WS] Rate limit exceeded for a client.`);
+            return;
+        }
+
         const client = clients.get(ws);
 
         // Any message from the client is a sign of life.
@@ -342,7 +404,13 @@ wss.on('connection', (ws) => {
             client.isAlive = true;
         }
 
-        const data = JSON.parse(message);
+        let data;
+        try {
+            data = JSON.parse(message);
+        } catch (e) {
+            console.error('[WS] Failed to parse message:', e);
+            return;
+        }
 
 
         // Handle chat commands separately
@@ -464,9 +532,13 @@ wss.on('connection', (ws) => {
 
             case 'add-image':
                 if (client && client.isMJ) {
-                    imageList.push({ name: data.name, url: data.url });
-                    saveImageList();
-                    broadcastImageList();
+                    if (isValidFileName(data.name)) {
+                        imageList.push({ name: data.name, url: data.url });
+                        saveImageList();
+                        broadcastImageList();
+                    } else {
+                        console.warn(`[IMAGES] Invalid image name: ${data.name}`);
+                    }
                 }
                 break;
 
@@ -516,8 +588,12 @@ wss.on('connection', (ws) => {
                 break;
 
             case 'fabric-state-update':
-                whiteboardState = data.payload;
-                saveWhiteboardState(whiteboardState);
+                if (data.payload && data.payload.length < 5 * 1024 * 1024) {
+                    whiteboardState = data.payload;
+                    saveWhiteboardState(whiteboardState);
+                } else {
+                    console.warn('[WHITEBOARD] Payload too large, ignoring update.');
+                }
                 break;
 
             case 'pointer-move':
@@ -534,17 +610,14 @@ wss.on('connection', (ws) => {
             case 'wiki-get-page':
                 try {
                     const { pageName, isMJPage } = data;
-                    const safePageName = path.normalize(pageName).replace(/^(\.\.[\/\\])+/, '');
-                    if (!safePageName || safePageName.includes('..')) throw new Error('Invalid page name.');
-
                     const dir = isMJPage ? MJ_WIKI_DIR : WIKI_DIR;
-                    const filePath = path.join(dir, `${safePageName}.md`);
+                    const filePath = getSafeWikiPath(dir, pageName);
 
                     if (fs.existsSync(filePath)) {
                         const content = fs.readFileSync(filePath, 'utf-8');
-                        ws.send(JSON.stringify({ type: 'wiki-page-content', pageName: safePageName, content, isMJPage }));
+                        ws.send(JSON.stringify({ type: 'wiki-page-content', pageName: pageName, content, isMJPage }));
                     } else {
-                        ws.send(JSON.stringify({ type: 'wiki-page-content', pageName: safePageName, content: `# Page Not Found: ${pageName}`, isMJPage }));
+                        ws.send(JSON.stringify({ type: 'wiki-page-content', pageName: pageName, content: `# Page Not Found: ${pageName}`, isMJPage }));
                     }
                 } catch (error) {
                     console.error('[WIKI] Error getting page:', error);
@@ -557,11 +630,8 @@ wss.on('connection', (ws) => {
                         const { pageName, content, isMJPage } = data;
                         if (isMJPage && !client.isMJ) return; // MJ-only check
 
-                        const safePageName = path.normalize(pageName).replace(/^(\.\.[\/\\])+/, '').replace(/[^\w\s-]/g, '');
-                        if (!safePageName || safePageName.includes('..')) throw new Error('Invalid page name for saving.');
-
                         const dir = isMJPage ? MJ_WIKI_DIR : WIKI_DIR;
-                        const filePath = path.join(dir, `${safePageName}.md`);
+                        const filePath = getSafeWikiPath(dir, pageName);
 
                         fs.writeFileSync(filePath, content, 'utf-8');
                         console.log(`[WIKI] Saved page: ${filePath}`);
@@ -570,7 +640,7 @@ wss.on('connection', (ws) => {
                         broadcastWikiPageList();
 
                         // Confirm save by sending content back to the saver
-                        ws.send(JSON.stringify({ type: 'wiki-page-content', pageName: safePageName, content, isMJPage }));
+                        ws.send(JSON.stringify({ type: 'wiki-page-content', pageName: pageName, content, isMJPage }));
                     } catch (error) {
                         console.error('[WIKI] Error saving page:', error);
                     }
@@ -580,6 +650,7 @@ wss.on('connection', (ws) => {
     });
 
     ws.on('close', () => {
+        clearInterval(rateLimitInterval);
         const clientInfo = clients.get(ws);
         if (clientInfo) {
             clients.delete(ws);
@@ -589,7 +660,7 @@ wss.on('connection', (ws) => {
 });
 
 // --- HTTP Server ---
-app.use(express.static(path.join(__dirname, '/')));
+app.use(express.static(path.join(__dirname, 'public')));
 
 const MJ_WIKI_DIR = path.join(WIKI_DIR, 'mj');
 
@@ -624,6 +695,34 @@ function broadcastWikiPageList() {
     loadWhiteboardState();
     loadPlaylist();
     loadWikiPages();
+    const originalConsoleLog = console.log;
+    const originalConsoleError = console.error;
+    const SERVER_LOG_FILE = path.join(__dirname, 'server.log');
+
+    const logToFile = (message, ...args) => {
+        const timestamp = new Date().toISOString();
+        let formattedMessage = `[${timestamp}] ${message} ${args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' ')}\n`;
+        if (formattedMessage.length > 1000) {
+            formattedMessage = formattedMessage.substring(0, 1000) + '... [TRUNCATED]\n';
+        }
+        try {
+            rotateLogIfNeeded(SERVER_LOG_FILE, 5, originalConsoleLog);
+            fs.appendFileSync(SERVER_LOG_FILE, formattedMessage);
+        } catch (e) {
+            originalConsoleError('Failed to write to server.log', e);
+        }
+    };
+
+    console.log = (message, ...args) => {
+        originalConsoleLog(message, ...args);
+        logToFile(message, ...args);
+    };
+
+    console.error = (message, ...args) => {
+        originalConsoleError(message, ...args);
+        logToFile(`ERROR: ${message}`, ...args);
+    };
+
     server.listen(PORT, () => {
         console.log(`Server is listening on port ${PORT}`);
     });

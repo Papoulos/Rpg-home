@@ -47,17 +47,63 @@
         messageElement.classList.add('chat-message');
 
         const userColor = stringToHslColor(sender, 70, 75);
-        const richMessage = parseForRichContent(message);
 
-        let coloredSender;
+        const senderContainer = document.createElement('strong');
+        senderContainer.style.color = sender === 'System' ? '#aaa' : userColor;
+
         if (type === 'game-roll') {
             messageElement.classList.add('game-roll-message');
-            coloredSender = `<strong style="color: ${userColor};">${sender}</strong> lance un dé de <strong>${system}</strong>:`;
+            senderContainer.textContent = sender;
+            messageElement.appendChild(senderContainer);
+            messageElement.appendChild(document.createTextNode(' lance un dé de '));
+            const systemName = document.createElement('strong');
+            systemName.textContent = system;
+            messageElement.appendChild(systemName);
+            messageElement.appendChild(document.createTextNode(': '));
         } else {
-             coloredSender = sender === 'System' ? `<strong style="color: #aaa;">${sender}:</strong>` : `<strong style="color: ${userColor};">${sender}:</strong>`;
+            senderContainer.textContent = `${sender}: `;
+            messageElement.appendChild(senderContainer);
         }
 
-        messageElement.innerHTML = `${coloredSender} ${richMessage}`;
+        const bodyElement = document.createElement('span');
+        bodyElement.classList.add('message-body');
+
+        // Simple markdown-like handling for images and links without innerHTML
+        const parts = message.split(/(https?:\/\/[^\s]+)/g);
+        parts.forEach(part => {
+            if (part.match(/^https?:\/\/[^\s]+$/)) {
+                // Check if it's an image URL
+                if (part.match(/\.(jpeg|jpg|gif|png|webp)$/i)) {
+                    const img = document.createElement('img');
+                    img.src = part;
+                    img.style.maxWidth = '100%';
+                    img.style.maxHeight = '150px';
+                    img.style.display = 'block';
+                    const link = document.createElement('a');
+                    link.href = part;
+                    link.target = '_blank';
+                    link.appendChild(img);
+                    bodyElement.appendChild(link);
+                } else {
+                    const link = document.createElement('a');
+                    link.href = part;
+                    link.target = '_blank';
+                    link.textContent = part;
+                    bodyElement.appendChild(link);
+                }
+            } else {
+                // Text with newlines
+                const textParts = part.split('\n');
+                textParts.forEach((textPart, index) => {
+                    if (index > 0) {
+                        bodyElement.appendChild(document.createElement('br'));
+                    }
+                    bodyElement.appendChild(document.createTextNode(textPart));
+                });
+            }
+        });
+
+        messageElement.appendChild(bodyElement);
 
         if (prepend) {
             chatMessages.prepend(messageElement);
@@ -93,11 +139,6 @@
     function removeVideoStream(name) {
         const videoContainer = document.getElementById(`video-${name}`);
         if (videoContainer) videoContainer.remove();
-    }
-
-    function parseForRichContent(message) {
-        const urlRegex = /(https?:\/\/[^\s]+)/g;
-        return message.replace(urlRegex, (url) => /\.(jpeg|jpg|gif|png)$/i.test(url) ? `<a href="${url}" target="_blank"><img src="${url}" alt="Image" style="max-width: 100%; max-height: 150px;" /></a>` : `<a href="${url}" target="_blank">${url}</a>`);
     }
 
     // --- Messaging ---
