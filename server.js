@@ -4,11 +4,15 @@ const https = require('https');
 const WebSocket = require('ws');
 const path = require('path');
 const fs = require('fs');
+const util = require('util');
 const fetch = require('node-fetch');
 const rateLimit = require('express-rate-limit');
 const { loadApiKeys, loadChatbotConfig } = require('./config-loader');
 let chatbotConfig = require('./api.config.js'); // Load base config
 const app = express();
+
+let originalConsoleLog = console.log;
+let originalConsoleError = console.error;
 
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
@@ -224,7 +228,18 @@ async function handleChatbotRequest(prompt, config, trigger, originalMessage, se
         responseMessage = `Désolé, une erreur est survenue en contactant l'IA. (${error.message})`;
     }
 
-    const formattedMessage = `> **${prompt}**  \n\n${responseMessage}`;
+    // --- AI Response Validation ---
+    let validatedResponse = responseMessage || 'Désolé, l\'IA n\'a pas pu répondre.';
+    if (typeof validatedResponse === 'string') {
+        // Enforce 900 character limit
+        if (validatedResponse.length > 900) {
+            validatedResponse = validatedResponse.substring(0, 900) + '... [TRONQUÉ]';
+        }
+        // Basic server-side XSS strip (remove any HTML tags)
+        validatedResponse = validatedResponse.replace(/<[^>]*>?/gm, '');
+    }
+
+    const formattedMessage = `Re: ${prompt}\n\n${validatedResponse}`;
 
     const finalMessage = {
         type: 'chat',
@@ -252,15 +267,22 @@ function loadChatHistory() {
 function appendToHistory(message) {
     try {
         if (message.type === 'chat' || message.type === 'dice' || message.type === 'game-roll') {
-            let serialized = JSON.stringify(message);
-            if (serialized.length > 1000) {
-                serialized = serialized.substring(0, 1000) + '... [TRUNCATED]';
+            // Create a copy to avoid mutating the original message
+            const messageToLog = { ...message };
+            if (typeof messageToLog.message === 'string' && messageToLog.message.length > 1000) {
+                messageToLog.message = messageToLog.message.substring(0, 1000) + '... [TRUNCATED]';
             }
-            rotateLogIfNeeded(CHAT_LOG_FILE, 5, (typeof originalConsoleLog !== 'undefined' ? originalConsoleLog : null));
+
+            const serialized = JSON.stringify(messageToLog);
+            rotateLogIfNeeded(CHAT_LOG_FILE, 5, originalConsoleLog);
             fs.appendFileSync(CHAT_LOG_FILE, serialized + '\n');
         }
     } catch (error) {
-        console.error('[HISTORY] FAILED to append message:', error);
+        if (typeof originalConsoleError !== 'undefined') {
+            originalConsoleError('[HISTORY] FAILED to append message:', error);
+        } else {
+            console.error('[HISTORY] FAILED to append message:', error);
+        }
     }
 }
 
@@ -695,13 +717,11 @@ function broadcastWikiPageList() {
     loadWhiteboardState();
     loadPlaylist();
     loadWikiPages();
-    const originalConsoleLog = console.log;
-    const originalConsoleError = console.error;
     const SERVER_LOG_FILE = path.join(__dirname, 'server.log');
 
     const logToFile = (message, ...args) => {
         const timestamp = new Date().toISOString();
-        let formattedMessage = `[${timestamp}] ${message} ${args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' ')}\n`;
+        let formattedMessage = `[${timestamp}] ${util.format(message, ...args)}\n`;
         if (formattedMessage.length > 1000) {
             formattedMessage = formattedMessage.substring(0, 1000) + '... [TRUNCATED]\n';
         }
