@@ -259,7 +259,7 @@
         socket.onopen = () => {
             console.log("✅ WebSocket connection established.");
             if (reconnectAttempts > 0) {
-                addMessage({ sender: 'System', message: 'Reconnected successfully.', prepend: true });
+                addMessage({ sender: 'System', message: 'Reconnected successfully.', prepend: false });
             }
 
             reconnectAttempts = 0;
@@ -272,30 +272,43 @@
             sendMessage({ type: 'register', username: getUsername() });
 
             // Démarre le heartbeat (ping)
-            if (heartbeatInterval) clearInterval(heartbeatInterval);
+            if (heartbeatInterval) {
+                clearInterval(heartbeatInterval);
+            }
+
+            // Ping every 10 seconds to ensure the server keeps connection alive
             heartbeatInterval = setInterval(() => {
                 if (socket.readyState === WebSocket.OPEN) {
                     sendMessage({ type: 'ping' });
                 }
-            }, 25000);
+            }, 10000);
         };
 
         socket.onclose = () => {
             console.warn('⚠️ WebSocket closed. Attempting to reconnect...');
-            addMessage({ sender: 'System', message: 'Connection lost. Trying to reconnect...', prepend: true });
+            addMessage({ sender: 'System', message: 'Connection lost. Trying to reconnect...', prepend: false });
 
-            if (heartbeatInterval) clearInterval(heartbeatInterval);
+            if (heartbeatInterval) {
+                clearInterval(heartbeatInterval);
+                heartbeatInterval = null;
+            }
 
-            // Tentative de reconnexion exponentielle (max 30s)
+            if (reconnectTimeoutId) {
+                clearTimeout(reconnectTimeoutId);
+            }
+
+            // Tentative de reconnexion exponentielle (max 15s)
             reconnectAttempts++;
-            const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
+            const delay = Math.min(1000 * Math.pow(1.5, reconnectAttempts), 15000);
 
             reconnectTimeoutId = setTimeout(connect, delay);
         };
 
         socket.onerror = (error) => {
             console.error('WebSocket error:', error);
-            socket.close(); // forcera le onclose et la reconnexion
+            if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
+                socket.close(); // forcera le onclose et la reconnexion
+            }
         };
 
         socket.onmessage = async (event) => {

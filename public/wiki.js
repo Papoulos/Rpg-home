@@ -83,27 +83,62 @@ document.addEventListener('DOMContentLoaded', () => {
         // Clear existing options
         pageSelect.innerHTML = '<option value="">Choisir une page</option>';
 
+        // Build a hierarchical tree representation
+        function buildTree(pages, isMJGroup) {
+            const root = { name: '', children: {} };
+            pages.forEach(pagePath => {
+                const parts = pagePath.split('/');
+                let current = root;
+                for (let i = 0; i < parts.length; i++) {
+                    const part = parts[i];
+                    if (!current.children[part]) {
+                        current.children[part] = { name: part, children: {}, fullPath: (i === parts.length - 1) ? pagePath : null };
+                    }
+                    current = current.children[part];
+                }
+            });
+            return root;
+        }
+
+        function renderTree(node, depth, groupElement, isMJGroup) {
+            Object.keys(node.children).sort().forEach(key => {
+                const child = node.children[key];
+
+                // Always create an option, prefixing it to simulate hierarchy
+                const indent = '\u00A0\u00A0'.repeat(depth);
+                if (child.fullPath) {
+                    const option = document.createElement('option');
+                    option.value = `${child.fullPath}|${isMJGroup}`;
+                    option.textContent = indent + (depth > 0 ? '↳ ' : '') + child.name.replace(/_/g, ' ');
+                    groupElement.appendChild(option);
+                } else {
+                    // Folder visually
+                    const option = document.createElement('option');
+                    option.disabled = true;
+                    option.textContent = indent + (depth > 0 ? '↳ ' : '') + '📁 ' + child.name.replace(/_/g, ' ');
+                    groupElement.appendChild(option);
+                }
+
+                // Recursively render children
+                if (Object.keys(child.children).length > 0) {
+                    renderTree(child, depth + 1, groupElement, isMJGroup);
+                }
+            });
+        }
+
         // Create and append public pages
         const publicOptgroup = document.createElement('optgroup');
         publicOptgroup.label = 'Pages Publiques';
-        publicPages.forEach(pageName => {
-            const option = document.createElement('option');
-            option.value = `${pageName}|false`;
-            option.textContent = pageName.replace(/_/g, ' ');
-            publicOptgroup.appendChild(option);
-        });
+        const publicTree = buildTree(publicPages, false);
+        renderTree(publicTree, 0, publicOptgroup, false);
         pageSelect.appendChild(publicOptgroup);
 
         // Create and append MJ pages if user is MJ
         if (isMJ && mjPages.length > 0) {
             const mjOptgroup = document.createElement('optgroup');
             mjOptgroup.label = 'Pages MJ';
-            mjPages.forEach(pageName => {
-                const option = document.createElement('option');
-                option.value = `${pageName}|true`;
-                option.textContent = pageName.replace(/_/g, ' ');
-                mjOptgroup.appendChild(option);
-            });
+            const mjTree = buildTree(mjPages, true);
+            renderTree(mjTree, 0, mjOptgroup, true);
             pageSelect.appendChild(mjOptgroup);
         }
 

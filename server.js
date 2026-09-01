@@ -305,17 +305,24 @@ function rotateLogIfNeeded(filePath, maxSizeMB = 5, originalLogger = null) {
 
 // --- Validation Helpers ---
 function isValidFileName(name) {
-    return /^[a-zA-Z0-9_-]+$/.test(name);
+    return /^[a-zA-Z0-9_\-\/]+$/.test(name); // Allow slashes for folder structure in wiki
 }
 
 function getSafeWikiPath(dir, pageName) {
-    if (!isValidFileName(pageName)) {
-        throw new Error('Invalid file name.');
+    if (!isValidFileName(pageName) || pageName.includes('..')) {
+        throw new Error('Invalid file name or potential path traversal.');
     }
     const resolvedPath = path.resolve(dir, `${pageName}.md`);
     if (!resolvedPath.startsWith(dir)) {
         throw new Error('Access denied: path outside of directory.');
     }
+
+    // Ensure parent directory exists for nested pages
+    const parentDir = path.dirname(resolvedPath);
+    if (!fs.existsSync(parentDir)) {
+        fs.mkdirSync(parentDir, { recursive: true });
+    }
+
     return resolvedPath;
 }
 
@@ -382,6 +389,7 @@ const heartbeatInterval = setInterval(function ping() {
     // If the client hasn't responded to the last ping, terminate.
     if (client && client.isAlive === false) {
       console.log(`[HEARTBEAT] Terminating unresponsive connection for user: ${client.username || 'N/A'}`);
+      clients.delete(ws);
       return ws.terminate();
     }
 
@@ -392,7 +400,7 @@ const heartbeatInterval = setInterval(function ping() {
         ws.ping(() => {}); // The callback is optional but good practice
     }
   });
-}, 30000); // Run every 30 seconds
+}, 15000); // Run every 15 seconds to detect drops faster
 
 // Clean up the interval when the server is shut down
 wss.on('close', function close() {
@@ -691,11 +699,29 @@ let mjWikiPages = [];
 
 function loadWikiPages() {
     try {
-        const publicFiles = fs.readdirSync(WIKI_DIR).filter(file => file.endsWith('.md') && fs.statSync(path.join(WIKI_DIR, file)).isFile());
-        publicWikiPages = publicFiles.map(file => path.parse(file).name).sort();
+        function getWikiFiles(dir, baseDir = dir) {
+            let results = [];
+            if (!fs.existsSync(dir)) return results;
+            const list = fs.readdirSync(dir);
+            list.forEach(file => {
+                const fullPath = path.join(dir, file);
+                const stat = fs.statSync(fullPath);
+                if (stat && stat.isDirectory()) {
+                    // Skip the mj directory when scanning the root public wiki dir
+                    if (fullPath !== MJ_WIKI_DIR) {
+                        results = results.concat(getWikiFiles(fullPath, baseDir));
+                    }
+                } else if (file.endsWith('.md')) {
+                    // Store the relative path from baseDir, removing .md
+                    const relativePath = path.relative(baseDir, fullPath).replace(/\\/g, '/').slice(0, -3);
+                    results.push(relativePath);
+                }
+            });
+            return results;
+        }
 
-        const mjFiles = fs.readdirSync(MJ_WIKI_DIR).filter(file => file.endsWith('.md'));
-        mjWikiPages = mjFiles.map(file => path.parse(file).name).sort();
+        publicWikiPages = getWikiFiles(WIKI_DIR).sort();
+        mjWikiPages = getWikiFiles(MJ_WIKI_DIR).sort();
 
         console.log(`[WIKI] Loaded ${publicWikiPages.length} public and ${mjWikiPages.length} MJ pages.`);
     } catch (error) {

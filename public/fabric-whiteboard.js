@@ -357,11 +357,22 @@
             canvas.renderAll();
         });
 
-        canvas.on('object:modified', (e) => {
+        const syncObjectLive = (e) => {
             if (e.target && !e.target.isFog) {
                 if (window.socket?.readyState === WebSocket.OPEN) {
                     window.socket.send(JSON.stringify({ type: 'fabric-update-object', payload: e.target.toJSON(['id']) }));
                 }
+            }
+        };
+
+        // Real-time synchronization while interacting
+        canvas.on('object:moving', syncObjectLive);
+        canvas.on('object:scaling', syncObjectLive);
+        canvas.on('object:rotating', syncObjectLive);
+
+        canvas.on('object:modified', (e) => {
+            if (e.target && !e.target.isFog) {
+                syncObjectLive(e);
                 sendCanvasStateToServer();
             }
         });
@@ -393,7 +404,12 @@
         window.addEventListener('fabric-remote-update-object', remoteActionHandler((payload) => {
             const objToUpdate = canvas.getObjects().find(obj => obj.id === payload.id);
             if (objToUpdate) {
-                canvas.remove(objToUpdate);
+                // Instantly update attributes instead of full removal/recreation to avoid flicker/desync
+                objToUpdate.set(payload);
+                objToUpdate.setCoords(); // Update bounding box for interactions
+                canvas.renderAll();
+            } else {
+                // Fallback in case it doesn't exist yet
                 fabric.util.enlivenObjects([payload], (newObjects) => {
                     canvas.add(newObjects[0]);
                     canvas.renderAll();
