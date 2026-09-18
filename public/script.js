@@ -68,40 +68,45 @@
         const bodyElement = document.createElement('span');
         bodyElement.classList.add('message-body');
 
-        // Simple markdown-like handling for images and links without innerHTML
-        const parts = message.split(/(https?:\/\/[^\s]+)/g);
-        parts.forEach(part => {
-            if (part.match(/^https?:\/\/[^\s]+$/)) {
-                // Check if it's an image URL
-                if (part.match(/\.(jpeg|jpg|gif|png|webp)$/i)) {
-                    const img = document.createElement('img');
-                    img.src = part;
-                    img.style.maxWidth = '100%';
-                    img.style.maxHeight = '150px';
-                    img.style.display = 'block';
-                    const link = document.createElement('a');
-                    link.href = part;
-                    link.target = '_blank';
-                    link.appendChild(img);
-                    bodyElement.appendChild(link);
-                } else {
-                    const link = document.createElement('a');
-                    link.href = part;
-                    link.target = '_blank';
-                    link.textContent = part;
-                    bodyElement.appendChild(link);
-                }
-            } else {
-                // Text with newlines
-                const textParts = part.split('\n');
-                textParts.forEach((textPart, index) => {
-                    if (index > 0) {
-                        bodyElement.appendChild(document.createElement('br'));
+        if (sender === 'System' || type === 'game-roll' || type === 'dice') {
+            // System and game messages are safe and may contain HTML (like <strong> for dice)
+            bodyElement.innerHTML = message;
+        } else {
+            // Simple markdown-like handling for images and links without innerHTML for user messages
+            const parts = message.split(/(https?:\/\/[^\s]+)/g);
+            parts.forEach(part => {
+                if (part.match(/^https?:\/\/[^\s]+$/)) {
+                    // Check if it's an image URL
+                    if (part.match(/\.(jpeg|jpg|gif|png|webp)$/i)) {
+                        const img = document.createElement('img');
+                        img.src = part;
+                        img.style.maxWidth = '100%';
+                        img.style.maxHeight = '150px';
+                        img.style.display = 'block';
+                        const link = document.createElement('a');
+                        link.href = part;
+                        link.target = '_blank';
+                        link.appendChild(img);
+                        bodyElement.appendChild(link);
+                    } else {
+                        const link = document.createElement('a');
+                        link.href = part;
+                        link.target = '_blank';
+                        link.textContent = part;
+                        bodyElement.appendChild(link);
                     }
-                    bodyElement.appendChild(document.createTextNode(textPart));
-                });
-            }
-        });
+                } else {
+                    // Text with newlines
+                    const textParts = part.split('\n');
+                    textParts.forEach((textPart, index) => {
+                        if (index > 0) {
+                            bodyElement.appendChild(document.createElement('br'));
+                        }
+                        bodyElement.appendChild(document.createTextNode(textPart));
+                    });
+                }
+            });
+        }
 
         messageElement.appendChild(bodyElement);
 
@@ -346,6 +351,9 @@
                 }
                 case 'image-list-update':
                     window.dispatchEvent(new CustomEvent('image-list-update', { detail: { list: data.list } }));
+                    break;
+                case 'sheets-update':
+                    window.dispatchEvent(new CustomEvent('sheets-update', { detail: { list: data.list } }));
                     break;
                 case 'show-image':
                     displayImage(data.url);
