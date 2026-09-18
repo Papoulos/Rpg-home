@@ -14,34 +14,15 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    const storageKey = 'googleSheets';
     let sheets = [];
     const originalMainContent = sheetDisplayArea.innerHTML;
 
     // --- Data Management ---
 
-    function loadSheets() {
-        const storedSheets = localStorage.getItem(storageKey);
-        if (storedSheets) {
-            let loadedSheets = JSON.parse(storedSheets);
-
-            // One-time migration: remove "Cyberpunk" sheets if they exist
-            const initialCount = loadedSheets.length;
-            loadedSheets = loadedSheets.filter(sheet => sheet.name !== 'Cyberpunk');
-
-            // If changes were made, save them back
-            if (loadedSheets.length < initialCount) {
-                localStorage.setItem(storageKey, JSON.stringify(loadedSheets));
-            }
-
-            sheets = loadedSheets;
-            populateDropdown();
-        }
-    }
-
-    function saveSheets() {
-        localStorage.setItem(storageKey, JSON.stringify(sheets));
-    }
+    window.addEventListener('sheets-update', (event) => {
+        sheets = event.detail.list || [];
+        populateDropdown();
+    });
 
     function formatSheetUrl(url) {
         // Attempt to convert a standard Google Sheet URL to an embeddable one.
@@ -103,9 +84,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const formattedUrl = formatSheetUrl(url);
 
-        sheets.push({ name, url: formattedUrl });
-        saveSheets();
-        populateDropdown();
+        if (window.socket && window.socket.readyState === WebSocket.OPEN) {
+            window.socket.send(JSON.stringify({ type: 'add-sheet', name, url: formattedUrl }));
+        }
 
         // Automatically select and display the new sheet
         sheetSelect.value = formattedUrl;
@@ -128,14 +109,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedUrl = sheetSelect.value;
 
         if (confirm(`Êtes-vous sûr de vouloir supprimer la fiche "${sheetName}" ?`)) {
-            // Remove the sheet from the array
-            sheets = sheets.filter(sheet => sheet.url !== selectedUrl);
-
-            // Persist changes
-            saveSheets();
-
-            // Update UI
-            populateDropdown();
+            if (window.socket && window.socket.readyState === WebSocket.OPEN) {
+                window.socket.send(JSON.stringify({ type: 'delete-sheet', url: selectedUrl }));
+            }
             displaySheet(null); // Clear the display
         }
     }
@@ -146,5 +122,4 @@ document.addEventListener('DOMContentLoaded', () => {
     deleteSheetBtn.addEventListener('click', handleDeleteSheetClick);
     sheetSelect.addEventListener('change', handleSheetSelectChange);
 
-    loadSheets();
 });
