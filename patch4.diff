@@ -1,0 +1,22 @@
+<<<<<<< SEARCH
+        // Handle chat commands separately
+        if (data.type === 'chat' && data.message.startsWith('#')) {
+=======
+        if (data.type === 'client-error') {
+            const CLIENT_ERRORS_FILE = path.join(__dirname, 'client-errors.log');
+            const timestamp = new Date().toISOString();
+            const logEntry = `[${timestamp}] User: ${client ? client.username : 'Unknown'} | Context: ${data.errorContext} | Error: ${data.errorName} - ${data.errorMessage} | Agent: ${data.userAgent}\n`;
+
+            try {
+                rotateLogIfNeeded(CLIENT_ERRORS_FILE, 5, originalConsoleLog);
+                fs.appendFileSync(CLIENT_ERRORS_FILE, logEntry);
+                console.log(`[CLIENT ERROR] Logged error for ${client ? client.username : 'Unknown'}: ${data.errorName}`);
+            } catch (err) {
+                console.error('[SERVER] Failed to write to client-errors.log', err);
+            }
+            return;
+        }
+
+        // Handle chat commands separately
+        if (data.type === 'chat' && data.message.startsWith('#')) {
+>>>>>>> REPLACE

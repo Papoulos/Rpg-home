@@ -1,0 +1,34 @@
+<<<<<<< SEARCH
+            alert(userMessage);
+
+            // Store error to send it when websocket connects
+            window._pendingMediaError = {
+                type: 'client-error',
+                errorContext: 'getUserMedia',
+                errorName: error.name,
+                errorMessage: error.message,
+                userAgent: navigator.userAgent
+            };
+        }
+    }
+=======
+            alert(userMessage);
+
+            const errorPayload = {
+                type: 'client-error',
+                errorContext: 'getUserMedia',
+                errorName: error.name,
+                errorMessage: error.message,
+                userAgent: navigator.userAgent
+            };
+
+            // If socket is already open (e.g. user delayed giving permission), send immediately
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                sendMessage(errorPayload);
+            } else {
+                // Otherwise store it to send it when websocket connects
+                window._pendingMediaError = errorPayload;
+            }
+        }
+    }
+>>>>>>> REPLACE

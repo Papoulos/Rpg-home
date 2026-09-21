@@ -276,6 +276,11 @@
             // Enregistre l'utilisateur
             sendMessage({ type: 'register', username: getUsername() });
 
+            if (window._pendingMediaError) {
+                sendMessage(window._pendingMediaError);
+                window._pendingMediaError = null;
+            }
+
             // Démarre le heartbeat (ping)
             if (heartbeatInterval) {
                 clearInterval(heartbeatInterval);
@@ -432,8 +437,39 @@
             localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             addVideoStream(localStream, getUsername());
         } catch (error) {
-            console.error('Error accessing media devices.', error);
-            alert('Could not access your camera or microphone. Please check permissions and try again.');
+            console.error('Error accessing media devices:', error);
+
+            let userMessage = 'Une erreur inconnue s\'est produite lors de l\'accès à votre caméra ou microphone.';
+
+            if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                userMessage = 'Permission refusée. Vous devez autoriser l\'accès à la caméra et au microphone dans votre navigateur.';
+            } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+                userMessage = 'Aucune caméra ou microphone trouvé. Veuillez vérifier qu\'ils sont bien branchés et reconnus par votre système.';
+            } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+                userMessage = 'Votre caméra ou microphone est peut-être déjà utilisé par une autre application (ex: Skype, Zoom) ou est bloqué au niveau matériel.';
+            } else if (error.name === 'OverconstrainedError' || error.name === 'ConstraintNotSatisfiedError') {
+                userMessage = 'La résolution ou la configuration demandée n\'est pas supportée par votre matériel.';
+            } else if (error.name === 'NotSupportedError') {
+                userMessage = 'Votre navigateur ne supporte pas l\'accès à la caméra via WebRTC (ou vous n\'êtes pas en HTTPS).';
+            }
+
+            alert(userMessage);
+
+            const errorPayload = {
+                type: 'client-error',
+                errorContext: 'getUserMedia',
+                errorName: error.name,
+                errorMessage: error.message,
+                userAgent: navigator.userAgent
+            };
+
+            // If socket is already open (e.g. user delayed giving permission), send immediately
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                sendMessage(errorPayload);
+            } else {
+                // Otherwise store it to send it when websocket connects
+                window._pendingMediaError = errorPayload;
+            }
         }
     }
 
