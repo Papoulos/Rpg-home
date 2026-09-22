@@ -57,6 +57,82 @@ Le projet contient un `Dockerfile` prêt à l'emploi.
     ```
 Le `Dockerfile` est configuré pour lancer l'application en mode `--nossl`, idéal pour les environnements managés (Google Cloud Run, Heroku, etc.).
 
+### Déploiement sur Machine Virtuelle (Google Cloud, AWS, etc.)
+
+Il est possible de déployer facilement l'application sur une machine virtuelle classique (Google Cloud Compute Engine, AWS EC2, DigitalOcean Droplets, etc.) en utilisant un **script de démarrage** (startup script).
+
+Ce script automatise la mise à jour d'un DNS dynamique (ex: OVH), l'installation des prérequis, la configuration du reverse proxy Nginx, la génération d'un certificat SSL avec Let's Encrypt (Certbot), et le lancement de l'application Node.js en arrière-plan sans SSL (car Nginx gère le SSL et redirige vers le port 3000 local).
+
+Voici un exemple de script bash à configurer dans les paramètres de démarrage de votre VM. Il est prévu pour fonctionner avec le DynHost d'OVH, mais il est adaptable à d'autres fournisseurs (ex: API Cloudflare ou No-IP pour le DNS) :
+
+```bash
+#! /bin/bash
+
+# === VARIABLES À PERSONNALISER ===
+DOMAIN="jdr.votre-domaine.fr"
+EMAIL="votre-email@gmail.com"
+DYNHOST_USER="votre-domaine.fr-jdr"
+DYNHOST_PASS="le-mot-de-passe-dynhost"
+
+REPO_URL="https://github.com/Papoulos/Rpg-home.git"
+APP_DIR="/opt/rpg-home"
+
+# 1. MISE À JOUR DE L'IP (Exemple pour DynHost OVH)
+# À adapter selon votre fournisseur DNS (Cloudflare, No-IP, etc.)
+curl --user "$DYNHOST_USER:$DYNHOST_PASS" "https://www.ovh.com/nic/update?system=dyndns&hostname=$DOMAIN"
+
+# 2. INSTALLATION DES PRÉREQUIS
+apt-get update
+apt-get install -y git nodejs npm nginx python3-certbot-nginx
+
+# 3. CONFIGURATION DU REVERSE PROXY NGINX
+if [ ! -f /etc/nginx/sites-available/rpg-home ]; then
+  cat <<EOF > /etc/nginx/sites-available/rpg-home
+server {
+    listen 80;
+    server_name $DOMAIN;
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_cache_bypass \$http_upgrade;
+    }
+}
+EOF
+  ln -sf /etc/nginx/sites-available/rpg-home /etc/nginx/sites-enabled/
+  rm -f /etc/nginx/sites-enabled/default
+  systemctl restart nginx
+fi
+
+# 4. GESTION DU CERTIFICAT SSL (Let's Encrypt)
+# Nginx est prêt, on peut sécuriser la connexion avant même que Node soit lancé
+if [ ! -d "/etc/letsencrypt/live/$DOMAIN" ]; then
+  # 1er démarrage : on attend que la nouvelle IP soit propagée
+  sleep 30
+  certbot --nginx -d $DOMAIN --non-interactive --agree-tos -m $EMAIL
+else
+  # Redémarrages suivants : renouvellement silencieux si nécessaire
+  certbot renew --quiet
+fi
+
+# 5. RECUPERATION ET LANCEMENT DU PROJET NODE.JS
+if [ ! -d "$APP_DIR" ]; then
+  git clone $REPO_URL $APP_DIR
+else
+  cd $APP_DIR
+  git reset --hard
+  git pull origin main
+fi
+
+cd $APP_DIR
+npm install
+pkill node
+# Lancement de l'application en arrière-plan sans SSL (géré par Nginx)
+nohup node server.js --nossl > /var/log/rpg-home.log 2>&1 &
+```
+
 ## Fonctionnalités
 
 L'application est construite autour d'une interface modulaire conçue pour une session de JDR typique, avec une barre de menu permettant de naviguer entre différentes vues centrales (Carte, PJ, Prez, etc.).
