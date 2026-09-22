@@ -194,6 +194,14 @@
                                     <label>Focus</label>
                                     <input type="text" id="cs-id-focus">
                                 </div>
+                                <div class="cs-field" style="grid-column: 1 / -1;">
+                                    <label>Phrase d'accroche (Flavor Sentence)</label>
+                                    <input type="text" id="cs-id-flavorSentence">
+                                </div>
+                                <div class="cs-field" style="grid-column: 1 / -1;">
+                                    <label>Portrait (URL)</label>
+                                    <input type="text" id="cs-id-portraitUrl">
+                                </div>
                                 <div class="cs-field">
                                     <label>Tier</label>
                                     <input type="number" id="cs-id-tier" min="1" max="6">
@@ -205,6 +213,10 @@
                                 <div class="cs-field">
                                     <label>XP</label>
                                     <input type="number" id="cs-id-xp" min="0">
+                                </div>
+                                <div class="cs-field" style="grid-column: 1 / -1;">
+                                    <label>Notes d'identité</label>
+                                    <textarea id="cs-id-notes" rows="2" style="background:#1a1a1a; color:#fff; border:1px solid #444; border-radius:4px; padding:8px;"></textarea>
                                 </div>
                             </div>
                         </div>
@@ -299,6 +311,10 @@
                                     <label class="cs-radio-label"><input type="radio" name="damageTrack" value="debilitated"> Débilité (Debilitated)</label>
                                     <label class="cs-radio-label"><input type="radio" name="damageTrack" value="dead"> Mort (Dead)</label>
                                 </div>
+                                <div class="cs-field" style="margin-top:10px;">
+                                    <label>Notes d'état</label>
+                                    <input type="text" id="cs-dt-notes" style="width:100%;">
+                                </div>
                             </div>
                             <div class="cs-section">
                                 <h2>Récupération (Recovery)</h2>
@@ -338,7 +354,7 @@
                             </div>
                             <button class="cs-add-btn" id="cs-add-weapon"><span class="material-symbols-outlined">add</span> Ajouter une arme</button>
 
-                            <div style="margin-top:20px; display:flex; gap:20px;">
+                            <div style="margin-top:20px; display:flex; flex-wrap:wrap; gap:20px;">
                                 <div class="cs-field">
                                     <label>Armure (Valeur)</label>
                                     <input type="number" id="cs-armor-value">
@@ -347,11 +363,21 @@
                                     <label>Coût Effort Vélocité (Armure)</label>
                                     <input type="number" id="cs-armor-cost">
                                 </div>
+                                <div class="cs-field" style="flex-grow:1;">
+                                    <label>Description (Armure)</label>
+                                    <input type="text" id="cs-armor-desc">
+                                </div>
                                 <div class="cs-field">
                                     <label>Shins</label>
                                     <input type="number" id="cs-shins">
                                 </div>
                             </div>
+
+                            <h3 style="margin-top:20px; color:#ccc;">Objets Généraux</h3>
+                            <div id="cs-general-items-list" class="cs-list-container">
+                                <!-- General items injected via JS -->
+                            </div>
+                            <button class="cs-add-btn" id="cs-add-general-item"><span class="material-symbols-outlined">add</span> Ajouter un objet</button>
                         </div>
 
                         <div class="cs-section">
@@ -364,6 +390,36 @@
                                 <!-- Cyphers injected via JS -->
                             </div>
                             <button class="cs-add-btn" id="cs-add-cypher"><span class="material-symbols-outlined">add</span> Ajouter un cypher</button>
+                        </div>
+
+                        <div class="cs-section">
+                            <h2>Artéfacts & Oddities</h2>
+                            <h3 style="color:#ccc;">Artéfacts</h3>
+                            <div id="cs-artifacts-list" class="cs-list-container">
+                                <!-- Artifacts injected via JS -->
+                            </div>
+                            <button class="cs-add-btn" id="cs-add-artifact"><span class="material-symbols-outlined">add</span> Ajouter un artéfact</button>
+
+                            <h3 style="color:#ccc; margin-top:20px;">Oddities</h3>
+                            <div id="cs-oddities-list" class="cs-list-container">
+                                <!-- Oddities injected via JS -->
+                            </div>
+                            <button class="cs-add-btn" id="cs-add-oddity"><span class="material-symbols-outlined">add</span> Ajouter une oddity</button>
+                        </div>
+
+                        <div class="cs-section">
+                            <h2>Avancement (Advancement)</h2>
+                            <div class="cs-field" style="margin-bottom:15px; width: 150px;">
+                                <label>XP Disponible</label>
+                                <input type="number" id="cs-adv-xp-available">
+                            </div>
+                            <div class="cs-checkbox-group">
+                                <label class="cs-checkbox-label"><input type="checkbox" id="cs-adv-increasePool"> Increase Capabilities (+4 Stats)</label>
+                                <label class="cs-checkbox-label"><input type="checkbox" id="cs-adv-moveTowardPerfection"> Move Toward Perfection (+1 Edge)</label>
+                                <label class="cs-checkbox-label"><input type="checkbox" id="cs-adv-gainEffort"> Extra Effort (+1 Effort)</label>
+                                <label class="cs-checkbox-label"><input type="checkbox" id="cs-adv-trainSkill"> Skill Training (Train/Specialize)</label>
+                                <label class="cs-checkbox-label"><input type="checkbox" id="cs-adv-advancedAbility"> Other Options (Ability, etc.)</label>
+                            </div>
                         </div>
                     </div>
                 </div>
