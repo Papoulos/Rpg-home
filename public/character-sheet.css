@@ -1,0 +1,297 @@
+/* public/character-sheet.css */
+#character-sheet-content {
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    height: 100%;
+    box-sizing: border-box;
+    overflow-y: auto;
+    color: #f0f0f0;
+    /* Thème sombre hérité du site (background de main est déjà géré, on peut rajouter un fond léger pour la zone fiche si besoin) */
+}
+
+.cs-container {
+    max-width: 900px;
+    margin: 0 auto;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.cs-header-controls {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.cs-header-controls button {
+    background: #333;
+    border: 1px solid #444;
+    color: #f0f0f0;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: background 0.2s;
+}
+
+.cs-header-controls button:hover {
+    background: #444;
+}
+
+.cs-section {
+    background: #2a2a2a;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 15px;
+}
+
+.cs-section h2 {
+    margin-top: 0;
+    border-bottom: 1px solid #444;
+    padding-bottom: 5px;
+    font-size: 1.2rem;
+    color: #e0e0e0;
+}
+
+/* Identity Section */
+.cs-identity-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.cs-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.cs-field label {
+    font-size: 0.85rem;
+    color: #aaa;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.cs-field input[type="text"],
+.cs-field input[type="number"] {
+    background: #1a1a1a;
+    border: 1px solid #444;
+    color: #fff;
+    padding: 8px;
+    border-radius: 4px;
+    font-size: 1rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Stats Section (Might, Speed, Intellect) */
+.cs-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.cs-stat-box {
+    background: #222;
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 15px;
+    position: relative;
+    border-top-width: 4px; /* For color accent */
+}
+
+.cs-stat-box.stat-might { border-top-color: #a02c2c; }
+.cs-stat-box.stat-speed { border-top-color: #a0a02c; }
+.cs-stat-box.stat-intel { border-top-color: #2c5ca0; }
+
+.cs-stat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.cs-stat-title {
+    font-size: 1.3rem;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.cs-roll-icon {
+    cursor: pointer;
+    color: #aaa;
+    transition: color 0.2s;
+    user-select: none;
+}
+
+.cs-roll-icon:hover {
+    color: #fff;
+}
+
+.cs-stat-details {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.cs-pool-control {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.cs-pool-control label {
+    font-weight: bold;
+    color: #ccc;
+}
+
+.cs-pool-editor {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.cs-pool-btn {
+    background: #333;
+    border: 1px solid #555;
+    color: #fff;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
+.cs-pool-btn:hover { background: #555; }
+
+.cs-pool-editor input {
+    width: 40px;
+    text-align: center;
+    background: #1a1a1a;
+    border: 1px solid #444;
+    color: #fff;
+    border-radius: 4px;
+    padding: 4px;
+}
+
+/* Other inputs in stat */
+.cs-stat-sub {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.cs-stat-sub input {
+    width: 40px;
+    text-align: center;
+}
+
+/* Damage Track and Recovery */
+.cs-health-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.cs-radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.cs-radio-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+}
+
+.cs-checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.cs-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+}
+
+/* Skills, Abilities, Equipement */
+.cs-list-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.cs-list-item {
+    display: flex;
+    align-items: center;
+    background: #222;
+    padding: 8px;
+    border-radius: 4px;
+    gap: 10px;
+}
+
+.cs-list-item input[type="text"] {
+    flex-grow: 1;
+    background: #1a1a1a;
+    border: 1px solid #444;
+    color: #fff;
+    padding: 6px;
+    border-radius: 4px;
+}
+
+.cs-list-item select {
+    background: #1a1a1a;
+    border: 1px solid #444;
+    color: #fff;
+    padding: 6px;
+    border-radius: 4px;
+}
+
+.cs-delete-btn {
+    background: #5a2a2a;
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.cs-delete-btn:hover { background: #7a3a3a; }
+
+.cs-add-btn {
+    background: #2a5a2a;
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    align-self: flex-start;
+    margin-top: 10px;
+}
+.cs-add-btn:hover { background: #3a7a3a; }
+
+@media (max-width: 768px) {
+    .cs-health-grid {
+        grid-template-columns: 1fr;
+    }
+}
