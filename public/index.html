@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
     <link rel="stylesheet" href="wiki.css">
+    <link rel="stylesheet" href="character-sheet.css">
 </head>
 <body>
     <div class="container">
@@ -159,10 +160,218 @@
                          <button id="wiki-edit-btn">Modifier</button>
                     </div>
                 </div>
+                <div id="character-sheet-content" class="tab-content" style="display: none;">
+                    <div class="cs-container">
+                        <div class="cs-header-controls">
+                            <button id="cs-btn-save" title="Sauvegarder">
+                                <span class="material-symbols-outlined">save</span>
+                            </button>
+                            <button id="cs-btn-export" title="Exporter en JSON">
+                                <span class="material-symbols-outlined">download</span>
+                            </button>
+                            <label for="cs-btn-import" class="cs-header-controls-label" style="cursor: pointer; display: flex; align-items: center; justify-content: center; background: #333; border: 1px solid #444; color: #f0f0f0; padding: 8px 12px; border-radius: 4px; gap: 5px;">
+                                <span class="material-symbols-outlined">upload</span>
+                            </label>
+                            <input type="file" id="cs-btn-import" accept=".json" style="display: none;">
+                        </div>
+
+                        <div class="cs-section">
+                            <h2>Identité</h2>
+                            <div class="cs-identity-grid">
+                                <div class="cs-field">
+                                    <label>Nom</label>
+                                    <input type="text" id="cs-id-name">
+                                </div>
+                                <div class="cs-field">
+                                    <label>Descripteur</label>
+                                    <input type="text" id="cs-id-descriptor">
+                                </div>
+                                <div class="cs-field">
+                                    <label>Type</label>
+                                    <input type="text" id="cs-id-type">
+                                </div>
+                                <div class="cs-field">
+                                    <label>Focus</label>
+                                    <input type="text" id="cs-id-focus">
+                                </div>
+                                <div class="cs-field">
+                                    <label>Tier</label>
+                                    <input type="number" id="cs-id-tier" min="1" max="6">
+                                </div>
+                                <div class="cs-field">
+                                    <label>Effort</label>
+                                    <input type="number" id="cs-id-effort" min="1" max="6">
+                                </div>
+                                <div class="cs-field">
+                                    <label>XP</label>
+                                    <input type="number" id="cs-id-xp" min="0">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="cs-section">
+                            <h2>Stats & Pools</h2>
+                            <div class="cs-stats-grid">
+                                <!-- Might -->
+                                <div class="cs-stat-box stat-might">
+                                    <div class="cs-stat-header">
+                                        <div class="cs-stat-title">Puissance</div>
+                                        <span class="material-symbols-outlined cs-roll-icon" data-stat="might" title="Lancer Puissance">casino</span>
+                                    </div>
+                                    <div class="cs-stat-details">
+                                        <div class="cs-pool-control">
+                                            <label>Pool</label>
+                                            <div class="cs-pool-editor">
+                                                <button class="cs-pool-btn" data-stat="might" data-action="minus">-</button>
+                                                <input type="number" id="cs-stat-might-pool" readonly>
+                                                <button class="cs-pool-btn" data-stat="might" data-action="plus">+</button>
+                                            </div>
+                                        </div>
+                                        <div class="cs-stat-sub">
+                                            <label>Max</label>
+                                            <input type="number" id="cs-stat-might-max">
+                                        </div>
+                                        <div class="cs-stat-sub">
+                                            <label>Edge</label>
+                                            <input type="number" id="cs-stat-might-edge">
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Speed -->
+                                <div class="cs-stat-box stat-speed">
+                                    <div class="cs-stat-header">
+                                        <div class="cs-stat-title">Vélocité</div>
+                                        <span class="material-symbols-outlined cs-roll-icon" data-stat="speed" title="Lancer Vélocité">casino</span>
+                                    </div>
+                                    <div class="cs-stat-details">
+                                        <div class="cs-pool-control">
+                                            <label>Pool</label>
+                                            <div class="cs-pool-editor">
+                                                <button class="cs-pool-btn" data-stat="speed" data-action="minus">-</button>
+                                                <input type="number" id="cs-stat-speed-pool" readonly>
+                                                <button class="cs-pool-btn" data-stat="speed" data-action="plus">+</button>
+                                            </div>
+                                        </div>
+                                        <div class="cs-stat-sub">
+                                            <label>Max</label>
+                                            <input type="number" id="cs-stat-speed-max">
+                                        </div>
+                                        <div class="cs-stat-sub">
+                                            <label>Edge</label>
+                                            <input type="number" id="cs-stat-speed-edge">
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Intellect -->
+                                <div class="cs-stat-box stat-intel">
+                                    <div class="cs-stat-header">
+                                        <div class="cs-stat-title">Intellect</div>
+                                        <span class="material-symbols-outlined cs-roll-icon" data-stat="intel" title="Lancer Intellect">casino</span>
+                                    </div>
+                                    <div class="cs-stat-details">
+                                        <div class="cs-pool-control">
+                                            <label>Pool</label>
+                                            <div class="cs-pool-editor">
+                                                <button class="cs-pool-btn" data-stat="intel" data-action="minus">-</button>
+                                                <input type="number" id="cs-stat-intel-pool" readonly>
+                                                <button class="cs-pool-btn" data-stat="intel" data-action="plus">+</button>
+                                            </div>
+                                        </div>
+                                        <div class="cs-stat-sub">
+                                            <label>Max</label>
+                                            <input type="number" id="cs-stat-intel-max">
+                                        </div>
+                                        <div class="cs-stat-sub">
+                                            <label>Edge</label>
+                                            <input type="number" id="cs-stat-intel-edge">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="cs-health-grid">
+                            <div class="cs-section">
+                                <h2>Damage Track</h2>
+                                <div class="cs-radio-group">
+                                    <label class="cs-radio-label"><input type="radio" name="damageTrack" value="hale"> Indemne (Hale)</label>
+                                    <label class="cs-radio-label"><input type="radio" name="damageTrack" value="impaired"> Affaibli (Impaired)</label>
+                                    <label class="cs-radio-label"><input type="radio" name="damageTrack" value="debilitated"> Débilité (Debilitated)</label>
+                                    <label class="cs-radio-label"><input type="radio" name="damageTrack" value="dead"> Mort (Dead)</label>
+                                </div>
+                            </div>
+                            <div class="cs-section">
+                                <h2>Récupération (Recovery)</h2>
+                                <div class="cs-stat-sub" style="margin-bottom: 10px;">
+                                    <label>Bonus au jet (1d6 + )</label>
+                                    <input type="number" id="cs-recovery-bonus">
+                                </div>
+                                <div class="cs-checkbox-group">
+                                    <label class="cs-checkbox-label"><input type="checkbox" id="cs-rec-action"> 1 Action</label>
+                                    <label class="cs-checkbox-label"><input type="checkbox" id="cs-rec-tenMinutes"> 10 Minutes</label>
+                                    <label class="cs-checkbox-label"><input type="checkbox" id="cs-rec-oneHour"> 1 Heure</label>
+                                    <label class="cs-checkbox-label"><input type="checkbox" id="cs-rec-tenHours"> 10 Heures</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="cs-section">
+                            <h2>Compétences</h2>
+                            <div id="cs-skills-list" class="cs-list-container">
+                                <!-- Skills injected via JS -->
+                            </div>
+                            <button class="cs-add-btn" id="cs-add-skill"><span class="material-symbols-outlined">add</span> Ajouter une compétence</button>
+                        </div>
+
+                        <div class="cs-section">
+                            <h2>Capacités (Abilities)</h2>
+                            <div id="cs-abilities-list" class="cs-list-container">
+                                <!-- Abilities injected via JS -->
+                            </div>
+                            <button class="cs-add-btn" id="cs-add-ability"><span class="material-symbols-outlined">add</span> Ajouter une capacité</button>
+                        </div>
+
+                        <div class="cs-section">
+                            <h2>Équipement</h2>
+                            <div id="cs-weapons-list" class="cs-list-container">
+                                <!-- Weapons injected via JS -->
+                            </div>
+                            <button class="cs-add-btn" id="cs-add-weapon"><span class="material-symbols-outlined">add</span> Ajouter une arme</button>
+
+                            <div style="margin-top:20px; display:flex; gap:20px;">
+                                <div class="cs-field">
+                                    <label>Armure (Valeur)</label>
+                                    <input type="number" id="cs-armor-value">
+                                </div>
+                                <div class="cs-field">
+                                    <label>Coût Effort Vélocité (Armure)</label>
+                                    <input type="number" id="cs-armor-cost">
+                                </div>
+                                <div class="cs-field">
+                                    <label>Shins</label>
+                                    <input type="number" id="cs-shins">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="cs-section">
+                            <h2>Cyphers</h2>
+                            <div class="cs-stat-sub" style="justify-content: flex-start; gap:10px; margin-bottom: 10px;">
+                                <label>Limite :</label>
+                                <input type="number" id="cs-cyphers-limit" style="width: 60px;">
+                            </div>
+                            <div id="cs-cyphers-list" class="cs-list-container">
+                                <!-- Cyphers injected via JS -->
+                            </div>
+                            <button class="cs-add-btn" id="cs-add-cypher"><span class="material-symbols-outlined">add</span> Ajouter un cypher</button>
+                        </div>
+                    </div>
+                </div>
             </div>
             <nav class="main-menu">
                 <a href="#carte" class="menu-item" data-target="carte-content" title="Carte"><span class="material-symbols-outlined">map</span></a>
                 <a href="#pj" class="menu-item" data-target="pj-content" title="Personnages"><span class="material-symbols-outlined">group</span></a>
+                <a href="#character-sheet" class="menu-item" data-target="character-sheet-content" title="Fiche de Personnage"><span class="material-symbols-outlined">person_book</span></a>
                 <a href="#fabric" class="menu-item" data-target="fabric-content" title="Tableau Blanc"><span class="material-symbols-outlined">draw</span></a>
                 <a href="#wiki" class="menu-item" data-target="wiki-content" title="Wiki"><span class="material-symbols-outlined">library_books</span></a>
                 <a href="#music" class="menu-item hidden" data-target="music-content" id="music-nav-item" title="Musique"><span class="material-symbols-outlined">music_note</span></a>
@@ -203,5 +412,6 @@
     <script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
     <script src="wiki.js" defer></script>
+    <script src="character-sheet.js" defer></script>
 </body>
 </html>
