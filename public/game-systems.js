@@ -3,27 +3,44 @@
     const gameSystems = {
         cypher: {
             name: 'Cypher System',
-            help: '<strong>/cypher</strong> ou <strong>/c</strong> [/D difficulté] [/E effort] [/M malus] - Lance un dé pour le Cypher System.',
+            help: '<strong>/cypher</strong> ou <strong>/c</strong> [Nom du jet] [/D difficulté] [/E effort] [/M malus] - Lance un dé pour le Cypher System.',
             roll: (args) => {
                 // --- Argument Parsing ---
                 const params = { D: 0, E: 0, M: 0 };
+                let actionNameParts = [];
+
                 for (let i = 0; i < args.length; i++) {
                     const param = args[i].toUpperCase();
-                    if (params.hasOwnProperty(param.substring(1))) {
+                    if (param.startsWith('/') && params.hasOwnProperty(param.substring(1))) {
                         const value = parseInt(args[i + 1], 10);
                         if (!isNaN(value)) {
                             params[param.substring(1)] = value;
                             i++; // Skip the value in the next iteration
                         }
+                    } else {
+                        // Extract text before flags as action name
+                        actionNameParts.push(args[i]);
                     }
                 }
+
+                const actionName = actionNameParts.join(' ').trim();
                 const { D: difficulty, E: effort, M: malus } = params;
 
                 const roll = Math.floor(Math.random() * 20) + 1;
-                let resultText = `Jet : <strong>${roll}</strong>. `;
+                let resultText = "";
+
+                if (actionName) {
+                    resultText += `<strong>Action : ${actionName}</strong>`;
+                    if (difficulty > 0 || effort > 0 || malus > 0) {
+                         resultText += ` | `;
+                    } else {
+                         resultText += `<br>`;
+                    }
+                }
 
                 // --- Case 1: No parameters provided ---
                 if (difficulty === 0 && effort === 0 && malus === 0) {
+                    resultText += `Jet : <strong>${roll}</strong>. `;
                     const beatenDifficulty = Math.floor(roll / 3);
                     resultText += `Le jet brut bat une difficulté de <strong>${beatenDifficulty}</strong> (cible ${beatenDifficulty * 3}).`;
                      if (roll === 1) {
@@ -38,7 +55,10 @@
                 const target = difficulty * 3;
                 const modifiedRoll = roll + (effort * 3) - (malus * 3);
 
-                resultText = `Difficulté ${difficulty} (${target}).`;
+                if (difficulty > 0) resultText += `Diff. ${difficulty} (${target})`;
+                if (effort > 0) resultText += ` | Effort ${effort}`;
+                if (malus > 0) resultText += ` | Malus ${malus}`;
+
                 resultText += `<br>Jet : <strong>${roll}</strong>`;
 
               
