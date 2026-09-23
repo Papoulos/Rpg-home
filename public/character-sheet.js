@@ -271,7 +271,7 @@ function renderSkills() {
 
     allSkills.forEach((skill, index) => {
         const item = createListItem(`
-            <span class="material-symbols-outlined cs-roll-icon" data-stat="${escapeHtml(skill.stat)}" data-skill="${escapeHtml(skill.name)}" title="Lancer pour ${escapeHtml(skill.name)}">casino</span>
+            <span class="material-symbols-outlined cs-roll-icon" data-stat="${escapeHtml(skill.stat)}" data-skill="${escapeHtml(skill.name)}" data-skill-level="${escapeHtml(skill.level)}" title="Lancer pour ${escapeHtml(skill.name)}">casino</span>
             <input type="text" class="skill-name" value="${escapeHtml(skill.name)}" placeholder="Nom">
             <select class="skill-stat">
                 <option value="might" ${skill.stat === 'might' ? 'selected' : ''}>Puissance</option>
@@ -686,6 +686,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnCancel = document.getElementById('cs-roll-modal-cancel');
     const btnConfirm = document.getElementById('cs-roll-modal-confirm');
     let currentRollName = "";
+    let currentRollBonus = 0;
 
     function closeRollModal() {
         rollModal.style.display = 'none';
@@ -701,12 +702,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    btnConfirm.addEventListener('click', () => {
+    function submitRoll() {
+        if (rollModal.style.display === 'none') return;
+
         const diff = parseInt(rollModalDiff.value, 10) || 0;
         const effort = parseInt(rollModalEffort.value, 10) || 0;
 
         // Construct the command
-        const command = `/c ${currentRollName} /D ${diff} /E ${effort}`;
+        let command = `/c ${currentRollName} /D ${diff} /E ${effort}`;
+        if (currentRollBonus !== 0) {
+            command += ` /B ${currentRollBonus}`;
+        }
 
         // Inject into chat input and simulate send
         const chatInput = document.getElementById('chat-input');
@@ -720,6 +726,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         closeRollModal();
+    }
+
+    btnConfirm.addEventListener('click', submitRoll);
+
+    // Pressing enter in inputs submits
+    rollModalDiff.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') submitRoll();
+    });
+    rollModalEffort.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') submitRoll();
     });
 
     // Lancer de dé depuis la fiche
@@ -728,10 +744,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target.classList.contains('cs-roll-icon')) {
             const stat = e.target.getAttribute('data-stat');
             const skill = e.target.getAttribute('data-skill'); // S'il y a une compétence liée
+            const skillLevel = e.target.getAttribute('data-skill-level');
 
             let rollName = "";
+            let bonus = 0;
+
             if (skill) {
                 rollName = skill;
+
+                if (skillLevel === 'specialized') bonus += 6;
+                else if (skillLevel === 'trained') bonus += 3;
+                else if (skillLevel === 'inability') bonus -= 3;
             } else {
                 // Translate stat to French if it's a basic stat roll
                 if (stat === 'might') rollName = "Puissance";
@@ -740,9 +763,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 else rollName = stat.charAt(0).toUpperCase() + stat.slice(1);
             }
 
+            // Determine if character is impaired
+            let isImpaired = false;
+            const dtRadios = document.getElementsByName('damageTrack');
+            for (let radio of dtRadios) {
+                if (radio.checked && radio.value === 'impaired') {
+                    isImpaired = true;
+                    break;
+                }
+            }
+            if (isImpaired) {
+                bonus -= 3;
+            }
+
             currentRollName = rollName;
+            currentRollBonus = bonus;
             rollModalTitle.textContent = `Lancer : ${rollName}`;
             rollModal.style.display = 'flex';
+
+            // Focus on effort first
+            rollModalEffort.focus();
+            rollModalEffort.select();
         }
     });
 });

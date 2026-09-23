@@ -3,10 +3,10 @@
     const gameSystems = {
         cypher: {
             name: 'Cypher System',
-            help: '<strong>/cypher</strong> ou <strong>/c</strong> [Nom du jet] [/D difficulté] [/E effort] [/M malus] - Lance un dé pour le Cypher System.',
+            help: '<strong>/cypher</strong> ou <strong>/c</strong> [Nom du jet] [/D difficulté] [/E effort] [/M malus] [/B bonus] - Lance un dé pour le Cypher System.',
             roll: (args) => {
                 // --- Argument Parsing ---
-                const params = { D: 0, E: 0, M: 0 };
+                const params = { D: 0, E: 0, M: 0, B: 0 };
                 let actionNameParts = [];
 
                 for (let i = 0; i < args.length; i++) {
@@ -24,7 +24,7 @@
                 }
 
                 const actionName = actionNameParts.join(' ').trim();
-                const { D: difficulty, E: effort, M: malus } = params;
+                const { D: difficulty, E: effort, M: malus, B: bonus } = params;
 
                 const roll = Math.floor(Math.random() * 20) + 1;
                 let resultText = "";
@@ -33,8 +33,12 @@
                     resultText += `Action : <strong>${actionName}</strong><br>`;
                 }
 
-                // --- Case 1: No parameters provided ---
-                if (difficulty === 0 && effort === 0 && malus === 0) {
+                // --- Common values ---
+                const target = difficulty > 0 ? difficulty * 3 : 0;
+                const modifiedRoll = roll + (effort * 3) - (malus * 3) + bonus;
+
+                // --- Case 1: No parameters provided (and no bonus) ---
+                if (difficulty === 0 && effort === 0 && malus === 0 && bonus === 0) {
                     resultText += `Jet : <strong>${roll}</strong><br>`;
                     const beatenDifficulty = Math.floor(roll / 3);
                     resultText += `<em>Bat une Diff de ${beatenDifficulty} (cible ${beatenDifficulty * 3})</em>`;
@@ -46,11 +50,9 @@
                     return resultText;
                 }
 
-                // --- Case 2: Parameters are provided ---
-                const target = difficulty * 3;
-                const modifiedRoll = roll + (effort * 3) - (malus * 3);
+                // --- Case 2: Parameters are provided (or bonus exists) ---
 
-                // Line 2: Params (Diff, Effort, Malus, Cost)
+                // Line 2: Params (Diff, Effort, Malus, Cost, Bonus)
                 let paramsLine = [];
                 if (difficulty > 0) paramsLine.push(`Diff : ${difficulty} (${target})`);
 
@@ -63,6 +65,8 @@
                 }
                 
                 if (malus > 0) paramsLine.push(`Malus : ${malus} (-${malus * 3})`);
+                if (bonus > 0) paramsLine.push(`Bonus : +${bonus}`);
+                if (bonus < 0) paramsLine.push(`Malus stat/comp : ${bonus}`); // Negative bonus
 
                 if (paramsLine.length > 0) {
                     resultText += paramsLine.join(' - ') + `<br>`;
@@ -72,8 +76,10 @@
                 let mathLine = `Jet : ${roll}`;
                 if (effort > 0) mathLine += ` + ${effort * 3}`;
                 if (malus > 0) mathLine += ` - ${malus * 3}`;
+                if (bonus > 0) mathLine += ` + ${bonus}`;
+                if (bonus < 0) mathLine += ` - ${Math.abs(bonus)}`;
 
-                if (effort > 0 || malus > 0) {
+                if (effort > 0 || malus > 0 || bonus !== 0) {
                      mathLine += ` = <strong>${modifiedRoll}</strong>`;
                 } else {
                      mathLine = `Jet : <strong>${roll}</strong>`;
@@ -85,12 +91,16 @@
                     resultText += '<br><br><strong>Échec critique !</strong> (Intrusion du MJ)';
                 } else if (roll === 20) {
                     resultText += '<br><br><strong>Réussite critique !</strong> (Bénéfice majeur)';
-                } else {
+                } else if (difficulty > 0) {
                     if (modifiedRoll >= target) {
                         resultText += `<br><br><strong>Réussite !</strong>`;
                     } else {
                         resultText += `<br><br><strong>Échec.</strong>`;
                     }
+                } else {
+                    // Difficulty is 0, just tell them what they beat
+                    const beatenDifficulty = Math.floor(modifiedRoll / 3);
+                    resultText += `<br><br><em>Bat une Diff de ${beatenDifficulty} (cible ${beatenDifficulty * 3})</em>`;
                 }
 
                 return resultText;
