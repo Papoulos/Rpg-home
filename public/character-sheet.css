@@ -14,7 +14,7 @@
     display: flex;
     gap: 10px;
     margin-bottom: 20px;
-    padding-bottom: 10px;
+    padding: 10px 10px 15px 10px;
     border-bottom: 1px solid #444;
     overflow-x: auto;
     max-width: 900px;
@@ -22,6 +22,8 @@
     margin-right: auto;
     position: relative;
     z-index: 10;
+    min-height: 65px; /* Ensures enough height for tabs + scrollbar */
+    box-sizing: border-box;
 }
 
 .cs-tab {
@@ -37,6 +39,7 @@
     opacity: 0.7;
     flex-shrink: 0;
     pointer-events: auto;
+    white-space: nowrap;
 }
 
 /* Custom scrollbar for tabs */
@@ -81,6 +84,7 @@
 .cs-readonly .cs-stat-controls,
 .cs-readonly .cs-delete-btn,
 .cs-readonly .cs-add-btn,
+.cs-readonly .cs-pool-btn,
 .cs-readonly #cs-advancement input[type="checkbox"],
 .cs-readonly #cs-adv-xp-available,
 .cs-readonly .cs-editable-input {
@@ -89,7 +93,8 @@
 
 .cs-readonly input,
 .cs-readonly textarea,
-.cs-readonly select {
+.cs-readonly select,
+.cs-readonly label {
     pointer-events: none;
     border-color: transparent !important;
     background-color: transparent !important;
