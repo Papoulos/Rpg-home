@@ -2,7 +2,7 @@
 
 const defaultCharacterData = {
   "meta": {
-    "schemaVersion": "1.2",
+    "schemaVersion": "1.4",
     "system": "Cypher System"
   },
   "identity": {
@@ -11,12 +11,10 @@ const defaultCharacterData = {
     "descriptor": "",
     "type": "",
     "focus": "",
-    "flavorSentence": "Je suis un(e) [Descriptor] [Type] qui [Focus].",
     "tier": 1,
     "effort": 1,
     "xp": 0,
-    "portraitUrl": "",
-    "notes": ""
+    "portraitUrl": ""
   },
   "stats": {
     "might": { "pool": 10, "poolMax": 10, "edge": 0 },
@@ -24,8 +22,7 @@ const defaultCharacterData = {
     "intel": { "pool": 10, "poolMax": 10, "edge": 0 }
   },
   "damageTrack": {
-    "state": "hale",
-    "notes": ""
+    "state": "hale"
   },
   "recoveryRolls": {
     "bonus": 0,
@@ -37,7 +34,7 @@ const defaultCharacterData = {
     }
   },
   "skills": {
-    "trained": [],
+    "trained": [ { "name": "", "stat": "might" } ],
     "specialized": [],
     "inability": []
   },
@@ -51,18 +48,25 @@ const defaultCharacterData = {
     }
   ],
   "equipment": {
-    "weapons": [],
+    "weapons": [
+      { "name": "", "type": "light", "damage": 0, "notes": "" }
+    ],
     "armor": { "value": 0, "speedEffortCost": 0, "description": "" },
-    "generalItems": [],
+    "implants": [
+      { "name": "", "description": "" }
+    ],
+    "generalItems": [
+      { "name": "", "level": 0, "description": "" }
+    ],
     "shins": 0
   },
-  "cyphers": {
-    "limit": 2,
-    "carried": []
-  },
   "artifactsAndOddities": {
-    "artifacts": [],
-    "oddities": []
+    "artifacts": [
+      { "name": "", "level": 0, "effect": "", "identified": false }
+    ],
+    "oddities": [
+      { "name": "", "description": "" }
+    ]
   },
   "advancement": {
     "pointsAvailable": 0,
@@ -139,15 +143,12 @@ function renderCharacterSheet() {
 
     // Equipment
     renderWeapons();
+    renderImplants();
     renderGeneralItems();
     document.getElementById('cs-armor-value').value = characterData.equipment.armor.value || 0;
     document.getElementById('cs-armor-cost').value = characterData.equipment.armor.speedEffortCost || 0;
     document.getElementById('cs-armor-desc').value = characterData.equipment.armor.description || '';
     document.getElementById('cs-shins').value = characterData.equipment.shins || 0;
-
-    // Cyphers
-    document.getElementById('cs-cyphers-limit').value = characterData.cyphers.limit || 2;
-    renderCyphers();
 
     // Artifacts & Oddities
     renderArtifacts();
@@ -199,12 +200,11 @@ function updateCharacterDataFromInputs() {
     characterData.recoveryRolls.usedToday.oneHour = document.getElementById('cs-rec-oneHour').checked;
     characterData.recoveryRolls.usedToday.tenHours = document.getElementById('cs-rec-tenHours').checked;
 
-    // Equipment & Cyphers
+    // Equipment
     characterData.equipment.armor.value = parseInt(document.getElementById('cs-armor-value').value) || 0;
     characterData.equipment.armor.speedEffortCost = parseInt(document.getElementById('cs-armor-cost').value) || 0;
     characterData.equipment.armor.description = document.getElementById('cs-armor-desc').value;
     characterData.equipment.shins = parseInt(document.getElementById('cs-shins').value) || 0;
-    characterData.cyphers.limit = parseInt(document.getElementById('cs-cyphers-limit').value) || 2;
 
     // Advancement
     characterData.advancement.pointsAvailable = parseInt(document.getElementById('cs-adv-xp-available').value) || 0;
@@ -393,54 +393,60 @@ function renderWeapons() {
     });
 }
 
+function renderImplants() {
+    const container = document.getElementById('cs-implants-list');
+    container.innerHTML = '';
+
+    if (characterData.equipment.implants) {
+        characterData.equipment.implants.forEach((implant, index) => {
+            const item = createListItem(`
+                <div style="display:flex; flex-direction:column; width:100%; gap:5px;">
+                    <div style="display:flex; gap:10px; width:100%; align-items:center;">
+                        <input type="text" class="imp-name" value="${escapeHtml(implant.name || '')}" placeholder="Nom de l'implant" style="flex-grow:1;">
+                        <button class="cs-delete-btn" data-type="implant" data-index="${index}"><span class="material-symbols-outlined">close</span></button>
+                    </div>
+                    <input type="text" class="imp-desc" value="${escapeHtml(implant.description || '')}" placeholder="Description..." style="width:100%; font-size:0.8rem; background:#111;">
+                </div>
+            `);
+            item.querySelectorAll('input').forEach(el => {
+                el.addEventListener('change', () => {
+                    implant.name = item.querySelector('.imp-name').value;
+                    implant.description = item.querySelector('.imp-desc').value;
+                    updateCharacterDataFromInputs();
+                });
+            });
+            container.appendChild(item);
+        });
+    }
+}
+
 function renderGeneralItems() {
     const container = document.getElementById('cs-general-items-list');
     container.innerHTML = '';
 
-    characterData.equipment.generalItems.forEach((itemObj, index) => {
-        const item = createListItem(`
-            <input type="text" class="gi-name" value="${escapeHtml(itemObj.name)}" placeholder="Nom de l'objet" style="width:30%;">
-            <input type="text" class="gi-notes" value="${escapeHtml(itemObj.notes || '')}" placeholder="Notes..." style="width:60%; font-size:0.8rem; background:#111;">
-            <button class="cs-delete-btn" data-type="generalItem" data-index="${index}"><span class="material-symbols-outlined">close</span></button>
-        `);
-        item.querySelectorAll('input').forEach(el => {
-            el.addEventListener('change', () => {
-                itemObj.name = item.querySelector('.gi-name').value;
-                itemObj.notes = item.querySelector('.gi-notes').value;
-                updateCharacterDataFromInputs();
-            });
-        });
-        container.appendChild(item);
-    });
-}
-
-function renderCyphers() {
-    const container = document.getElementById('cs-cyphers-list');
-    container.innerHTML = '';
-
-    characterData.cyphers.carried.forEach((cypher, index) => {
-        const item = createListItem(`
-            <div style="display:flex; flex-direction:column; width:100%; gap:5px;">
-                <div style="display:flex; gap:10px; width:100%; align-items:center;">
-                    <input type="text" class="cy-name" value="${escapeHtml(cypher.name || '')}" placeholder="Nom du cypher" style="flex-grow:1;">
-                    <input type="text" class="cy-level" value="${escapeHtml(cypher.level || '1')}" style="width:50px;" title="Niveau">
-                    <label style="display:flex; align-items:center; gap:5px; font-size:0.8rem; cursor:pointer;"><input type="checkbox" class="cy-identified" ${cypher.identified ? 'checked' : ''}> Id.</label>
-                    <button class="cs-delete-btn" data-type="cypher" data-index="${index}"><span class="material-symbols-outlined">close</span></button>
+    if (characterData.equipment.generalItems) {
+        characterData.equipment.generalItems.forEach((itemObj, index) => {
+            const item = createListItem(`
+                <div style="display:flex; flex-direction:column; width:100%; gap:5px;">
+                    <div style="display:flex; gap:10px; width:100%; align-items:center;">
+                        <input type="text" class="gi-name" value="${escapeHtml(itemObj.name || '')}" placeholder="Nom de l'objet" style="flex-grow:1;">
+                        <input type="text" class="gi-level" value="${escapeHtml(itemObj.level || '1')}" style="width:50px;" title="Niveau">
+                        <button class="cs-delete-btn" data-type="generalItem" data-index="${index}"><span class="material-symbols-outlined">close</span></button>
+                    </div>
+                    <input type="text" class="gi-desc" value="${escapeHtml(itemObj.description || '')}" placeholder="Description..." style="width:100%; font-size:0.8rem; background:#111;">
                 </div>
-                <input type="text" class="cy-effect" value="${escapeHtml(cypher.effect || '')}" placeholder="Effet..." style="width:100%; font-size:0.8rem; background:#111;">
-            </div>
-        `);
-        item.querySelectorAll('input').forEach(el => {
-            el.addEventListener('change', () => {
-                cypher.name = item.querySelector('.cy-name').value;
-                cypher.level = item.querySelector('.cy-level').value; // Keep as string for ? or ranges
-                cypher.effect = item.querySelector('.cy-effect').value;
-                cypher.identified = item.querySelector('.cy-identified').checked;
-                updateCharacterDataFromInputs();
+            `);
+            item.querySelectorAll('input').forEach(el => {
+                el.addEventListener('change', () => {
+                    itemObj.name = item.querySelector('.gi-name').value;
+                    itemObj.level = item.querySelector('.gi-level').value;
+                    itemObj.description = item.querySelector('.gi-desc').value;
+                    updateCharacterDataFromInputs();
+                });
             });
+            container.appendChild(item);
         });
-        container.appendChild(item);
-    });
+    }
 }
 
 function renderArtifacts() {
@@ -531,12 +537,12 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (type === 'weapon') {
                 characterData.equipment.weapons.splice(index, 1);
                 renderWeapons();
+            } else if (type === 'implant') {
+                characterData.equipment.implants.splice(index, 1);
+                renderImplants();
             } else if (type === 'generalItem') {
                 characterData.equipment.generalItems.splice(index, 1);
                 renderGeneralItems();
-            } else if (type === 'cypher') {
-                characterData.cyphers.carried.splice(index, 1);
-                renderCyphers();
             } else if (type === 'artifact') {
                 characterData.artifactsAndOddities.artifacts.splice(index, 1);
                 renderArtifacts();
@@ -567,15 +573,17 @@ document.addEventListener('DOMContentLoaded', () => {
         updateCharacterDataFromInputs();
     });
 
-    document.getElementById('cs-add-general-item').addEventListener('click', () => {
-        characterData.equipment.generalItems.push({ name: "Nouvel objet", notes: "" });
-        renderGeneralItems();
+    document.getElementById('cs-add-implant').addEventListener('click', () => {
+        if (!characterData.equipment.implants) characterData.equipment.implants = [];
+        characterData.equipment.implants.push({ name: "Nouvel implant", description: "" });
+        renderImplants();
         updateCharacterDataFromInputs();
     });
 
-    document.getElementById('cs-add-cypher').addEventListener('click', () => {
-        characterData.cyphers.carried.push({ name: "Nouveau cypher", level: "1", effect: "", identified: false });
-        renderCyphers();
+    document.getElementById('cs-add-general-item').addEventListener('click', () => {
+        if (!characterData.equipment.generalItems) characterData.equipment.generalItems = [];
+        characterData.equipment.generalItems.push({ name: "Nouvel objet", level: "1", description: "" });
+        renderGeneralItems();
         updateCharacterDataFromInputs();
     });
 
