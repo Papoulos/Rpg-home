@@ -27,14 +27,124 @@
     let socket = null;
 
     // --- User and Chat Management ---
-    function askForUsername() {
-        while (!username || username.trim() === '') {
-            username = prompt("Veuillez entrer votre nom pour le chat :");
-        }
+    // The username is now set by the login process
+    function setUsername(name) {
+        username = name;
     }
 
     function getUsername() {
         return username;
+    }
+    window.getUsername = getUsername;
+
+    function initLogin() {
+        const loginOverlay = document.getElementById('login-overlay');
+        const loginMjBtn = document.getElementById('login-mj-btn');
+        const mjConfirmModal = document.getElementById('mj-confirm-modal');
+        const mjConfirmAccept = document.getElementById('mj-confirm-accept');
+        const mjConfirmCancel = document.getElementById('mj-confirm-cancel');
+        const newCharBtn = document.getElementById('login-new-char-btn');
+        const newCharName = document.getElementById('login-new-char-name');
+        const charactersList = document.getElementById('login-characters-list');
+
+        // Show MJ confirm modal
+        loginMjBtn.addEventListener('click', () => {
+            mjConfirmModal.style.display = 'flex';
+        });
+
+        // Cancel MJ confirm
+        mjConfirmCancel.addEventListener('click', () => {
+            mjConfirmModal.style.display = 'none';
+        });
+
+        // Accept MJ confirm
+        mjConfirmAccept.addEventListener('click', () => {
+            mjConfirmModal.style.display = 'none';
+            setUsername('MJ');
+            finishLogin();
+        });
+
+        // Create new character
+        newCharBtn.addEventListener('click', () => {
+            const name = newCharName.value.trim();
+            if (name) {
+                // We will send a request to create/update character once WebSocket is ready,
+                // but for now, we set the username and hide login. The actual creation
+                // will be handled in the character-sheet.js when rendering an empty sheet.
+                // However, we should send an update-character to server to initialize it.
+                setUsername(name);
+
+                // Initialize default character
+                const newCharData = JSON.parse(JSON.stringify(window.defaultCharacterData || {}));
+                if (newCharData.identity) {
+                    newCharData.identity.name = name;
+                }
+
+                // We must ensure the socket is connected before sending
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                   socket.send(JSON.stringify({
+                       type: 'update-character',
+                       id: name,
+                       data: newCharData
+                   }));
+                } else {
+                   // If socket isn't ready yet, save it to send later
+                   window.pendingCharacterCreation = { id: name, data: newCharData };
+                }
+
+                // Also store it locally for immediate rendering
+                localStorage.setItem('cypherCharacterData', JSON.stringify(newCharData));
+
+                finishLogin();
+            }
+        });
+
+        // Add Enter key listener for new character
+        newCharName.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                newCharBtn.click();
+            }
+        });
+
+        // Function to render character cards
+        window.renderLoginCharacters = function(characters) {
+            charactersList.innerHTML = '';
+            characters.forEach(char => {
+                const card = document.createElement('div');
+                card.className = 'character-card';
+                card.innerHTML = `
+                    <img src="${char.portraitUrl || 'https://via.placeholder.com/100?text=?'}" class="character-portrait" alt="${char.name}">
+                    <div class="character-name">${char.name}</div>
+                `;
+                card.addEventListener('click', () => {
+                    setUsername(char.name);
+
+                    // Request to load this character
+                    if (socket && socket.readyState === WebSocket.OPEN) {
+                        socket.send(JSON.stringify({ type: 'load-character', id: char.id }));
+                    } else {
+                        window.pendingCharacterLoad = char.id;
+                    }
+
+                    finishLogin();
+                });
+                charactersList.appendChild(card);
+            });
+        };
+    }
+
+    function finishLogin() {
+        document.getElementById('login-overlay').style.display = 'none';
+
+        // Now register with the server
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            sendMessage({ type: 'register', username: getUsername() });
+        }
+
+        // Re-render character sheet UI to show tabs if applicable
+        if (window.renderCharacterTabs) {
+            window.renderCharacterTabs();
+        }
     }
 
     // --- DOM Manipulation ---
@@ -269,8 +379,29 @@
                 reconnectTimeoutId = null;
             }
 
-            // Enregistre l'utilisateur
-            sendMessage({ type: 'register', username: getUsername() });
+            // Request character list for login screen
+            socket.send(JSON.stringify({ type: 'get-characters' }));
+
+            // If we have a pending character creation, send it now
+            if (window.pendingCharacterCreation) {
+                socket.send(JSON.stringify({
+                    type: 'update-character',
+                    id: window.pendingCharacterCreation.id,
+                    data: window.pendingCharacterCreation.data
+                }));
+                window.pendingCharacterCreation = null;
+            }
+
+            // If we have a pending character load, send it now
+            if (window.pendingCharacterLoad) {
+                socket.send(JSON.stringify({ type: 'load-character', id: window.pendingCharacterLoad }));
+                window.pendingCharacterLoad = null;
+            }
+
+            // Enregistre l'utilisateur SEULEMENT si l'utilisateur a fini de se connecter
+            if (getUsername()) {
+                sendMessage({ type: 'register', username: getUsername() });
+            }
 
             if (window._pendingMediaError) {
                 sendMessage(window._pendingMediaError);
@@ -352,6 +483,22 @@
                 }
                 case 'image-list-update':
                     window.dispatchEvent(new CustomEvent('image-list-update', { detail: { list: data.list } }));
+                    break;
+                case 'characters-list-update':
+                    window.availableCharacters = data.list;
+                    window.dispatchEvent(new CustomEvent('characters-list-update', { detail: { list: data.list } }));
+                    if (document.getElementById('login-overlay').style.display !== 'none' && window.renderLoginCharacters) {
+                        window.renderLoginCharacters(data.list);
+                    }
+                    if (window.renderCharacterTabs) {
+                        window.renderCharacterTabs();
+                    }
+                    break;
+                case 'character-loaded':
+                    window.dispatchEvent(new CustomEvent('character-loaded', { detail: { data: data.data } }));
+                    break;
+                case 'character-updated':
+                    window.dispatchEvent(new CustomEvent('character-updated', { detail: { id: data.id, data: data.data } }));
                     break;
                 case 'sheets-update':
                     window.dispatchEvent(new CustomEvent('sheets-update', { detail: { list: data.list } }));
@@ -578,7 +725,8 @@
         imageDisplayArea = document.getElementById('image-display-area');
 
 
-        askForUsername();
+        initLogin();
+        // Do not askForUsername() anymore, login handles it
         await setupLocalMedia();
 
         connect(); // Start the WebSocket connection and set up listeners

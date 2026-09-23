@@ -108,7 +108,54 @@ function deepMerge(target, source) {
     return target;
 }
 
+window.renderCharacterTabs = function() {
+    const tabsContainer = document.getElementById('cs-tabs-container');
+    if (!tabsContainer) return;
+
+    // We get the character list from the global context, which should be updated by socket messages
+    const characters = window.availableCharacters || [];
+
+    tabsContainer.innerHTML = '';
+    characters.forEach(char => {
+        const tab = document.createElement('div');
+        tab.className = 'cs-tab';
+
+        // Mark active if this is the currently loaded character
+        if (characterData && characterData.identity && characterData.identity.name === char.name) {
+            tab.classList.add('active');
+        }
+
+        tab.innerHTML = `
+            <img src="${char.portraitUrl || 'https://via.placeholder.com/24?text=?'}" alt="${char.name}">
+            <span>${char.name}</span>
+        `;
+
+        tab.addEventListener('click', () => {
+            if (window.socket && window.socket.readyState === WebSocket.OPEN) {
+                window.socket.send(JSON.stringify({ type: 'load-character', id: char.id }));
+            }
+        });
+
+        tabsContainer.appendChild(tab);
+    });
+};
+
 function renderCharacterSheet() {
+    // Determine read-only mode based on ownership/MJ status
+    const isOwner = (window.getUsername && window.getUsername() === characterData.identity.name);
+    const isMJ = window.isMJ;
+    const container = document.querySelector('.cs-container');
+    if (container) {
+        if (!isOwner && !isMJ) {
+            container.classList.add('cs-readonly');
+        } else {
+            container.classList.remove('cs-readonly');
+        }
+    }
+
+    // Re-render tabs
+    window.renderCharacterTabs();
+
     // Identity - Header Display
     document.getElementById('cs-display-name').textContent = characterData.identity.name || 'Nom Inconnu';
     const descriptor = characterData.identity.descriptor || 'Descripteur';
@@ -263,6 +310,15 @@ function updateCharacterDataFromInputs() {
 
 function saveToLocalStorage() {
     localStorage.setItem('cypherCharacterData', JSON.stringify(characterData));
+
+    // Also save to server if socket is open
+    if (window.socket && window.socket.readyState === WebSocket.OPEN && characterData.identity && characterData.identity.name) {
+        window.socket.send(JSON.stringify({
+            type: 'update-character',
+            id: characterData.identity.name,
+            data: characterData
+        }));
+    }
 }
 
 function loadFromLocalStorage() {
@@ -575,6 +631,24 @@ function renderOddities() {
 
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Listen for socket events related to characters
+    window.addEventListener('character-loaded', (e) => {
+        characterData = deepMerge(JSON.parse(JSON.stringify(defaultCharacterData)), e.detail.data);
+        renderCharacterSheet();
+    });
+
+    window.addEventListener('character-updated', (e) => {
+        // If the updated character is the one we are currently viewing, re-render it
+        if (characterData && characterData.identity && characterData.identity.name === e.detail.id) {
+            // But don't overwrite if we are the one making the change (basic check, could be improved)
+            // Actually, for a single source of truth, if we are viewing it, we update it.
+            // If it's our character and we are making rapid changes, there could be slight cursor jumps,
+            // but for simple inputs handled by 'change' event, it should be fine.
+            characterData = deepMerge(JSON.parse(JSON.stringify(defaultCharacterData)), e.detail.data);
+            renderCharacterSheet();
+        }
+    });
+
     // Initial Load
     loadFromLocalStorage();
     renderCharacterSheet();

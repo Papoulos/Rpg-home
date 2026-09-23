@@ -10,6 +10,71 @@
     /* Thème sombre hérité du site (background de main est déjà géré, on peut rajouter un fond léger pour la zone fiche si besoin) */
 }
 
+.cs-tabs-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #444;
+    overflow-x: auto;
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.cs-tab {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background-color: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    opacity: 0.7;
+}
+
+.cs-tab:hover {
+    background-color: #333;
+    opacity: 0.9;
+}
+
+.cs-tab.active {
+    background-color: #4CAF50;
+    border-color: #4CAF50;
+    color: white;
+    opacity: 1;
+}
+
+.cs-tab img {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+    background-color: #1a1a1a;
+}
+
+/* Read Only Mode styling */
+.cs-readonly .cs-header-controls,
+.cs-readonly .cs-identity-edit-btn,
+.cs-readonly .cs-stat-controls,
+.cs-readonly .cs-delete-btn,
+.cs-readonly .cs-add-btn,
+.cs-readonly #cs-advancement input[type="checkbox"],
+.cs-readonly #cs-adv-xp-available,
+.cs-readonly .cs-editable-input {
+    display: none !important;
+}
+
+.cs-readonly input,
+.cs-readonly textarea,
+.cs-readonly select {
+    pointer-events: none;
+    border-color: transparent !important;
+    background-color: transparent !important;
+}
+
 .cs-container {
     max-width: 900px;
     margin: 0 auto;

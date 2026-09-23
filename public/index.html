@@ -11,6 +11,36 @@
     <link rel="stylesheet" href="character-sheet.css">
 </head>
 <body>
+    <div id="login-overlay" class="login-overlay">
+        <div class="login-content">
+            <h1>Sélection du Personnage</h1>
+            <div id="login-characters-list" class="login-characters-list">
+                <!-- Character cards will be injected here -->
+            </div>
+
+            <div class="login-actions">
+                <button id="login-mj-btn" class="cs-btn-confirm" style="background-color: #8b0000; border-color: #5a0000;">Se connecter en tant que MJ</button>
+            </div>
+
+            <div class="login-new-character">
+                <input type="text" id="login-new-char-name" placeholder="Nom du nouveau personnage">
+                <button id="login-new-char-btn" class="cs-btn-confirm">Créer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale de confirmation MJ -->
+    <div id="mj-confirm-modal" class="cs-modal-overlay" style="display: none; z-index: 10001;">
+        <div class="cs-modal-content">
+            <h3 style="color: #ff4444;">Avertissement</h3>
+            <p>Confirmez-vous en votre âme et conscience être le Maître du Jeu, avec tous les pouvoirs (et les responsabilités) que cela implique, et promettez-vous de ne pas tricher ?</p>
+            <div class="cs-modal-actions">
+                <button id="mj-confirm-cancel" class="cs-btn-cancel">Annuler</button>
+                <button id="mj-confirm-accept" class="cs-btn-confirm" style="background-color: #8b0000;">Je le jure</button>
+            </div>
+        </div>
+    </div>
+
     <div class="container">
         <aside class="panel left-panel">
             <h2>Chat</h2>
@@ -161,6 +191,9 @@
                     </div>
                 </div>
                 <div id="character-sheet-content" class="tab-content" style="display: none;">
+                    <div id="cs-tabs-container" class="cs-tabs-container">
+                        <!-- Character tabs injected via JS -->
+                    </div>
                     <div class="cs-container">
                         <div class="cs-header-controls">
                             <button id="cs-btn-save" title="Sauvegarder">
