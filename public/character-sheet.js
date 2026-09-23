@@ -60,6 +60,12 @@ const defaultCharacterData = {
     ],
     "shins": 0
   },
+  "cyphers": {
+    "limit": 3,
+    "carried": [
+      { "name": "", "level": 0, "effect": "", "identified": false }
+    ]
+  },
   "artifactsAndOddities": {
     "artifacts": [
       { "name": "", "level": 0, "effect": "", "identified": false }
@@ -150,6 +156,13 @@ function renderCharacterSheet() {
     document.getElementById('cs-armor-desc').value = characterData.equipment.armor.description || '';
     document.getElementById('cs-shins').value = characterData.equipment.shins || 0;
 
+    // Cyphers
+    if (!characterData.cyphers) {
+        characterData.cyphers = { limit: 3, carried: [] };
+    }
+    document.getElementById('cs-cyphers-limit').value = characterData.cyphers.limit || 3;
+    renderCyphers();
+
     // Artifacts & Oddities
     renderArtifacts();
     renderOddities();
@@ -205,6 +218,9 @@ function updateCharacterDataFromInputs() {
     characterData.equipment.armor.speedEffortCost = parseInt(document.getElementById('cs-armor-cost').value) || 0;
     characterData.equipment.armor.description = document.getElementById('cs-armor-desc').value;
     characterData.equipment.shins = parseInt(document.getElementById('cs-shins').value) || 0;
+
+    if (!characterData.cyphers) characterData.cyphers = { limit: 3, carried: [] };
+    characterData.cyphers.limit = parseInt(document.getElementById('cs-cyphers-limit').value) || 3;
 
     // Advancement
     characterData.advancement.pointsAvailable = parseInt(document.getElementById('cs-adv-xp-available').value) || 0;
@@ -449,6 +465,39 @@ function renderGeneralItems() {
     }
 }
 
+
+function renderCyphers() {
+    const container = document.getElementById('cs-cyphers-list');
+    if(!container) return;
+    container.innerHTML = '';
+
+    if (characterData.cyphers && characterData.cyphers.carried) {
+        characterData.cyphers.carried.forEach((cypher, index) => {
+            const item = createListItem(`
+                <div style="display:flex; flex-direction:column; width:100%; gap:5px;">
+                    <div style="display:flex; gap:10px; width:100%; align-items:center;">
+                        <input type="text" class="cy-name" value="${escapeHtml(cypher.name || '')}" placeholder="Nom du cypher" style="flex-grow:1;">
+                        <input type="text" class="cy-level" value="${escapeHtml(cypher.level || '1')}" style="width:50px;" title="Niveau">
+                        <label style="display:flex; align-items:center; gap:5px; font-size:0.8rem; cursor:pointer;"><input type="checkbox" class="cy-identified" ${cypher.identified ? 'checked' : ''}> Id.</label>
+                        <button class="cs-delete-btn" data-type="cypher" data-index="${index}"><span class="material-symbols-outlined">close</span></button>
+                    </div>
+                    <input type="text" class="cy-effect" value="${escapeHtml(cypher.effect || '')}" placeholder="Effet..." style="width:100%; font-size:0.8rem; background:#111;">
+                </div>
+            `);
+            item.querySelectorAll('input').forEach(el => {
+                el.addEventListener('change', () => {
+                    cypher.name = item.querySelector('.cy-name').value;
+                    cypher.level = item.querySelector('.cy-level').value; // Keep as string for ? or ranges
+                    cypher.effect = item.querySelector('.cy-effect').value;
+                    cypher.identified = item.querySelector('.cy-identified').checked;
+                    updateCharacterDataFromInputs();
+                });
+            });
+            container.appendChild(item);
+        });
+    }
+}
+
 function renderArtifacts() {
     const container = document.getElementById('cs-artifacts-list');
     container.innerHTML = '';
@@ -543,6 +592,11 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (type === 'generalItem') {
                 characterData.equipment.generalItems.splice(index, 1);
                 renderGeneralItems();
+            } else if (type === 'cypher') {
+                if (characterData.cyphers && characterData.cyphers.carried) {
+                    characterData.cyphers.carried.splice(index, 1);
+                    renderCyphers();
+                }
             } else if (type === 'artifact') {
                 characterData.artifactsAndOddities.artifacts.splice(index, 1);
                 renderArtifacts();
@@ -586,6 +640,17 @@ document.addEventListener('DOMContentLoaded', () => {
         renderGeneralItems();
         updateCharacterDataFromInputs();
     });
+
+    const addCypherBtn = document.getElementById('cs-add-cypher');
+    if(addCypherBtn) {
+        addCypherBtn.addEventListener('click', () => {
+            if (!characterData.cyphers) characterData.cyphers = { limit: 3, carried: [] };
+            if (!characterData.cyphers.carried) characterData.cyphers.carried = [];
+            characterData.cyphers.carried.push({ name: "Nouveau cypher", level: "1", effect: "", identified: false });
+            renderCyphers();
+            updateCharacterDataFromInputs();
+        });
+    }
 
     document.getElementById('cs-add-artifact').addEventListener('click', () => {
         characterData.artifactsAndOddities.artifacts.push({ name: "Nouvel artéfact", level: "1", depletion: "1 in 1d6", effect: "" });
@@ -680,6 +745,45 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             reader.readAsText(file);
         }
+    });
+
+    // Identity Edit Modal
+    const identityModal = document.getElementById('cs-identity-modal');
+    const btnEditIdentity = document.getElementById('cs-btn-edit-identity');
+    const identityBtnCancel = document.getElementById('cs-identity-modal-cancel');
+    const identityBtnConfirm = document.getElementById('cs-identity-modal-confirm');
+
+    function closeIdentityModal() {
+        identityModal.style.display = 'none';
+    }
+
+    btnEditIdentity.addEventListener('click', () => {
+        identityModal.style.display = 'flex';
+    });
+
+    identityBtnCancel.addEventListener('click', closeIdentityModal);
+
+    identityBtnConfirm.addEventListener('click', () => {
+        updateCharacterDataFromInputs();
+        closeIdentityModal();
+    });
+
+    identityModal.addEventListener('click', (e) => {
+        if (e.target === identityModal) {
+            closeIdentityModal();
+        }
+    });
+
+    // Handle Enter key for fast save in identity modal
+    const identityInputs = document.querySelectorAll('#cs-identity-modal input');
+    identityInputs.forEach(input => {
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                updateCharacterDataFromInputs();
+                closeIdentityModal();
+            }
+        });
     });
 
     // Modal de description
