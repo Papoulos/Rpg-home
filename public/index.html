@@ -202,10 +202,13 @@
                             <button id="cs-btn-export" title="Exporter en JSON">
                                 <span class="material-symbols-outlined">download</span>
                             </button>
-                            <label for="cs-btn-import" class="cs-header-controls-label" style="cursor: pointer; display: none; align-items: center; justify-content: center; background: #333; border: 1px solid #444; color: #f0f0f0; padding: 8px 12px; border-radius: 4px; gap: 5px;" title="Importer un JSON (MJ uniquement)">
+                            <label for="cs-btn-import" class="cs-header-controls-label" style="cursor: pointer; display: none; align-items: center; justify-content: center; background: #333; border: 1px solid #444; color: #f0f0f0; padding: 4px 8px; border-radius: 4px; gap: 5px;" title="Importer un JSON (MJ uniquement)">
                                 <span class="material-symbols-outlined">upload</span>
                             </label>
                             <input type="file" id="cs-btn-import" accept=".json" style="display: none;">
+                            <button id="cs-btn-delete" title="Supprimer le personnage" style="display: none; background-color: #8b0000; border-color: #5a0000;">
+                                <span class="material-symbols-outlined">delete</span>
+                            </button>
                         </div>
 
                         <div class="cs-section cs-identity-section">
@@ -578,6 +581,18 @@
     <script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
     <script src="wiki.js" defer></script>
+    <!-- Modale de confirmation de suppression de personnage -->
+    <div id="cs-delete-confirm-modal" class="cs-modal-overlay" style="display: none; z-index: 10002;">
+        <div class="cs-modal-content">
+            <h3 style="color: #ff4444;">Supprimer le personnage</h3>
+            <p>Êtes-vous sûr de vouloir supprimer définitivement ce personnage ? Cette action est irréversible.</p>
+            <div class="cs-modal-actions">
+                <button id="cs-delete-confirm-cancel" class="cs-btn-cancel">Annuler</button>
+                <button id="cs-delete-confirm-accept" class="cs-btn-confirm" style="background-color: #8b0000;">Supprimer</button>
+            </div>
+        </div>
+    </div>
+
     <script src="character-sheet.js" defer></script>
 </body>
 </html>

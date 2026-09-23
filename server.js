@@ -560,6 +560,29 @@ wss.on('connection', (ws) => {
                     ws.send(JSON.stringify({ type: 'character-error', message: 'Erreur lors du chargement.' }));
                 }
                 break;
+            case 'delete-character':
+                if (client && client.isMJ) {
+                    try {
+                        const charId = data.id;
+                        if (!isValidFileName(charId)) {
+                            throw new Error('Invalid character ID');
+                        }
+                        const filePath = path.join(CHARACTERS_DIR, `${charId}.json`);
+                        if (fs.existsSync(filePath)) {
+                            fs.unlinkSync(filePath);
+                            console.log(`[CHARACTERS] Deleted character: ${charId}`);
+                            loadCharactersList();
+                            broadcastCharactersList();
+                            // Optional: Tell clients the character was deleted so they update views
+                            broadcast({ type: 'character-deleted', id: charId });
+                        }
+                    } catch (error) {
+                        console.error('[CHARACTERS] Error deleting character:', error);
+                        ws.send(JSON.stringify({ type: 'character-error', message: 'Erreur lors de la suppression.' }));
+                    }
+                }
+                break;
+
             case 'update-character':
                 try {
                     const charData = data.data;
