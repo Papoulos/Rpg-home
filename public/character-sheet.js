@@ -109,13 +109,27 @@ function deepMerge(target, source) {
 }
 
 function renderCharacterSheet() {
-    // Identity
+    // Identity - Header Display
+    document.getElementById('cs-display-name').textContent = characterData.identity.name || 'Nom Inconnu';
+    const descriptor = characterData.identity.descriptor || 'Descripteur';
+    const type = characterData.identity.type || 'Type';
+    const focus = characterData.identity.focus || 'Focus';
+    document.getElementById('cs-display-keywords').textContent = `${descriptor} ${type} qui ${focus}`;
+
+    const portraitContainer = document.getElementById('cs-display-portrait-container');
+    if (characterData.identity.portraitUrl) {
+        portraitContainer.innerHTML = `<img src="${escapeHtml(characterData.identity.portraitUrl)}" style="width: 100%; height: 100%; object-fit: contain;">`;
+    } else {
+        portraitContainer.innerHTML = '?';
+    }
+
+    // Identity - Inputs
     document.getElementById('cs-id-name').value = characterData.identity.name || '';
+    document.getElementById('cs-id-playerName').value = characterData.identity.playerName || '';
     document.getElementById('cs-id-descriptor').value = characterData.identity.descriptor || '';
     document.getElementById('cs-id-type').value = characterData.identity.type || '';
     document.getElementById('cs-id-focus').value = characterData.identity.focus || '';
     document.getElementById('cs-id-portraitUrl').value = characterData.identity.portraitUrl || '';
-    document.getElementById('cs-id-notes').value = characterData.identity.notes || '';
     document.getElementById('cs-id-tier').value = characterData.identity.tier || 1;
     document.getElementById('cs-id-effort').value = characterData.identity.effort || 1;
     document.getElementById('cs-id-xp').value = characterData.identity.xp || 0;
@@ -179,14 +193,27 @@ function renderCharacterSheet() {
 function updateCharacterDataFromInputs() {
     // Identity
     characterData.identity.name = document.getElementById('cs-id-name').value;
+    characterData.identity.playerName = document.getElementById('cs-id-playerName').value;
     characterData.identity.descriptor = document.getElementById('cs-id-descriptor').value;
     characterData.identity.type = document.getElementById('cs-id-type').value;
     characterData.identity.focus = document.getElementById('cs-id-focus').value;
     characterData.identity.portraitUrl = document.getElementById('cs-id-portraitUrl').value;
-    characterData.identity.notes = document.getElementById('cs-id-notes').value;
     characterData.identity.tier = parseInt(document.getElementById('cs-id-tier').value) || 1;
     characterData.identity.effort = parseInt(document.getElementById('cs-id-effort').value) || 1;
     characterData.identity.xp = parseInt(document.getElementById('cs-id-xp').value) || 0;
+
+    // Update display instantly
+    document.getElementById('cs-display-name').textContent = characterData.identity.name || 'Nom Inconnu';
+    const descriptor = characterData.identity.descriptor || 'Descripteur';
+    const type = characterData.identity.type || 'Type';
+    const focus = characterData.identity.focus || 'Focus';
+    document.getElementById('cs-display-keywords').textContent = `${descriptor} ${type} qui ${focus}`;
+    const portraitContainer = document.getElementById('cs-display-portrait-container');
+    if (characterData.identity.portraitUrl) {
+        portraitContainer.innerHTML = `<img src="${escapeHtml(characterData.identity.portraitUrl)}" style="width: 100%; height: 100%; object-fit: contain;">`;
+    } else {
+        portraitContainer.innerHTML = '?';
+    }
 
     // Stats
     const statsList = ['might', 'speed', 'intel'];
@@ -757,34 +784,42 @@ document.addEventListener('DOMContentLoaded', () => {
         identityModal.style.display = 'none';
     }
 
-    btnEditIdentity.addEventListener('click', () => {
-        identityModal.style.display = 'flex';
-    });
+    if(btnEditIdentity) {
+        btnEditIdentity.addEventListener('click', () => {
+            identityModal.style.display = 'flex';
+        });
+    }
 
-    identityBtnCancel.addEventListener('click', closeIdentityModal);
+    if(identityBtnCancel) {
+        identityBtnCancel.addEventListener('click', closeIdentityModal);
+    }
 
-    identityBtnConfirm.addEventListener('click', () => {
-        updateCharacterDataFromInputs();
-        closeIdentityModal();
-    });
-
-    identityModal.addEventListener('click', (e) => {
-        if (e.target === identityModal) {
+    if(identityBtnConfirm) {
+        identityBtnConfirm.addEventListener('click', () => {
+            updateCharacterDataFromInputs();
             closeIdentityModal();
-        }
-    });
+        });
+    }
 
-    // Handle Enter key for fast save in identity modal
-    const identityInputs = document.querySelectorAll('#cs-identity-modal input');
-    identityInputs.forEach(input => {
-        input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                updateCharacterDataFromInputs();
+    if(identityModal) {
+        identityModal.addEventListener('click', (e) => {
+            if (e.target === identityModal) {
                 closeIdentityModal();
             }
         });
-    });
+
+        // Handle Enter key for fast save in identity modal
+        const identityInputs = document.querySelectorAll('#cs-identity-modal input');
+        identityInputs.forEach(input => {
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    updateCharacterDataFromInputs();
+                    closeIdentityModal();
+                }
+            });
+        });
+    }
 
     // Modal de description
     const descModal = document.getElementById('cs-desc-modal');
