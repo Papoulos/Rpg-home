@@ -678,6 +678,50 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Modal de lancer de dé
+    const rollModal = document.getElementById('cs-roll-modal');
+    const rollModalTitle = document.getElementById('cs-roll-modal-title');
+    const rollModalDiff = document.getElementById('cs-roll-modal-diff');
+    const rollModalEffort = document.getElementById('cs-roll-modal-effort');
+    const btnCancel = document.getElementById('cs-roll-modal-cancel');
+    const btnConfirm = document.getElementById('cs-roll-modal-confirm');
+    let currentRollName = "";
+
+    function closeRollModal() {
+        rollModal.style.display = 'none';
+        rollModalDiff.value = 0;
+        rollModalEffort.value = 0;
+    }
+
+    btnCancel.addEventListener('click', closeRollModal);
+
+    rollModal.addEventListener('click', (e) => {
+        if (e.target === rollModal) {
+            closeRollModal();
+        }
+    });
+
+    btnConfirm.addEventListener('click', () => {
+        const diff = parseInt(rollModalDiff.value, 10) || 0;
+        const effort = parseInt(rollModalEffort.value, 10) || 0;
+
+        // Construct the command
+        const command = `/c ${currentRollName} /D ${diff} /E ${effort}`;
+
+        // Inject into chat input and simulate send
+        const chatInput = document.getElementById('chat-input');
+        const sendBtn = document.getElementById('send-button');
+
+        if (chatInput && sendBtn) {
+            chatInput.value = command;
+            sendBtn.click();
+        } else {
+            console.error("Chat input or send button not found");
+        }
+
+        closeRollModal();
+    });
+
     // Lancer de dé depuis la fiche
     document.querySelector('.cs-container').addEventListener('click', (e) => {
         // Clic sur l'icône de dé (stats & skills)
@@ -685,13 +729,20 @@ document.addEventListener('DOMContentLoaded', () => {
             const stat = e.target.getAttribute('data-stat');
             const skill = e.target.getAttribute('data-skill'); // S'il y a une compétence liée
 
-            let message = "Roll " + (stat.charAt(0).toUpperCase() + stat.slice(1));
+            let rollName = "";
             if (skill) {
-                message += " pour " + skill;
+                rollName = skill;
+            } else {
+                // Translate stat to French if it's a basic stat roll
+                if (stat === 'might') rollName = "Puissance";
+                else if (stat === 'speed') rollName = "Vélocité";
+                else if (stat === 'intel') rollName = "Intellect";
+                else rollName = stat.charAt(0).toUpperCase() + stat.slice(1);
             }
-            console.log(message);
-            // Plus tard, ce sera relié au système de chat, par exemple :
-            // sendSystemMessage(message);
+
+            currentRollName = rollName;
+            rollModalTitle.textContent = `Lancer : ${rollName}`;
+            rollModal.style.display = 'flex';
         }
     });
 });
