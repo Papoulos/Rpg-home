@@ -74,6 +74,40 @@ let whiteboardState = null; // Will store the JSON string of the fabric canvas
 
 const PLAYLIST_FILE = path.join(__dirname, 'playlist.json');
 const SHEETS_FILE = path.join(__dirname, 'sheets.json');
+const CHARACTERS_DIR = path.join(__dirname, 'data/characters');
+let charactersList = []; // Will store just metadata (name, portrait)
+
+// Ensure character directory exists
+if (!fs.existsSync(CHARACTERS_DIR)) {
+    fs.mkdirSync(CHARACTERS_DIR, { recursive: true });
+}
+
+function loadCharactersList() {
+    charactersList = [];
+    if (fs.existsSync(CHARACTERS_DIR)) {
+        const files = fs.readdirSync(CHARACTERS_DIR);
+        files.forEach(file => {
+            if (file.endsWith('.json')) {
+                try {
+                    const filePath = path.join(CHARACTERS_DIR, file);
+                    const content = fs.readFileSync(filePath, 'utf-8');
+                    const charData = JSON.parse(content);
+                    charactersList.push({
+                        id: file.replace('.json', ''),
+                        name: charData.identity?.name || 'Inconnu',
+                        portraitUrl: charData.identity?.portraitUrl || ''
+                    });
+                } catch (error) {
+                    console.error(`[CHARACTERS] Failed to load ${file}:`, error);
+                }
+            }
+        });
+    }
+}
+
+function broadcastCharactersList() {
+    broadcast({ type: 'characters-list-update', list: charactersList });
+}
 
 function loadSheetsList() {
     if (fs.existsSync(SHEETS_FILE)) {
@@ -504,6 +538,54 @@ wss.on('connection', (ws) => {
                 // Client-side heartbeat check
                 ws.send(JSON.stringify({ type: 'pong' }));
                 return; // Prevent further processing
+            case 'get-characters':
+                ws.send(JSON.stringify({ type: 'characters-list-update', list: charactersList }));
+                break;
+            case 'load-character':
+                try {
+                    const charId = data.id;
+                    if (!isValidFileName(charId)) {
+                        throw new Error('Invalid character ID');
+                    }
+                    const filePath = path.join(CHARACTERS_DIR, `${charId}.json`);
+                    if (fs.existsSync(filePath)) {
+                        const content = fs.readFileSync(filePath, 'utf-8');
+                        ws.send(JSON.stringify({ type: 'character-loaded', data: JSON.parse(content) }));
+                    } else {
+                        ws.send(JSON.stringify({ type: 'character-error', message: 'Personnage introuvable.' }));
+                    }
+                } catch (error) {
+                    console.error('[CHARACTERS] Error loading character:', error);
+                    ws.send(JSON.stringify({ type: 'character-error', message: 'Erreur lors du chargement.' }));
+                }
+                break;
+            case 'update-character':
+                try {
+                    const charData = data.data;
+                    const charId = data.id || (charData.identity && charData.identity.name ? charData.identity.name.trim().replace(/[^a-zA-Z0-9_\-]/g, '_') : 'unknown');
+
+                    if (!charId || charId === 'unknown') {
+                        throw new Error('Invalid character data for saving.');
+                    }
+
+                    const filePath = path.join(CHARACTERS_DIR, `${charId}.json`);
+                    fs.writeFileSync(filePath, JSON.stringify(charData, null, 2));
+
+                    // Broadcast the update to all clients
+                    broadcast({ type: 'character-updated', id: charId, data: charData });
+
+                    // Reload metadata and broadcast update if new or changed
+                    loadCharactersList();
+                    broadcastCharactersList();
+
+                    // Acknowledge save to sender
+                    ws.send(JSON.stringify({ type: 'character-saved', id: charId }));
+
+                } catch (error) {
+                    console.error('[CHARACTERS] Error saving character:', error);
+                    ws.send(JSON.stringify({ type: 'character-error', message: 'Erreur lors de la sauvegarde.' }));
+                }
+                break;
             case 'register':
                 const isMJ = data.username.toLowerCase() === 'mj';
                 clients.set(ws, { username: data.username, ws: ws, isMJ, isAlive: true });
@@ -803,6 +885,7 @@ function broadcastWikiPageList() {
     loadPlaylist();
     loadWikiPages();
     loadSheetsList();
+    loadCharactersList();
     const SERVER_LOG_FILE = path.join(__dirname, 'server.log');
 
     const logToFile = (message, ...args) => {
