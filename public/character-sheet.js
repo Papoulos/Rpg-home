@@ -104,7 +104,6 @@ function renderCharacterSheet() {
     document.getElementById('cs-id-descriptor').value = characterData.identity.descriptor || '';
     document.getElementById('cs-id-type').value = characterData.identity.type || '';
     document.getElementById('cs-id-focus').value = characterData.identity.focus || '';
-    document.getElementById('cs-id-flavorSentence').value = characterData.identity.flavorSentence || '';
     document.getElementById('cs-id-portraitUrl').value = characterData.identity.portraitUrl || '';
     document.getElementById('cs-id-notes').value = characterData.identity.notes || '';
     document.getElementById('cs-id-tier').value = characterData.identity.tier || 1;
@@ -124,7 +123,6 @@ function renderCharacterSheet() {
     for (let radio of dtRadios) {
         radio.checked = (radio.value === characterData.damageTrack.state);
     }
-    document.getElementById('cs-dt-notes').value = characterData.damageTrack.notes || '';
 
     // Recovery
     document.getElementById('cs-recovery-bonus').value = characterData.recoveryRolls.bonus || 0;
@@ -170,7 +168,6 @@ function updateCharacterDataFromInputs() {
     characterData.identity.descriptor = document.getElementById('cs-id-descriptor').value;
     characterData.identity.type = document.getElementById('cs-id-type').value;
     characterData.identity.focus = document.getElementById('cs-id-focus').value;
-    characterData.identity.flavorSentence = document.getElementById('cs-id-flavorSentence').value;
     characterData.identity.portraitUrl = document.getElementById('cs-id-portraitUrl').value;
     characterData.identity.notes = document.getElementById('cs-id-notes').value;
     characterData.identity.tier = parseInt(document.getElementById('cs-id-tier').value) || 1;
@@ -194,7 +191,6 @@ function updateCharacterDataFromInputs() {
             break;
         }
     }
-    characterData.damageTrack.notes = document.getElementById('cs-dt-notes').value;
 
     // Recovery
     characterData.recoveryRolls.bonus = parseInt(document.getElementById('cs-recovery-bonus').value) || 0;
@@ -264,8 +260,8 @@ function renderSkills() {
 
     // Add unique IDs internally to help tracking without relying on name filtering
     const allSkills = [
-        ...characterData.skills.trained.map(s => ({...s, level: 'trained'})),
         ...characterData.skills.specialized.map(s => ({...s, level: 'specialized'})),
+        ...characterData.skills.trained.map(s => ({...s, level: 'trained'})),
         ...characterData.skills.inability.map(s => ({...s, level: 'inability'}))
     ];
 
@@ -342,13 +338,13 @@ function renderAbilities() {
                         <option value="intel" ${ability.cost && ability.cost.pool === 'intel' ? 'selected' : ''}>Intel</option>
                     </select>
                     <label style="display:flex; align-items:center; gap:5px; font-size:0.8rem; cursor:pointer;"><input type="checkbox" class="ab-enabler" ${ability.enabler ? 'checked' : ''}> Enabler</label>
+                    <span class="material-symbols-outlined cs-desc-icon" data-index="${index}" title="${escapeHtml(ability.description || 'Description')}" style="cursor:pointer; color:#aaa; font-size: 1.2rem;">help</span>
                     <button class="cs-delete-btn" data-type="ability" data-index="${index}"><span class="material-symbols-outlined">close</span></button>
                 </div>
-                <input type="text" class="ab-desc" value="${escapeHtml(ability.description || '')}" placeholder="Description..." style="width:100%; font-size:0.8rem; background:#111;">
             </div>
         `);
 
-        item.querySelectorAll('input, select').forEach(el => {
+        item.querySelectorAll('input:not(.ab-desc), select').forEach(el => {
             el.addEventListener('change', () => {
                 ability.name = item.querySelector('.ab-name').value;
                 ability.type = item.querySelector('.ab-type').value;
@@ -511,8 +507,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (type === 'skill') {
                 // Determine which array it belongs to by recreating the flat array
                 const allSkills = [
-                    ...characterData.skills.trained.map(s => ({...s, level: 'trained'})),
                     ...characterData.skills.specialized.map(s => ({...s, level: 'specialized'})),
+                    ...characterData.skills.trained.map(s => ({...s, level: 'trained'})),
                     ...characterData.skills.inability.map(s => ({...s, level: 'inability'}))
                 ];
 
@@ -678,6 +674,37 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Modal de description
+    const descModal = document.getElementById('cs-desc-modal');
+    const descModalTitle = document.getElementById('cs-desc-modal-title');
+    const descModalText = document.getElementById('cs-desc-modal-text');
+    const descBtnCancel = document.getElementById('cs-desc-modal-cancel');
+    const descBtnConfirm = document.getElementById('cs-desc-modal-confirm');
+    let currentDescIndex = -1;
+
+    function closeDescModal() {
+        descModal.style.display = 'none';
+        descModalText.value = '';
+        currentDescIndex = -1;
+    }
+
+    descBtnCancel.addEventListener('click', closeDescModal);
+
+    descBtnConfirm.addEventListener('click', () => {
+        if (currentDescIndex >= 0 && characterData.abilities[currentDescIndex]) {
+            characterData.abilities[currentDescIndex].description = descModalText.value;
+            saveToLocalStorage();
+            renderAbilities(); // Re-render to update the tooltip
+        }
+        closeDescModal();
+    });
+
+    descModal.addEventListener('click', (e) => {
+        if (e.target === descModal) {
+            closeDescModal();
+        }
+    });
+
     // Modal de lancer de dé
     const rollModal = document.getElementById('cs-roll-modal');
     const rollModalTitle = document.getElementById('cs-roll-modal-title');
@@ -768,8 +795,55 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Lancer de dé depuis la fiche
     document.querySelector('.cs-container').addEventListener('click', (e) => {
+        // Clic sur l'icône de description
+        if (e.target.classList.contains('cs-desc-icon')) {
+            const index = parseInt(e.target.getAttribute('data-index'));
+            if (!isNaN(index) && characterData.abilities[index]) {
+                currentDescIndex = index;
+                const ability = characterData.abilities[index];
+                descModalTitle.textContent = `Description : ${ability.name || 'Capacité'}`;
+                descModalText.value = ability.description || '';
+                descModal.style.display = 'flex';
+                descModalText.focus();
+            }
+            return;
+        }
+
         // Clic sur l'icône de dé (stats & skills)
         if (e.target.classList.contains('cs-roll-icon')) {
+
+            // Check if it's a recovery roll
+            if (e.target.classList.contains('cs-rec-roll')) {
+                const recType = e.target.getAttribute('data-rec');
+                const checkbox = document.getElementById(`cs-rec-${recType}`);
+
+                if (checkbox.checked) {
+                    return; // Already used
+                }
+
+                // Check it
+                checkbox.checked = true;
+                updateCharacterDataFromInputs();
+
+                const tier = characterData.identity.tier || 1;
+                const bonus = characterData.recoveryRolls.bonus || 0;
+                const roll = Math.floor(Math.random() * 6) + 1;
+                const total = roll + tier + bonus;
+
+                let recTypeName = "";
+                if (recType === 'action') recTypeName = "1 Action";
+                else if (recType === 'tenMinutes') recTypeName = "10 Minutes";
+                else if (recType === 'oneHour') recTypeName = "1 Heure";
+                else if (recType === 'tenHours') recTypeName = "10 Heures";
+
+                const message = `Récupération - ${recTypeName}<br>1D6 + ${tier} (Tier) + ${bonus} (Bonus)<br><br>Résultat : ${roll} + ${tier} + ${bonus} = <strong>${total}</strong>`;
+
+                if (window.sendMessage) {
+                    window.sendMessage({ type: 'game-roll', message: message, system: 'Cypher System' });
+                }
+                return; // Stop further execution for recovery roll
+            }
+
             const stat = e.target.getAttribute('data-stat');
             const skill = e.target.getAttribute('data-skill'); // S'il y a une compétence liée
             const skillLevel = e.target.getAttribute('data-skill-level');
