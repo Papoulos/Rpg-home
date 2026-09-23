@@ -138,6 +138,36 @@ window.renderCharacterTabs = function() {
 
         tabsContainer.appendChild(tab);
     });
+
+    if (window.isMJ) {
+        const newTab = document.createElement('div');
+        newTab.className = 'cs-tab';
+        newTab.style.backgroundColor = '#1a3a1a';
+        newTab.innerHTML = `
+            <span class="material-symbols-outlined" style="font-size: 18px;">add</span>
+            <span>Nouveau</span>
+        `;
+        newTab.addEventListener('click', () => {
+            const name = prompt("Entrez le nom du nouveau personnage :");
+            if (name && name.trim() !== '') {
+                const newCharData = JSON.parse(JSON.stringify(window.defaultCharacterData || defaultCharacterData));
+                if (newCharData.identity) {
+                    newCharData.identity.name = name.trim();
+                }
+
+                if (window.socket && window.socket.readyState === WebSocket.OPEN) {
+                   window.socket.send(JSON.stringify({
+                       type: 'update-character',
+                       id: name.trim(),
+                       data: newCharData
+                   }));
+                   // Also request to load it immediately
+                   window.socket.send(JSON.stringify({ type: 'load-character', id: name.trim() }));
+                }
+            }
+        });
+        tabsContainer.appendChild(newTab);
+    }
 };
 
 function renderCharacterSheet() {
@@ -792,6 +822,15 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Bouton Changer de personnage
+    document.getElementById('cs-btn-logout').addEventListener('click', () => {
+        document.getElementById('login-overlay').style.display = 'flex';
+        // Request an updated character list
+        if (window.socket && window.socket.readyState === WebSocket.OPEN) {
+            window.socket.send(JSON.stringify({ type: 'get-characters' }));
+        }
+    });
+
     // Bouton de Sauvegarde manuel
     document.getElementById('cs-btn-save').addEventListener('click', () => {
         updateCharacterDataFromInputs();
