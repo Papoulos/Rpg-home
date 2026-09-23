@@ -195,10 +195,6 @@
                                     <input type="text" id="cs-id-focus">
                                 </div>
                                 <div class="cs-field" style="grid-column: 1 / -1;">
-                                    <label>Phrase d'accroche (Flavor Sentence)</label>
-                                    <input type="text" id="cs-id-flavorSentence">
-                                </div>
-                                <div class="cs-field" style="grid-column: 1 / -1;">
                                     <label>Portrait (URL)</label>
                                     <input type="text" id="cs-id-portraitUrl">
                                 </div>
@@ -311,10 +307,6 @@
                                     <label class="cs-radio-label"><input type="radio" name="damageTrack" value="debilitated"> Débilité (Debilitated)</label>
                                     <label class="cs-radio-label"><input type="radio" name="damageTrack" value="dead"> Mort (Dead)</label>
                                 </div>
-                                <div class="cs-field" style="margin-top:10px;">
-                                    <label>Notes d'état</label>
-                                    <input type="text" id="cs-dt-notes" style="width:100%;">
-                                </div>
                             </div>
                             <div class="cs-section">
                                 <h2>Récupération (Recovery)</h2>
@@ -322,11 +314,27 @@
                                     <label>Bonus au jet (1d6 + )</label>
                                     <input type="number" id="cs-recovery-bonus">
                                 </div>
-                                <div class="cs-checkbox-group">
-                                    <label class="cs-checkbox-label"><input type="checkbox" id="cs-rec-action"> 1 Action</label>
-                                    <label class="cs-checkbox-label"><input type="checkbox" id="cs-rec-tenMinutes"> 10 Minutes</label>
-                                    <label class="cs-checkbox-label"><input type="checkbox" id="cs-rec-oneHour"> 1 Heure</label>
-                                    <label class="cs-checkbox-label"><input type="checkbox" id="cs-rec-tenHours"> 10 Heures</label>
+                                <div class="cs-recovery-grid">
+                                    <div class="cs-checkbox-group">
+                                        <div class="cs-recovery-item">
+                                            <label class="cs-checkbox-label"><input type="checkbox" id="cs-rec-action"> 1 Action</label>
+                                            <span class="material-symbols-outlined cs-roll-icon cs-rec-roll" data-rec="action" title="Lancer 1 Action">casino</span>
+                                        </div>
+                                        <div class="cs-recovery-item">
+                                            <label class="cs-checkbox-label"><input type="checkbox" id="cs-rec-tenMinutes"> 10 Minutes</label>
+                                            <span class="material-symbols-outlined cs-roll-icon cs-rec-roll" data-rec="tenMinutes" title="Lancer 10 Minutes">casino</span>
+                                        </div>
+                                    </div>
+                                    <div class="cs-checkbox-group">
+                                        <div class="cs-recovery-item">
+                                            <label class="cs-checkbox-label"><input type="checkbox" id="cs-rec-oneHour"> 1 Heure</label>
+                                            <span class="material-symbols-outlined cs-roll-icon cs-rec-roll" data-rec="oneHour" title="Lancer 1 Heure">casino</span>
+                                        </div>
+                                        <div class="cs-recovery-item">
+                                            <label class="cs-checkbox-label"><input type="checkbox" id="cs-rec-tenHours"> 10 Heures</label>
+                                            <span class="material-symbols-outlined cs-roll-icon cs-rec-roll" data-rec="tenHours" title="Lancer 10 Heures">casino</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -476,6 +484,18 @@
             <div class="cs-modal-actions">
                 <button id="cs-roll-modal-cancel" class="cs-btn-cancel">Annuler</button>
                 <button id="cs-roll-modal-confirm" class="cs-btn-confirm">Lancer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale de description pour les capacités -->
+    <div id="cs-desc-modal" class="cs-modal-overlay" style="display: none;">
+        <div class="cs-modal-content" style="width: 400px; max-width: 90vw;">
+            <h3 id="cs-desc-modal-title">Description</h3>
+            <textarea id="cs-desc-modal-text" rows="8" style="width: 100%; background:#1a1a1a; color:#fff; border:1px solid #444; border-radius:4px; padding:8px; margin-bottom: 15px; resize: vertical;"></textarea>
+            <div class="cs-modal-actions">
+                <button id="cs-desc-modal-cancel" class="cs-btn-cancel">Annuler</button>
+                <button id="cs-desc-modal-confirm" class="cs-btn-confirm">Enregistrer</button>
             </div>
         </div>
     </div>

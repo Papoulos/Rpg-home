@@ -215,6 +215,18 @@
     cursor: pointer;
 }
 
+.cs-recovery-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.cs-recovery-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
 .cs-checkbox-group {
     display: flex;
     flex-direction: column;

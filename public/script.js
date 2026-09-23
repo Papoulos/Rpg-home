@@ -149,6 +149,7 @@
             console.error("WebSocket is not connected. Message not sent:", payload);
         }
     }
+    window.sendMessage = sendMessage;
 
     function rollDice(dieType) {
         const roll = Math.floor(Math.random() * dieType) + 1;
