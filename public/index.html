@@ -224,76 +224,31 @@
                                     <p id="cs-display-keywords">Descripteur Type qui Focus</p>
                                 </div>
 
-                                <div class="cs-stats-row">
-                                    <!-- Might -->
-                                    <div class="cs-stat-card might">
-                                        <div class="cs-stat-header">
-                                            <h2>MIGHT</h2>
-                                            <span class="material-symbols-outlined cs-roll-icon" data-stat="might" title="Lancer Might">casino</span>
-                                        </div>
-                                        <div class="cs-stat-row">
-                                            <span>Pool</span>
-                                            <div class="cs-pool-controls">
-                                                <button class="cs-pool-btn" data-stat="might" data-action="minus">-</button>
-                                                <input type="number" id="cs-stat-might-pool" readonly>
-                                                <button class="cs-pool-btn" data-stat="might" data-action="plus">+</button>
-                                            </div>
-                                        </div>
-                                        <div class="cs-stat-row">
-                                            <span>Max</span>
-                                            <input type="number" id="cs-stat-might-max">
-                                        </div>
-                                        <div class="cs-stat-row">
-                                            <span>Edge</span>
-                                            <input type="number" id="cs-stat-might-edge">
-                                        </div>
-                                    </div>
-                                    <!-- Speed -->
-                                    <div class="cs-stat-card speed">
-                                        <div class="cs-stat-header">
-                                            <h2>SPEED</h2>
-                                            <span class="material-symbols-outlined cs-roll-icon" data-stat="speed" title="Lancer Speed">casino</span>
-                                        </div>
-                                        <div class="cs-stat-row">
-                                            <span>Pool</span>
-                                            <div class="cs-pool-controls">
-                                                <button class="cs-pool-btn" data-stat="speed" data-action="minus">-</button>
-                                                <input type="number" id="cs-stat-speed-pool" readonly>
-                                                <button class="cs-pool-btn" data-stat="speed" data-action="plus">+</button>
-                                            </div>
-                                        </div>
-                                        <div class="cs-stat-row">
-                                            <span>Max</span>
-                                            <input type="number" id="cs-stat-speed-max">
-                                        </div>
-                                        <div class="cs-stat-row">
-                                            <span>Edge</span>
-                                            <input type="number" id="cs-stat-speed-edge">
-                                        </div>
-                                    </div>
-                                    <!-- Intel -->
-                                    <div class="cs-stat-card intel">
-                                        <div class="cs-stat-header">
-                                            <h2>INTEL</h2>
-                                            <span class="material-symbols-outlined cs-roll-icon" data-stat="intel" title="Lancer Intel">casino</span>
-                                        </div>
-                                        <div class="cs-stat-row">
-                                            <span>Pool</span>
-                                            <div class="cs-pool-controls">
-                                                <button class="cs-pool-btn" data-stat="intel" data-action="minus">-</button>
-                                                <input type="number" id="cs-stat-intel-pool" readonly>
-                                                <button class="cs-pool-btn" data-stat="intel" data-action="plus">+</button>
-                                            </div>
-                                        </div>
-                                        <div class="cs-stat-row">
-                                            <span>Max</span>
-                                            <input type="number" id="cs-stat-intel-max">
-                                        </div>
-                                        <div class="cs-stat-row">
-                                            <span>Edge</span>
-                                            <input type="number" id="cs-stat-intel-edge">
-                                        </div>
-                                    </div>
+                                <!-- Le nouveau bloc Grille -->
+                                <div class="cs-stats-grid">
+                                    <!-- Ligne 1 : En-têtes -->
+                                    <div></div> <!-- Cellule vide en haut à gauche -->
+                                    <div class="cs-grid-header might">MIGHT <span class="material-symbols-outlined cs-roll-icon" data-stat="might" title="Lancer Might">casino</span></div>
+                                    <div class="cs-grid-header speed">SPEED <span class="material-symbols-outlined cs-roll-icon" data-stat="speed" title="Lancer Speed">casino</span></div>
+                                    <div class="cs-grid-header intel">INTEL <span class="material-symbols-outlined cs-roll-icon" data-stat="intel" title="Lancer Intel">casino</span></div>
+
+                                    <!-- Ligne 2 : Pool -->
+                                    <div class="cs-grid-label">Pool</div>
+                                    <div class="cs-grid-cell pool"><div class="cs-pool-controls"><button class="cs-pool-btn" data-stat="might" data-action="minus">-</button><input type="number" id="cs-stat-might-pool" readonly><button class="cs-pool-btn" data-stat="might" data-action="plus">+</button></div></div>
+                                    <div class="cs-grid-cell pool"><div class="cs-pool-controls"><button class="cs-pool-btn" data-stat="speed" data-action="minus">-</button><input type="number" id="cs-stat-speed-pool" readonly><button class="cs-pool-btn" data-stat="speed" data-action="plus">+</button></div></div>
+                                    <div class="cs-grid-cell pool"><div class="cs-pool-controls"><button class="cs-pool-btn" data-stat="intel" data-action="minus">-</button><input type="number" id="cs-stat-intel-pool" readonly><button class="cs-pool-btn" data-stat="intel" data-action="plus">+</button></div></div>
+
+                                    <!-- Ligne 3 : Max -->
+                                    <div class="cs-grid-label">Max</div>
+                                    <div class="cs-grid-cell"><input type="number" id="cs-stat-might-max"></div>
+                                    <div class="cs-grid-cell"><input type="number" id="cs-stat-speed-max"></div>
+                                    <div class="cs-grid-cell"><input type="number" id="cs-stat-intel-max"></div>
+
+                                    <!-- Ligne 4 : Edge -->
+                                    <div class="cs-grid-label">Edge</div>
+                                    <div class="cs-grid-cell"><input type="number" id="cs-stat-might-edge"></div>
+                                    <div class="cs-grid-cell"><input type="number" id="cs-stat-speed-edge"></div>
+                                    <div class="cs-grid-cell"><input type="number" id="cs-stat-intel-edge"></div>
                                 </div>
 
                                 <!-- Ligne Tier, Effort, XP -->

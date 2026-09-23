@@ -150,8 +150,8 @@
 
 /* Combined Header (Identity + Stats) */
 .cs-header-combined {
-    display: grid;
-    grid-template-columns: 220px 1fr;
+    display: flex;
+    flex-direction: column;
     gap: 20px;
     background-color: #2b2b2b;
     padding: 20px;
@@ -161,16 +161,18 @@
     margin-bottom: 20px;
 }
 
-@media (max-width: 768px) {
+@media (min-width: 800px) {
     .cs-header-combined {
-        grid-template-columns: 1fr;
+        display: grid;
+        grid-template-columns: 220px 1fr;
     }
 }
 
 .cs-portrait-container {
     width: 100%;
-    height: 100%;
-    min-height: 220px;
+    height: auto;
+    aspect-ratio: 2/3;
+    max-height: 330px;
     border: 1px solid #111;
     border-radius: 6px;
     background-color: #1a1a1a;
@@ -180,6 +182,13 @@
     font-size: 2rem;
     color: #888;
     overflow: hidden;
+}
+
+@media (min-width: 800px) {
+    .cs-portrait-container {
+        height: 100%;
+        max-height: none;
+    }
 }
 
 .cs-portrait-container img {
@@ -226,60 +235,86 @@
     color: #e6e6e6;
 }
 
-/* Stats Row */
-.cs-stats-row {
+/* Stats Grid */
+.cs-stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 15px;
-}
-
-.cs-stat-card {
+    grid-template-columns: 60px repeat(3, 1fr);
+    gap: 12px 15px;
     background-color: #222;
-    padding: 15px;
+    padding: 15px 15px;
     border-radius: 6px;
     border: 1px solid #333;
-}
-
-.cs-stat-card.might { border-top: 3px solid #d9534f; }
-.cs-stat-card.speed { border-top: 3px solid #f0ad4e; }
-.cs-stat-card.intel { border-top: 3px solid #5bc0de; }
-
-.cs-stat-header {
-    display: flex;
-    justify-content: space-between;
     align-items: center;
     margin-bottom: 15px;
+    overflow-x: auto;
 }
 
-.cs-stat-header h2 {
-    margin: 0;
+.cs-grid-header {
     font-size: 16px;
+    font-weight: bold;
     letter-spacing: 1px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 8px;
     color: #e6e6e6;
 }
+.cs-grid-header.might { border-bottom: 2px solid #d9534f; }
+.cs-grid-header.speed { border-bottom: 2px solid #f0ad4e; }
+.cs-grid-header.intel { border-bottom: 2px solid #5bc0de; }
 
 .cs-roll-icon {
     cursor: pointer;
     color: #aaa;
     transition: color 0.2s;
     user-select: none;
+    font-size: 18px; /* Slightly adjusted to fit material icon nicely */
 }
 
 .cs-roll-icon:hover { color: #fff; }
 
-.cs-stat-row {
+.cs-grid-label {
+    color: #aaa;
+    font-size: 13px;
+    text-transform: uppercase;
+    font-weight: bold;
+}
+
+.cs-grid-cell {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-    font-size: 14px;
-    color: #ccc;
+    justify-content: center;
 }
 
 .cs-pool-controls {
     display: flex;
     gap: 5px;
 }
+
+.cs-grid-cell input {
+    width: 45px;
+    font-weight: bold;
+    background: #1a1a1a;
+    border: 1px solid #444;
+    color: #fff;
+    border-radius: 3px;
+    padding: 4px;
+    text-align: center;
+}
+
+.cs-grid-cell.pool input {
+    width: 50px;
+    font-size: 16px;
+    background-color: #111;
+    border-color: #666;
+}
+
+.cs-grid-cell input::-webkit-outer-spin-button,
+.cs-grid-cell input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.cs-grid-cell input { -moz-appearance: textfield; }
 
 .cs-pool-btn {
     background: #333;
@@ -297,23 +332,27 @@
 
 .cs-pool-btn:hover { background: #555; }
 
-.cs-stat-row input {
-    width: 45px;
-    background: #1a1a1a;
-    border: 1px solid #444;
-    color: #fff;
-    border-radius: 3px;
-    padding: 4px;
-    text-align: center;
-    font-weight: bold;
+@media (max-width: 540px) {
+    .cs-stats-grid {
+        grid-template-columns: 40px repeat(3, 1fr);
+        gap: 10px 5px;
+        padding: 10px;
+    }
+    .cs-grid-cell.pool input {
+        width: 35px;
+        font-size: 14px;
+    }
+    .cs-grid-cell input {
+        width: 35px;
+    }
+    .cs-grid-header {
+        font-size: 14px;
+        gap: 4px;
+    }
+    .cs-grid-label {
+        font-size: 11px;
+    }
 }
-
-.cs-stat-row input::-webkit-outer-spin-button,
-.cs-stat-row input::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-}
-.cs-stat-row input { -moz-appearance: textfield; }
 
 /* Meta Row (Tier, Effort, XP) */
 .cs-meta-bottom-row {
