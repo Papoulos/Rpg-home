@@ -274,9 +274,9 @@ function renderSkills() {
             <span class="material-symbols-outlined cs-roll-icon" data-stat="${escapeHtml(skill.stat)}" data-skill="${escapeHtml(skill.name)}" data-skill-level="${escapeHtml(skill.level)}" title="Lancer pour ${escapeHtml(skill.name)}">casino</span>
             <input type="text" class="skill-name" value="${escapeHtml(skill.name)}" placeholder="Nom">
             <select class="skill-stat">
-                <option value="might" ${skill.stat === 'might' ? 'selected' : ''}>Puissance</option>
-                <option value="speed" ${skill.stat === 'speed' ? 'selected' : ''}>Vélocité</option>
-                <option value="intel" ${skill.stat === 'intel' ? 'selected' : ''}>Intellect</option>
+                <option value="might" ${skill.stat === 'might' ? 'selected' : ''}>Might</option>
+                <option value="speed" ${skill.stat === 'speed' ? 'selected' : ''}>Speed</option>
+                <option value="intel" ${skill.stat === 'intel' ? 'selected' : ''}>Intel</option>
             </select>
             <select class="skill-level">
                 <option value="trained" ${skill.level === 'trained' ? 'selected' : ''}>Entraîné (Trained)</option>
@@ -337,9 +337,9 @@ function renderAbilities() {
                     <input type="number" class="ab-cost" value="${ability.cost ? ability.cost.amount : 0}" style="width: 50px;" title="Coût">
                     <select class="ab-pool">
                         <option value="none" ${ability.cost && ability.cost.pool === 'none' ? 'selected' : ''}>-</option>
-                        <option value="might" ${ability.cost && ability.cost.pool === 'might' ? 'selected' : ''}>Pui.</option>
-                        <option value="speed" ${ability.cost && ability.cost.pool === 'speed' ? 'selected' : ''}>Vél.</option>
-                        <option value="intel" ${ability.cost && ability.cost.pool === 'intel' ? 'selected' : ''}>Int.</option>
+                        <option value="might" ${ability.cost && ability.cost.pool === 'might' ? 'selected' : ''}>Might</option>
+                        <option value="speed" ${ability.cost && ability.cost.pool === 'speed' ? 'selected' : ''}>Speed</option>
+                        <option value="intel" ${ability.cost && ability.cost.pool === 'intel' ? 'selected' : ''}>Intel</option>
                     </select>
                     <label style="display:flex; align-items:center; gap:5px; font-size:0.8rem; cursor:pointer;"><input type="checkbox" class="ab-enabler" ${ability.enabler ? 'checked' : ''}> Enabler</label>
                     <button class="cs-delete-btn" data-type="ability" data-index="${index}"><span class="material-symbols-outlined">close</span></button>
@@ -687,6 +687,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnConfirm = document.getElementById('cs-roll-modal-confirm');
     let currentRollName = "";
     let currentRollBonus = 0;
+    let currentRollStat = "";
 
     function closeRollModal() {
         rollModal.style.display = 'none';
@@ -712,6 +713,29 @@ document.addEventListener('DOMContentLoaded', () => {
         let command = `/c ${currentRollName} /D ${diff} /E ${effort}`;
         if (currentRollBonus !== 0) {
             command += ` /B ${currentRollBonus}`;
+        }
+
+        // Calculate effort cost and deduct from pool if effort > 0
+        if (effort > 0 && currentRollStat) {
+            let cost = 0;
+            if (effort >= 1) cost += 3;
+            if (effort > 1) cost += (effort - 1) * 2;
+
+            // Subtract edge
+            const edge = characterData.stats[currentRollStat].edge;
+            let finalCost = cost - edge;
+            if (finalCost < 0) finalCost = 0;
+
+            command += ` /C ${finalCost}`;
+
+            // Deduct from pool and update UI
+            let currentPool = characterData.stats[currentRollStat].pool;
+            let newPool = currentPool - finalCost;
+            if (newPool < 0) newPool = 0;
+
+            characterData.stats[currentRollStat].pool = newPool;
+            document.getElementById(`cs-stat-${currentRollStat}-pool`).value = newPool;
+            saveToLocalStorage();
         }
 
         // Inject into chat input and simulate send
@@ -756,28 +780,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 else if (skillLevel === 'trained') bonus += 3;
                 else if (skillLevel === 'inability') bonus -= 3;
             } else {
-                // Translate stat to French if it's a basic stat roll
-                if (stat === 'might') rollName = "Puissance";
-                else if (stat === 'speed') rollName = "Vélocité";
-                else if (stat === 'intel') rollName = "Intellect";
-                else rollName = stat.charAt(0).toUpperCase() + stat.slice(1);
+                rollName = stat.charAt(0).toUpperCase() + stat.slice(1);
             }
 
-            // Determine if character is impaired
-            let isImpaired = false;
+            // Determine damage track status and penalty
             const dtRadios = document.getElementsByName('damageTrack');
             for (let radio of dtRadios) {
-                if (radio.checked && radio.value === 'impaired') {
-                    isImpaired = true;
+                if (radio.checked) {
+                    if (radio.value === 'impaired') {
+                        bonus -= 3;
+                    } else if (radio.value === 'debilitated') {
+                        bonus -= 6;
+                    }
                     break;
                 }
-            }
-            if (isImpaired) {
-                bonus -= 3;
             }
 
             currentRollName = rollName;
             currentRollBonus = bonus;
+            currentRollStat = stat;
+
+            // Limit effort max based on character identity
+            const maxEffort = parseInt(document.getElementById('cs-id-effort').value) || 1;
+            rollModalEffort.setAttribute('max', maxEffort);
+
             rollModalTitle.textContent = `Lancer : ${rollName}`;
             rollModal.style.display = 'flex';
 
