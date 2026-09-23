@@ -53,13 +53,8 @@
 
         if (type === 'game-roll') {
             messageElement.classList.add('game-roll-message');
-            senderContainer.textContent = sender;
+            senderContainer.textContent = `${sender}: `;
             messageElement.appendChild(senderContainer);
-            messageElement.appendChild(document.createTextNode(' lance un dé de '));
-            const systemName = document.createElement('strong');
-            systemName.textContent = system;
-            messageElement.appendChild(systemName);
-            messageElement.appendChild(document.createTextNode(': '));
         } else {
             senderContainer.textContent = `${sender}: `;
             messageElement.appendChild(senderContainer);
