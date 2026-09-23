@@ -366,7 +366,8 @@ function rotateLogIfNeeded(filePath, maxSizeMB = 5, originalLogger = null) {
 
 // --- Validation Helpers ---
 function isValidFileName(name) {
-    return /^[a-zA-Z0-9_\-\/]+$/.test(name); // Allow slashes for folder structure in wiki
+    // Allow slashes for folder structure in wiki, and spaces/accented characters for character names
+    return /^[\w\s\-\/À-ÿ]+$/.test(name);
 }
 
 function getSafeWikiPath(dir, pageName) {
@@ -562,7 +563,7 @@ wss.on('connection', (ws) => {
             case 'update-character':
                 try {
                     const charData = data.data;
-                    const charId = data.id || (charData.identity && charData.identity.name ? charData.identity.name.trim().replace(/[^a-zA-Z0-9_\-]/g, '_') : 'unknown');
+                    const charId = data.id || (charData.identity && charData.identity.name ? charData.identity.name.trim() : 'unknown');
 
                     if (!charId || charId === 'unknown') {
                         throw new Error('Invalid character data for saving.');

@@ -33,6 +33,23 @@
     cursor: pointer;
     transition: all 0.2s ease;
     opacity: 0.7;
+    flex-shrink: 0;
+}
+
+/* Custom scrollbar for tabs */
+.cs-tabs-container::-webkit-scrollbar {
+    height: 8px;
+}
+.cs-tabs-container::-webkit-scrollbar-track {
+    background: #1a1a1a;
+    border-radius: 4px;
+}
+.cs-tabs-container::-webkit-scrollbar-thumb {
+    background: #444;
+    border-radius: 4px;
+}
+.cs-tabs-container::-webkit-scrollbar-thumb:hover {
+    background: #666;
 }
 
 .cs-tab:hover {
@@ -56,7 +73,9 @@
 }
 
 /* Read Only Mode styling */
-.cs-readonly .cs-header-controls,
+.cs-readonly .cs-header-controls #cs-btn-save,
+.cs-readonly .cs-header-controls #cs-btn-import,
+.cs-readonly .cs-header-controls .cs-header-controls-label,
 .cs-readonly .cs-identity-edit-btn,
 .cs-readonly .cs-stat-controls,
 .cs-readonly .cs-delete-btn,
