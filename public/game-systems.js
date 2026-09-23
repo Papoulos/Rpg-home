@@ -3,10 +3,10 @@
     const gameSystems = {
         cypher: {
             name: 'Cypher System',
-            help: '<strong>/cypher</strong> ou <strong>/c</strong> [Nom du jet] [/D difficulté] [/E effort] [/M malus] [/B bonus] - Lance un dé pour le Cypher System.',
+            help: '<strong>/cypher</strong> ou <strong>/c</strong> [Nom du jet] [/D difficulté] [/E effort] [/M malus] [/B bonus] [/C cost] - Lance un dé pour le Cypher System.',
             roll: (args) => {
                 // --- Argument Parsing ---
-                const params = { D: 0, E: 0, M: 0, B: 0 };
+                const params = { D: 0, E: 0, M: 0, B: 0, C: -1 };
                 let actionNameParts = [];
 
                 for (let i = 0; i < args.length; i++) {
@@ -24,7 +24,7 @@
                 }
 
                 const actionName = actionNameParts.join(' ').trim();
-                const { D: difficulty, E: effort, M: malus, B: bonus } = params;
+                const { D: difficulty, E: effort, M: malus, B: bonus, C: costParam } = params;
 
                 const roll = Math.floor(Math.random() * 20) + 1;
                 let resultText = "";
@@ -59,11 +59,15 @@
                 if (effort > 0) {
                     paramsLine.push(`Effort : ${effort} (+${effort * 3})`);
                     let cost = 0;
-                    if (effort >= 1) cost += 3;
-                    if (effort > 1) cost += (effort - 1) * 2;
+                    if (costParam !== -1) {
+                        cost = costParam;
+                    } else {
+                        if (effort >= 1) cost += 3;
+                        if (effort > 1) cost += (effort - 1) * 2;
+                    }
                     paramsLine.push(`Coût : ${cost} pts`);
                 }
-                
+
                 if (malus > 0) paramsLine.push(`Malus : ${malus} (-${malus * 3})`);
                 if (bonus > 0) paramsLine.push(`Bonus : +${bonus}`);
                 if (bonus < 0) paramsLine.push(`Malus stat/comp : ${bonus}`); // Negative bonus
