@@ -20,6 +20,8 @@
     max-width: 900px;
     margin-left: auto;
     margin-right: auto;
+    position: relative;
+    z-index: 10;
 }
 
 .cs-tab {
@@ -34,6 +36,7 @@
     transition: all 0.2s ease;
     opacity: 0.7;
     flex-shrink: 0;
+    pointer-events: auto;
 }
 
 /* Custom scrollbar for tabs */
@@ -74,8 +77,6 @@
 
 /* Read Only Mode styling */
 .cs-readonly .cs-header-controls #cs-btn-save,
-.cs-readonly .cs-header-controls #cs-btn-import,
-.cs-readonly .cs-header-controls .cs-header-controls-label,
 .cs-readonly .cs-identity-edit-btn,
 .cs-readonly .cs-stat-controls,
 .cs-readonly .cs-delete-btn,

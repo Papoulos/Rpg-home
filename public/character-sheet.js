@@ -183,6 +183,12 @@ function renderCharacterSheet() {
         }
     }
 
+    // Toggle MJ-only import button visibility
+    const importLabel = document.querySelector('label[for="cs-btn-import"]');
+    if (importLabel) {
+        importLabel.style.display = isMJ ? 'flex' : 'none';
+    }
+
     // Re-render tabs
     window.renderCharacterTabs();
 
@@ -661,6 +667,11 @@ function renderOddities() {
 
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Re-render character sheet when MJ status changes to show/hide import button
+    window.addEventListener('mj-status', () => {
+        renderCharacterSheet();
+    });
+
     // Listen for socket events related to characters
     window.addEventListener('character-loaded', (e) => {
         characterData = deepMerge(JSON.parse(JSON.stringify(defaultCharacterData)), e.detail.data);
@@ -822,15 +833,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Bouton Changer de personnage
-    document.getElementById('cs-btn-logout').addEventListener('click', () => {
-        document.getElementById('login-overlay').style.display = 'flex';
-        // Request an updated character list
-        if (window.socket && window.socket.readyState === WebSocket.OPEN) {
-            window.socket.send(JSON.stringify({ type: 'get-characters' }));
-        }
-    });
-
     // Bouton de Sauvegarde manuel
     document.getElementById('cs-btn-save').addEventListener('click', () => {
         updateCharacterDataFromInputs();
@@ -854,7 +856,7 @@ document.addEventListener('DOMContentLoaded', () => {
         downloadAnchorNode.remove();
     });
 
-    // Importation (Charger depuis un JSON)
+    // Importation (Charger depuis un JSON) - Réservé au MJ, envoie directement au serveur
     document.getElementById('cs-btn-import').addEventListener('change', (event) => {
         const file = event.target.files[0];
         if (file) {
@@ -869,18 +871,36 @@ document.addEventListener('DOMContentLoaded', () => {
                         delete importedData.stats.intellect;
                     }
 
-                    // Replace with a deep merge with default object to guarantee missing properties are present
-                    let freshData = JSON.parse(JSON.stringify(defaultCharacterData));
-                    characterData = deepMerge(freshData, importedData);
+                    if (!importedData.identity || !importedData.identity.name) {
+                        throw new Error("Le JSON ne contient pas d'identité ou de nom de personnage.");
+                    }
 
-                    renderCharacterSheet();
-                    saveToLocalStorage();
+                    // Replace with a deep merge with default object to guarantee missing properties are present
+                    let freshData = JSON.parse(JSON.stringify(window.defaultCharacterData || defaultCharacterData));
+                    let finalData = deepMerge(freshData, importedData);
+
+                    if (window.socket && window.socket.readyState === WebSocket.OPEN) {
+                        // Envoie les données au serveur
+                        window.socket.send(JSON.stringify({
+                            type: 'update-character',
+                            id: finalData.identity.name.trim(),
+                            data: finalData
+                        }));
+
+                        // Demande au serveur de charger ce personnage pour l'afficher
+                        window.socket.send(JSON.stringify({
+                            type: 'load-character',
+                            id: finalData.identity.name.trim()
+                        }));
+                    } else {
+                        alert("Erreur: Non connecté au serveur.");
+                    }
 
                     // Reset input for consecutive identical file uploads
                     event.target.value = '';
                 } catch(err) {
                     console.error("Erreur lors de l'importation du fichier JSON :", err);
-                    alert("Erreur: le fichier fourni n'est pas un JSON valide ou un problème est survenu lors du rendu.");
+                    alert("Erreur: le fichier fourni n'est pas un JSON valide, ou il manque des informations vitales.");
                 }
             };
             reader.readAsText(file);
