@@ -148,176 +148,101 @@
     color: #e0e0e0;
 }
 
-/* Identity Section */
-.cs-identity-section {
-    position: relative;
+/* Combined Header (Identity + Stats) */
+.cs-header-combined {
     display: grid;
-    grid-template-columns: 150px 1fr 118px;
+    grid-template-columns: 220px 1fr;
     gap: 20px;
-    min-height: 190px;
-    padding: 12px 16px 12px 12px;
+    background-color: #2b2b2b;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #333;
+    position: relative;
+    margin-bottom: 20px;
 }
 
-.cs-portrait {
-    border: 1px solid #444;
+@media (max-width: 768px) {
+    .cs-header-combined {
+        grid-template-columns: 1fr;
+    }
+}
+
+.cs-portrait-container {
+    width: 100%;
+    height: 100%;
+    min-height: 220px;
+    border: 1px solid #111;
     border-radius: 6px;
-    overflow: hidden;
-    background: #1a1a1a;
+    background-color: #1a1a1a;
     display: flex;
-    align-items: center;
     justify-content: center;
+    align-items: center;
     font-size: 2rem;
     color: #888;
+    overflow: hidden;
 }
 
-.cs-portrait img {
-    display: block;
+.cs-portrait-container img {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
 
-.cs-name-block {
-    align-self: center;
-    padding-right: 28px;
-    min-width: 0;
-}
-
-.cs-name-block h2 {
-    margin: 0 0 6px !important;
-    padding-bottom: 6px !important;
-    font-size: 1.9rem !important;
-    line-height: 1.1;
-    border-bottom: 1px solid #444 !important;
-}
-
-.cs-name-block p {
-    margin: 0;
-    font-style: italic;
-    color: #cfcfcf;
-}
-
-.cs-identity-stats {
+.cs-header-content {
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    gap: 6px;
-    padding-top: 26px;
-}
-
-.cs-id-stat {
-    display: grid;
-    grid-template-columns: 1fr 50px;
-    align-items: center;
-    gap: 8px;
-}
-
-.cs-id-stat label {
-    font-size: 0.68rem;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: #9b9b9b;
-}
-
-.cs-id-stat input {
-    width: 100%;
-    padding: 3px 6px;
-    font: inherit;
-    font-size: 0.85rem;
-    text-align: center;
-    color: #e6e6e6;
-    background: #1f1f1f;
-    border: 1px solid #3d3d3d;
-    border-radius: 4px;
-    -moz-appearance: textfield;
-}
-
-.cs-id-stat input::-webkit-outer-spin-button,
-.cs-id-stat input::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-}
-
-.cs-id-stat input:focus-visible {
-    outline: 2px solid #7aa2ff;
-    outline-offset: 1px;
-}
-
-.cs-identity-edit-btn {
-    position: absolute;
-    top: 10px;
-    right: 12px;
-    padding: 4px;
-    color: #9b9b9b;
-    background: none;
-    border: 0;
-    cursor: pointer;
-}
-
-.cs-identity-edit-btn:hover {
-    color: #e6e6e6;
-}
-
-@media (max-width: 540px) {
-    .cs-identity-section { grid-template-columns: 110px 1fr; }
-    .cs-identity-stats {
-        grid-column: 1 / -1;
-        flex-direction: row;
-        padding-top: 0;
-    }
-    .cs-id-stat { flex: 1; grid-template-columns: 1fr; gap: 3px; text-align: center; }
-}
-
-.cs-identity-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    justify-content: space-between;
     gap: 15px;
 }
 
-.cs-field {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
+.cs-name-desc {
+    margin-bottom: auto; /* Pushes the rest down */
+    padding-right: 30px; /* Room for edit button */
 }
 
-.cs-field label {
-    font-size: 0.85rem;
-    color: #aaa;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+.cs-name-desc h1 {
+    margin: 0 0 5px 0;
+    font-size: 28px;
+    color: #e6e6e6;
 }
 
-.cs-field input[type="text"],
-.cs-field input[type="number"] {
-    background: #1a1a1a;
-    border: 1px solid #444;
-    color: #fff;
-    padding: 8px;
-    border-radius: 4px;
-    font-size: 1rem;
-    width: 100%;
-    box-sizing: border-box;
+.cs-name-desc p {
+    margin: 0;
+    font-style: italic;
+    color: #bbb;
 }
 
-/* Stats Section (Might, Speed, Intellect) */
-.cs-stats-grid {
+.cs-edit-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: none;
+    border: none;
+    color: #9b9b9b;
+    cursor: pointer;
+}
+
+.cs-edit-btn:hover {
+    color: #e6e6e6;
+}
+
+/* Stats Row */
+.cs-stats-row {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 15px;
 }
 
-.cs-stat-box {
-    background: #222;
-    border: 1px solid #333;
-    border-radius: 6px;
+.cs-stat-card {
+    background-color: #222;
     padding: 15px;
-    position: relative;
-    border-top-width: 4px; /* For color accent */
+    border-radius: 6px;
+    border: 1px solid #333;
 }
 
-.cs-stat-box.stat-might { border-top-color: #a02c2c; }
-.cs-stat-box.stat-speed { border-top-color: #a0a02c; }
-.cs-stat-box.stat-intel { border-top-color: #2c5ca0; }
+.cs-stat-card.might { border-top: 3px solid #d9534f; }
+.cs-stat-card.speed { border-top: 3px solid #f0ad4e; }
+.cs-stat-card.intel { border-top: 3px solid #5bc0de; }
 
 .cs-stat-header {
     display: flex;
@@ -326,10 +251,11 @@
     margin-bottom: 15px;
 }
 
-.cs-stat-title {
-    font-size: 1.3rem;
-    font-weight: bold;
-    text-transform: uppercase;
+.cs-stat-header h2 {
+    margin: 0;
+    font-size: 16px;
+    letter-spacing: 1px;
+    color: #e6e6e6;
 }
 
 .cs-roll-icon {
@@ -339,30 +265,19 @@
     user-select: none;
 }
 
-.cs-roll-icon:hover {
-    color: #fff;
-}
+.cs-roll-icon:hover { color: #fff; }
 
-.cs-stat-details {
+.cs-stat-row {
     display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.cs-pool-control {
-    display: flex;
-    align-items: center;
     justify-content: space-between;
-}
-
-.cs-pool-control label {
-    font-weight: bold;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 14px;
     color: #ccc;
 }
 
-.cs-pool-editor {
+.cs-pool-controls {
     display: flex;
-    align-items: center;
     gap: 5px;
 }
 
@@ -382,26 +297,90 @@
 
 .cs-pool-btn:hover { background: #555; }
 
-.cs-pool-editor input {
-    width: 40px;
-    text-align: center;
+.cs-stat-row input {
+    width: 45px;
     background: #1a1a1a;
     border: 1px solid #444;
     color: #fff;
-    border-radius: 4px;
+    border-radius: 3px;
     padding: 4px;
-}
-
-/* Other inputs in stat */
-.cs-stat-sub {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.cs-stat-sub input {
-    width: 40px;
     text-align: center;
+    font-weight: bold;
+}
+
+.cs-stat-row input::-webkit-outer-spin-button,
+.cs-stat-row input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.cs-stat-row input { -moz-appearance: textfield; }
+
+/* Meta Row (Tier, Effort, XP) */
+.cs-meta-bottom-row {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    background-color: #222;
+    padding: 12px;
+    border-radius: 6px;
+    border: 1px solid #333;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.cs-meta-bottom-row label {
+    font-size: 12px;
+    color: #aaa;
+    text-transform: uppercase;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    letter-spacing: 1px;
+}
+
+.cs-meta-bottom-row input {
+    width: 50px;
+    font-weight: bold;
+    background: #1a1a1a;
+    border: 1px solid #444;
+    color: #fff;
+    border-radius: 3px;
+    padding: 4px;
+    text-align: center;
+}
+
+.cs-meta-bottom-row input::-webkit-outer-spin-button,
+.cs-meta-bottom-row input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.cs-meta-bottom-row input { -moz-appearance: textfield; }
+
+/* General utility inputs inside the rest of the sheet */
+.cs-field input[type="text"],
+.cs-field input[type="number"] {
+    background: #1a1a1a;
+    border: 1px solid #444;
+    color: #fff;
+    padding: 8px;
+    border-radius: 4px;
+    font-size: 1rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.cs-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.cs-field label {
+    font-size: 0.85rem;
+    color: #aaa;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 /* Damage Track and Recovery */

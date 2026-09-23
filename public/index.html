@@ -208,114 +208,101 @@
                             <input type="file" id="cs-btn-import" accept=".json" style="display: none;">
                         </div>
 
-                        <div class="cs-section cs-identity-section">
-                            <div id="cs-display-portrait-container" class="cs-portrait">
+                        <div class="cs-header-combined">
+                            <button id="cs-btn-edit-identity" class="cs-edit-btn" title="Modifier l'Identité" type="button">
+                                <span class="material-symbols-outlined">edit</span>
+                            </button>
+
+                            <div id="cs-display-portrait-container" class="cs-portrait-container">
                                 ?
                             </div>
 
-                            <div class="cs-name-block">
-                                <h2 id="cs-display-name">Nom</h2>
-                                <p id="cs-display-keywords">Descripteur Type qui Focus</p>
-                            </div>
+                            <div class="cs-header-content">
 
-                            <div class="cs-identity-stats">
-                                <div class="cs-id-stat">
-                                    <label for="cs-id-tier">Tier</label>
-                                    <input type="number" id="cs-id-tier" min="1" max="6" value="1">
+                                <div class="cs-name-desc">
+                                    <h1 id="cs-display-name">Nom</h1>
+                                    <p id="cs-display-keywords">Descripteur Type qui Focus</p>
                                 </div>
-                                <div class="cs-id-stat">
-                                    <label for="cs-id-effort">Effort</label>
-                                    <input type="number" id="cs-id-effort" min="1" max="6" value="1">
-                                </div>
-                                <div class="cs-id-stat">
-                                    <label for="cs-id-xp">XP</label>
-                                    <input type="number" id="cs-id-xp" min="0" value="0">
-                                </div>
-                            </div>
 
-                            <button id="cs-btn-edit-identity" class="cs-identity-edit-btn" title="Modifier l'Identité" type="button">
-                                <span class="material-symbols-outlined">edit</span>
-                            </button>
-                        </div>
-
-                        <div class="cs-section">
-                            <h2>Stats & Pools</h2>
-                            <div class="cs-stats-grid">
-                                <!-- Might -->
-                                <div class="cs-stat-box stat-might">
-                                    <div class="cs-stat-header">
-                                        <div class="cs-stat-title">Might</div>
-                                        <span class="material-symbols-outlined cs-roll-icon" data-stat="might" title="Lancer Might">casino</span>
-                                    </div>
-                                    <div class="cs-stat-details">
-                                        <div class="cs-pool-control">
-                                            <label>Pool</label>
-                                            <div class="cs-pool-editor">
+                                <div class="cs-stats-row">
+                                    <!-- Might -->
+                                    <div class="cs-stat-card might">
+                                        <div class="cs-stat-header">
+                                            <h2>MIGHT</h2>
+                                            <span class="material-symbols-outlined cs-roll-icon" data-stat="might" title="Lancer Might">casino</span>
+                                        </div>
+                                        <div class="cs-stat-row">
+                                            <span>Pool</span>
+                                            <div class="cs-pool-controls">
                                                 <button class="cs-pool-btn" data-stat="might" data-action="minus">-</button>
                                                 <input type="number" id="cs-stat-might-pool" readonly>
                                                 <button class="cs-pool-btn" data-stat="might" data-action="plus">+</button>
                                             </div>
                                         </div>
-                                        <div class="cs-stat-sub">
-                                            <label>Max</label>
+                                        <div class="cs-stat-row">
+                                            <span>Max</span>
                                             <input type="number" id="cs-stat-might-max">
                                         </div>
-                                        <div class="cs-stat-sub">
-                                            <label>Edge</label>
+                                        <div class="cs-stat-row">
+                                            <span>Edge</span>
                                             <input type="number" id="cs-stat-might-edge">
                                         </div>
                                     </div>
-                                </div>
-                                <!-- Speed -->
-                                <div class="cs-stat-box stat-speed">
-                                    <div class="cs-stat-header">
-                                        <div class="cs-stat-title">Speed</div>
-                                        <span class="material-symbols-outlined cs-roll-icon" data-stat="speed" title="Lancer Speed">casino</span>
-                                    </div>
-                                    <div class="cs-stat-details">
-                                        <div class="cs-pool-control">
-                                            <label>Pool</label>
-                                            <div class="cs-pool-editor">
+                                    <!-- Speed -->
+                                    <div class="cs-stat-card speed">
+                                        <div class="cs-stat-header">
+                                            <h2>SPEED</h2>
+                                            <span class="material-symbols-outlined cs-roll-icon" data-stat="speed" title="Lancer Speed">casino</span>
+                                        </div>
+                                        <div class="cs-stat-row">
+                                            <span>Pool</span>
+                                            <div class="cs-pool-controls">
                                                 <button class="cs-pool-btn" data-stat="speed" data-action="minus">-</button>
                                                 <input type="number" id="cs-stat-speed-pool" readonly>
                                                 <button class="cs-pool-btn" data-stat="speed" data-action="plus">+</button>
                                             </div>
                                         </div>
-                                        <div class="cs-stat-sub">
-                                            <label>Max</label>
+                                        <div class="cs-stat-row">
+                                            <span>Max</span>
                                             <input type="number" id="cs-stat-speed-max">
                                         </div>
-                                        <div class="cs-stat-sub">
-                                            <label>Edge</label>
+                                        <div class="cs-stat-row">
+                                            <span>Edge</span>
                                             <input type="number" id="cs-stat-speed-edge">
                                         </div>
                                     </div>
-                                </div>
-                                <!-- Intel -->
-                                <div class="cs-stat-box stat-intel">
-                                    <div class="cs-stat-header">
-                                        <div class="cs-stat-title">Intel</div>
-                                        <span class="material-symbols-outlined cs-roll-icon" data-stat="intel" title="Lancer Intel">casino</span>
-                                    </div>
-                                    <div class="cs-stat-details">
-                                        <div class="cs-pool-control">
-                                            <label>Pool</label>
-                                            <div class="cs-pool-editor">
+                                    <!-- Intel -->
+                                    <div class="cs-stat-card intel">
+                                        <div class="cs-stat-header">
+                                            <h2>INTEL</h2>
+                                            <span class="material-symbols-outlined cs-roll-icon" data-stat="intel" title="Lancer Intel">casino</span>
+                                        </div>
+                                        <div class="cs-stat-row">
+                                            <span>Pool</span>
+                                            <div class="cs-pool-controls">
                                                 <button class="cs-pool-btn" data-stat="intel" data-action="minus">-</button>
                                                 <input type="number" id="cs-stat-intel-pool" readonly>
                                                 <button class="cs-pool-btn" data-stat="intel" data-action="plus">+</button>
                                             </div>
                                         </div>
-                                        <div class="cs-stat-sub">
-                                            <label>Max</label>
+                                        <div class="cs-stat-row">
+                                            <span>Max</span>
                                             <input type="number" id="cs-stat-intel-max">
                                         </div>
-                                        <div class="cs-stat-sub">
-                                            <label>Edge</label>
+                                        <div class="cs-stat-row">
+                                            <span>Edge</span>
                                             <input type="number" id="cs-stat-intel-edge">
                                         </div>
                                     </div>
                                 </div>
+
+                                <!-- Ligne Tier, Effort, XP -->
+                                <div class="cs-meta-bottom-row">
+                                    <label for="cs-id-tier">Tier <input type="number" id="cs-id-tier" min="1" max="6" value="1"></label>
+                                    <label for="cs-id-effort">Effort <input type="number" id="cs-id-effort" min="1" max="6" value="1"></label>
+                                    <label for="cs-id-xp">XP <input type="number" id="cs-id-xp" min="0" value="0"></label>
+                                </div>
+
                             </div>
                         </div>
 
