@@ -686,7 +686,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnCancel = document.getElementById('cs-roll-modal-cancel');
     const btnConfirm = document.getElementById('cs-roll-modal-confirm');
     let currentRollName = "";
-    let currentRollBonus = 0;
+    let currentRollSkillBonus = 0;
+    let currentRollStatusPenalty = 0;
     let currentRollStat = "";
 
     function closeRollModal() {
@@ -711,8 +712,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Construct the command
         let command = `/c ${currentRollName} /D ${diff} /E ${effort}`;
-        if (currentRollBonus !== 0) {
-            command += ` /B ${currentRollBonus}`;
+        if (currentRollSkillBonus !== 0) {
+            command += ` /S ${currentRollSkillBonus}`;
+        }
+        if (currentRollStatusPenalty !== 0) {
+            command += ` /P ${currentRollStatusPenalty}`;
         }
 
         // Calculate effort cost and deduct from pool if effort > 0
@@ -771,14 +775,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const skillLevel = e.target.getAttribute('data-skill-level');
 
             let rollName = "";
-            let bonus = 0;
+            let skillBonus = 0;
+            let statusPenalty = 0;
 
             if (skill) {
                 rollName = skill;
 
-                if (skillLevel === 'specialized') bonus += 6;
-                else if (skillLevel === 'trained') bonus += 3;
-                else if (skillLevel === 'inability') bonus -= 3;
+                if (skillLevel === 'specialized') skillBonus = 6;
+                else if (skillLevel === 'trained') skillBonus = 3;
+                else if (skillLevel === 'inability') skillBonus = -3;
             } else {
                 rollName = stat.charAt(0).toUpperCase() + stat.slice(1);
             }
@@ -788,16 +793,17 @@ document.addEventListener('DOMContentLoaded', () => {
             for (let radio of dtRadios) {
                 if (radio.checked) {
                     if (radio.value === 'impaired') {
-                        bonus -= 3;
+                        statusPenalty = -3;
                     } else if (radio.value === 'debilitated') {
-                        bonus -= 6;
+                        statusPenalty = -6;
                     }
                     break;
                 }
             }
 
             currentRollName = rollName;
-            currentRollBonus = bonus;
+            currentRollSkillBonus = skillBonus;
+            currentRollStatusPenalty = statusPenalty;
             currentRollStat = stat;
 
             // Limit effort max based on character identity
