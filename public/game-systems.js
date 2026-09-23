@@ -30,23 +30,18 @@
                 let resultText = "";
 
                 if (actionName) {
-                    resultText += `<strong>Action : ${actionName}</strong>`;
-                    if (difficulty > 0 || effort > 0 || malus > 0) {
-                         resultText += ` | `;
-                    } else {
-                         resultText += `<br>`;
-                    }
+                    resultText += `Action : <strong>${actionName}</strong><br>`;
                 }
 
                 // --- Case 1: No parameters provided ---
                 if (difficulty === 0 && effort === 0 && malus === 0) {
-                    resultText += `Jet : <strong>${roll}</strong>. `;
+                    resultText += `Jet : <strong>${roll}</strong><br>`;
                     const beatenDifficulty = Math.floor(roll / 3);
-                    resultText += `Le jet brut bat une difficulté de <strong>${beatenDifficulty}</strong> (cible ${beatenDifficulty * 3}).`;
+                    resultText += `<em>Bat une Diff de ${beatenDifficulty} (cible ${beatenDifficulty * 3})</em>`;
                      if (roll === 1) {
-                        resultText += '<br><strong>Échec critique !</strong> Le MJ peut introduire une intrusion.';
+                        resultText += '<br><br><strong>Échec critique !</strong> (Intrusion du MJ)';
                     } else if (roll === 20) {
-                        resultText += '<br><strong>Réussite critique !</strong> Le joueur gagne un bénéfice majeur.';
+                        resultText += '<br><br><strong>Réussite critique !</strong> (Bénéfice majeur)';
                     }
                     return resultText;
                 }
@@ -55,28 +50,41 @@
                 const target = difficulty * 3;
                 const modifiedRoll = roll + (effort * 3) - (malus * 3);
 
-                if (difficulty > 0) resultText += `Diff. ${difficulty} (${target})`;
-                if (effort > 0) resultText += ` | Effort ${effort}`;
-                if (malus > 0) resultText += ` | Malus ${malus}`;
-
-                resultText += `<br>Jet : <strong>${roll}</strong>`;
-
-              
-                if (effort > 0) resultText += ` + ${effort * 3} (Effort)`;
-                if (malus > 0) resultText += ` - ${malus * 3} (Malus)`;
-                if (effort > 0 || malus > 0) resultText += `<br>Total modifié : <strong>${modifiedRoll}</strong>`;
+                // Line 2: Params (Diff, Effort, Malus, Cost)
+                let paramsLine = [];
+                if (difficulty > 0) paramsLine.push(`Diff : ${difficulty} (${target})`);
 
                 if (effort > 0) {
+                    paramsLine.push(`Effort : ${effort} (+${effort * 3})`);
                     let cost = 0;
                     if (effort >= 1) cost += 3;
                     if (effort > 1) cost += (effort - 1) * 2;
-                    resultText += `<br><em>Coût de l'effort : ${cost} points.</em>`;
+                    paramsLine.push(`Coût : ${cost} pts`);
                 }
                 
+                if (malus > 0) paramsLine.push(`Malus : ${malus} (-${malus * 3})`);
+
+                if (paramsLine.length > 0) {
+                    resultText += paramsLine.join(' - ') + `<br>`;
+                }
+
+                // Line 3: Math equation
+                let mathLine = `Jet : ${roll}`;
+                if (effort > 0) mathLine += ` + ${effort * 3}`;
+                if (malus > 0) mathLine += ` - ${malus * 3}`;
+
+                if (effort > 0 || malus > 0) {
+                     mathLine += ` = <strong>${modifiedRoll}</strong>`;
+                } else {
+                     mathLine = `Jet : <strong>${roll}</strong>`;
+                }
+                resultText += mathLine;
+
+
                 if (roll === 1) {
-                    resultText += '<br><br><strong>Échec critique !</strong> Le MJ peut introduire une intrusion.';
+                    resultText += '<br><br><strong>Échec critique !</strong> (Intrusion du MJ)';
                 } else if (roll === 20) {
-                    resultText += '<br><br><strong>Réussite critique !</strong> Le joueur gagne un bénéfice majeur.';
+                    resultText += '<br><br><strong>Réussite critique !</strong> (Bénéfice majeur)';
                 } else {
                     if (modifiedRoll >= target) {
                         resultText += `<br><br><strong>Réussite !</strong>`;
