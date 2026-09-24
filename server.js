@@ -366,8 +366,8 @@ function rotateLogIfNeeded(filePath, maxSizeMB = 5, originalLogger = null) {
 
 // --- Validation Helpers ---
 function isValidFileName(name) {
-    // Allow slashes for folder structure in wiki, and spaces/accented characters for character names
-    return /^[\w\s\-\/À-ÿ]+$/.test(name);
+    // Allow slashes for folder structure in wiki, and spaces/accented characters/apostrophes for character names
+    return /^[\w\s\-\/À-ÿ']+$/.test(name);
 }
 
 function getSafeWikiPath(dir, pageName) {

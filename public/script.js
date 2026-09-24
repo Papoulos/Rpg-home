@@ -75,10 +75,11 @@
                 setUsername(name);
 
                 // Initialize default character
-                const newCharData = JSON.parse(JSON.stringify(window.defaultCharacterData || {}));
-                if (newCharData.identity) {
-                    newCharData.identity.name = name;
+                const newCharData = JSON.parse(JSON.stringify(window.defaultCharacterData || { identity: {} }));
+                if (!newCharData.identity) {
+                    newCharData.identity = {};
                 }
+                newCharData.identity.name = name;
 
                 // We must ensure the socket is connected before sending
                 if (socket && socket.readyState === WebSocket.OPEN) {
