@@ -571,11 +571,12 @@ wss.on('connection', (ws) => {
                         if (fs.existsSync(filePath)) {
                             fs.unlinkSync(filePath);
                             console.log(`[CHARACTERS] Deleted character: ${charId}`);
-                            loadCharactersList();
-                            broadcastCharactersList();
-                            // Optional: Tell clients the character was deleted so they update views
-                            broadcast({ type: 'character-deleted', id: charId });
+                        } else {
+                            console.log(`[CHARACTERS] Character file not found for deletion, but acknowledging: ${charId}`);
                         }
+                        loadCharactersList();
+                        broadcastCharactersList();
+                        broadcast({ type: 'character-deleted', id: charId });
                     } catch (error) {
                         console.error('[CHARACTERS] Error deleting character:', error);
                         ws.send(JSON.stringify({ type: 'character-error', message: 'Erreur lors de la suppression.' }));
