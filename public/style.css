@@ -122,7 +122,7 @@ body, html {
 }
 
 .right-panel {
-    --right-panel-width: 25%;
+    --right-panel-width: 15%;
     flex-basis: var(--right-panel-width);
     border-left: 1px solid #333;
 }
@@ -203,7 +203,7 @@ body, html {
 }
 
 #toggle-video-panel-btn {
-    right: calc(var(--right-panel-width, 25%) - 20px);
+    right: calc(var(--right-panel-width, 15%) - 20px);
     border-radius: 4px 0 0 4px;
     border-right: none;
 }
