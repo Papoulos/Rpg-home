@@ -121,7 +121,7 @@ window.renderCharacterTabs = function() {
         tab.className = 'cs-tab';
 
         // Mark active if this is the currently loaded character
-        if (characterData && characterData.identity && characterData.identity.name === char.name) {
+        if (window.activeCharacterId === char.id) {
             tab.classList.add('active');
         }
 
@@ -352,10 +352,10 @@ function saveToLocalStorage() {
     localStorage.setItem('cypherCharacterData', JSON.stringify(characterData));
 
     // Also save to server if socket is open
-    if (window.socket && window.socket.readyState === WebSocket.OPEN && characterData.identity && characterData.identity.name) {
+    if (window.socket && window.socket.readyState === WebSocket.OPEN && window.activeCharacterId) {
         window.socket.send(JSON.stringify({
             type: 'update-character',
-            id: characterData.identity.name,
+            id: window.activeCharacterId,
             data: characterData
         }));
     }
@@ -678,13 +678,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Listen for socket events related to characters
     window.addEventListener('character-loaded', (e) => {
+        window.activeCharacterId = e.detail.id;
         characterData = deepMerge(JSON.parse(JSON.stringify(defaultCharacterData)), e.detail.data);
         renderCharacterSheet();
     });
 
     window.addEventListener('character-updated', (e) => {
         // If the updated character is the one we are currently viewing, re-render it
-        if (characterData && characterData.identity && characterData.identity.name === e.detail.id) {
+        if (window.activeCharacterId === e.detail.id) {
             // But don't overwrite if we are the one making the change (basic check, could be improved)
             // Actually, for a single source of truth, if we are viewing it, we update it.
             // If it's our character and we are making rapid changes, there could be slight cursor jumps,
@@ -695,8 +696,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     window.addEventListener('character-deleted', (e) => {
-        if (characterData && characterData.identity && characterData.identity.name === e.detail.id) {
+        if (window.activeCharacterId === e.detail.id) {
             // The currently viewed character was deleted
+            window.activeCharacterId = null; // Clear it out
             const remainingCharacters = window.availableCharacters ? window.availableCharacters.filter(c => c.id !== e.detail.id) : [];
             if (remainingCharacters.length > 0) {
                 if (window.socket && window.socket.readyState === WebSocket.OPEN) {
@@ -880,7 +882,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const deleteConfirmModal = document.getElementById('cs-delete-confirm-modal');
 
     document.getElementById('cs-btn-delete').addEventListener('click', () => {
-        if (window.isMJ && characterData && characterData.identity && characterData.identity.name) {
+        if (window.isMJ && window.activeCharacterId) {
             deleteConfirmModal.style.display = 'flex';
         }
     });
@@ -897,10 +899,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('cs-delete-confirm-accept').addEventListener('click', () => {
         deleteConfirmModal.style.display = 'none';
-        if (window.socket && window.socket.readyState === WebSocket.OPEN && characterData.identity.name) {
+        if (window.socket && window.socket.readyState === WebSocket.OPEN && window.activeCharacterId) {
             window.socket.send(JSON.stringify({
                 type: 'delete-character',
-                id: characterData.identity.name
+                id: window.activeCharacterId
             }));
             // The view switching is now handled by the 'character-deleted' event listener.
         }
