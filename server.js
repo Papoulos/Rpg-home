@@ -551,7 +551,7 @@ wss.on('connection', (ws) => {
                     const filePath = path.join(CHARACTERS_DIR, `${charId}.json`);
                     if (fs.existsSync(filePath)) {
                         const content = fs.readFileSync(filePath, 'utf-8');
-                        ws.send(JSON.stringify({ type: 'character-loaded', data: JSON.parse(content) }));
+                        ws.send(JSON.stringify({ type: 'character-loaded', id: charId, data: JSON.parse(content) }));
                     } else {
                         ws.send(JSON.stringify({ type: 'character-error', message: 'Personnage introuvable.' }));
                     }

@@ -87,9 +87,11 @@
                        id: name,
                        data: newCharData
                    }));
+                   socket.send(JSON.stringify({ type: 'load-character', id: name }));
                 } else {
                    // If socket isn't ready yet, save it to send later
                    window.pendingCharacterCreation = { id: name, data: newCharData };
+                   window.pendingCharacterLoad = name;
                 }
 
                 // Also store it locally for immediate rendering
@@ -495,7 +497,7 @@
                     }
                     break;
                 case 'character-loaded':
-                    window.dispatchEvent(new CustomEvent('character-loaded', { detail: { data: data.data } }));
+                    window.dispatchEvent(new CustomEvent('character-loaded', { detail: { id: data.id, data: data.data } }));
                     break;
                 case 'character-updated':
                     window.dispatchEvent(new CustomEvent('character-updated', { detail: { id: data.id, data: data.data } }));
