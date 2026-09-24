@@ -500,6 +500,9 @@
                 case 'character-updated':
                     window.dispatchEvent(new CustomEvent('character-updated', { detail: { id: data.id, data: data.data } }));
                     break;
+                case 'character-deleted':
+                    window.dispatchEvent(new CustomEvent('character-deleted', { detail: { id: data.id } }));
+                    break;
                 case 'sheets-update':
                     window.dispatchEvent(new CustomEvent('sheets-update', { detail: { list: data.list } }));
                     break;

@@ -694,6 +694,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    window.addEventListener('character-deleted', (e) => {
+        if (characterData && characterData.identity && characterData.identity.name === e.detail.id) {
+            // The currently viewed character was deleted
+            const remainingCharacters = window.availableCharacters ? window.availableCharacters.filter(c => c.id !== e.detail.id) : [];
+            if (remainingCharacters.length > 0) {
+                if (window.socket && window.socket.readyState === WebSocket.OPEN) {
+                    window.socket.send(JSON.stringify({ type: 'load-character', id: remainingCharacters[0].id }));
+                }
+            } else {
+                // No characters left, reset to default
+                characterData = JSON.parse(JSON.stringify(window.defaultCharacterData || defaultCharacterData));
+                renderCharacterSheet();
+            }
+        }
+    });
+
     // Initial Load
     loadFromLocalStorage();
     renderCharacterSheet();
@@ -886,16 +902,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 type: 'delete-character',
                 id: characterData.identity.name
             }));
-
-            // Revenir au premier personnage de la liste, ou charger une fiche vide
-            const remainingCharacters = window.availableCharacters ? window.availableCharacters.filter(c => c.id !== characterData.identity.name) : [];
-            if (remainingCharacters.length > 0) {
-                window.socket.send(JSON.stringify({ type: 'load-character', id: remainingCharacters[0].id }));
-            } else {
-                // S'il n'y a plus de personnages, on affiche une fiche vide
-                characterData = JSON.parse(JSON.stringify(window.defaultCharacterData || defaultCharacterData));
-                renderCharacterSheet();
-            }
+            // The view switching is now handled by the 'character-deleted' event listener.
         }
     });
 
