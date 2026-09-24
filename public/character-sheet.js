@@ -994,8 +994,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnConfirm = document.getElementById('cs-roll-modal-confirm');
     let currentRollName = "";
     let currentRollSkillBonus = 0;
-    let currentRollStatusPenalty = 0;
     let currentRollStat = "";
+    let currentDamageTrack = "";
 
     function closeRollModal() {
         rollModal.style.display = 'none';
@@ -1022,8 +1022,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentRollSkillBonus !== 0) {
             command += ` /S ${currentRollSkillBonus}`;
         }
-        if (currentRollStatusPenalty !== 0) {
-            command += ` /P ${currentRollStatusPenalty}`;
+        if (currentDamageTrack === 'impaired') {
+            command += ` /I 1`;
         }
 
         // Calculate effort cost and deduct from pool if effort > 0
@@ -1031,6 +1031,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let cost = 0;
             if (effort >= 1) cost += 3;
             if (effort > 1) cost += (effort - 1) * 2;
+            if (currentDamageTrack === 'impaired') cost += effort;
 
             // Subtract edge
             const edge = characterData.stats[currentRollStat].edge;
@@ -1130,7 +1131,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             let rollName = "";
             let skillBonus = 0;
-            let statusPenalty = 0;
 
             if (skill) {
                 rollName = skill;
@@ -1144,21 +1144,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Determine damage track status and penalty
             const dtRadios = document.getElementsByName('damageTrack');
+            let damageTrackState = "";
             for (let radio of dtRadios) {
                 if (radio.checked) {
-                    if (radio.value === 'impaired') {
-                        statusPenalty = -3;
-                    } else if (radio.value === 'debilitated') {
-                        statusPenalty = -6;
-                    }
+                    damageTrackState = radio.value;
                     break;
                 }
             }
 
+            if (damageTrackState === 'debilitated' && stat !== 'might') {
+                if (window.sendMessage) {
+                    const charName = characterData.identity.name || "Le personnage";
+                    window.sendMessage({ type: 'chat', message: `<em>${charName} tente d'utiliser ${rollName}, mais échoue car il est Débilité (Debilitated) et ne peut faire que des actions de Might ou ramper.</em>` });
+                }
+                return;
+            }
+
             currentRollName = rollName;
             currentRollSkillBonus = skillBonus;
-            currentRollStatusPenalty = statusPenalty;
             currentRollStat = stat;
+            currentDamageTrack = damageTrackState;
 
             // Limit effort max based on character identity
             const maxEffort = parseInt(document.getElementById('cs-id-effort').value) || 1;

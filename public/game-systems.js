@@ -3,10 +3,10 @@
     const gameSystems = {
         cypher: {
             name: 'Cypher System',
-            help: '<strong>/cypher</strong> ou <strong>/c</strong> [Nom du jet] [/D difficulté] [/E effort] [/M malus] [/S skillBonus] [/P statusPenalty] [/B flatBonus] [/C cost] - Lance un dé pour le Cypher System.',
+            help: '<strong>/cypher</strong> ou <strong>/c</strong> [Nom du jet] [/D difficulté] [/E effort] [/M malus] [/S skillBonus] [/P statusPenalty] [/B flatBonus] [/C cost] [/I impaired] - Lance un dé pour le Cypher System.',
             roll: (args) => {
                 // --- Argument Parsing ---
-                const params = { D: 0, E: 0, M: 0, B: 0, C: -1, S: 0, P: 0 };
+                const params = { D: 0, E: 0, M: 0, B: 0, C: -1, S: 0, P: 0, I: 0 };
                 let actionNameParts = [];
 
                 for (let i = 0; i < args.length; i++) {
@@ -24,7 +24,7 @@
                 }
 
                 const actionName = actionNameParts.join(' ').trim();
-                const { D: difficulty, E: effort, M: malus, B: bonus, C: costParam, S: skillBonus, P: statusPenalty } = params;
+                const { D: difficulty, E: effort, M: malus, B: bonus, C: costParam, S: skillBonus, P: statusPenalty, I: impaired } = params;
 
                 const roll = Math.floor(Math.random() * 20) + 1;
                 let resultText = "";
@@ -39,7 +39,7 @@
                 const modifiedRoll = roll + (effort * 3) - (malus * 3) + totalBonus;
 
                 // --- Case 1: No parameters provided (and no bonus) ---
-                if (difficulty === 0 && effort === 0 && malus === 0 && totalBonus === 0) {
+                if (difficulty === 0 && effort === 0 && malus === 0 && totalBonus === 0 && impaired === 0) {
                     resultText += `Jet : <strong>${roll}</strong><br>`;
                     const beatenDifficulty = Math.floor(roll / 3);
                     resultText += `<em>Bat une Diff de ${beatenDifficulty} (cible ${beatenDifficulty * 3})</em>`;
@@ -65,6 +65,7 @@
                     } else {
                         if (effort >= 1) cost += 3;
                         if (effort > 1) cost += (effort - 1) * 2;
+                        if (impaired > 0) cost += effort; // +1 cost per effort level if impaired
                     }
                     paramsLine.push(`Coût : ${cost} pts`);
                 }
@@ -72,6 +73,7 @@
                 if (malus > 0) paramsLine.push(`Malus : ${malus} (-${malus * 3})`);
                 if (skillBonus !== 0) paramsLine.push(`Compétence : ${skillBonus > 0 ? '+' + skillBonus : skillBonus}`);
                 if (statusPenalty !== 0) paramsLine.push(`État : ${statusPenalty}`);
+                if (impaired > 0) paramsLine.push(`État : Diminué (Impaired)`);
                 if (bonus !== 0) paramsLine.push(`Divers : ${bonus > 0 ? '+' + bonus : bonus}`);
 
                 if (paramsLine.length > 0) {
