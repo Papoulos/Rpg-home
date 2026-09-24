@@ -183,10 +183,14 @@ function renderCharacterSheet() {
         }
     }
 
-    // Toggle MJ-only import button visibility
+    // Toggle MJ-only import/delete button visibility
     const importLabel = document.querySelector('label[for="cs-btn-import"]');
     if (importLabel) {
         importLabel.style.display = isMJ ? 'flex' : 'none';
+    }
+    const deleteBtn = document.getElementById('cs-btn-delete');
+    if (deleteBtn) {
+        deleteBtn.style.display = isMJ ? 'flex' : 'none';
     }
 
     // Re-render tabs
@@ -854,6 +858,45 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.appendChild(downloadAnchorNode); // required for firefox
         downloadAnchorNode.click();
         downloadAnchorNode.remove();
+    });
+
+    // Suppression du personnage - Réservé au MJ
+    const deleteConfirmModal = document.getElementById('cs-delete-confirm-modal');
+
+    document.getElementById('cs-btn-delete').addEventListener('click', () => {
+        if (window.isMJ && characterData && characterData.identity && characterData.identity.name) {
+            deleteConfirmModal.style.display = 'flex';
+        }
+    });
+
+    document.getElementById('cs-delete-confirm-cancel').addEventListener('click', () => {
+        deleteConfirmModal.style.display = 'none';
+    });
+
+    deleteConfirmModal.addEventListener('click', (e) => {
+        if (e.target === deleteConfirmModal) {
+            deleteConfirmModal.style.display = 'none';
+        }
+    });
+
+    document.getElementById('cs-delete-confirm-accept').addEventListener('click', () => {
+        deleteConfirmModal.style.display = 'none';
+        if (window.socket && window.socket.readyState === WebSocket.OPEN && characterData.identity.name) {
+            window.socket.send(JSON.stringify({
+                type: 'delete-character',
+                id: characterData.identity.name
+            }));
+
+            // Revenir au premier personnage de la liste, ou charger une fiche vide
+            const remainingCharacters = window.availableCharacters ? window.availableCharacters.filter(c => c.id !== characterData.identity.name) : [];
+            if (remainingCharacters.length > 0) {
+                window.socket.send(JSON.stringify({ type: 'load-character', id: remainingCharacters[0].id }));
+            } else {
+                // S'il n'y a plus de personnages, on affiche une fiche vide
+                characterData = JSON.parse(JSON.stringify(window.defaultCharacterData || defaultCharacterData));
+                renderCharacterSheet();
+            }
+        }
     });
 
     // Importation (Charger depuis un JSON) - Réservé au MJ, envoie directement au serveur
