@@ -350,6 +350,9 @@ function updateCharacterDataFromInputs() {
 
 function saveToLocalStorage() {
     localStorage.setItem('cypherCharacterData', JSON.stringify(characterData));
+    if (window.activeCharacterId) {
+        localStorage.setItem('cypherCharacterId', window.activeCharacterId);
+    }
 
     // Also save to server if socket is open
     if (window.socket && window.socket.readyState === WebSocket.OPEN && window.activeCharacterId) {
@@ -363,6 +366,10 @@ function saveToLocalStorage() {
 
 function loadFromLocalStorage() {
     const saved = localStorage.getItem('cypherCharacterData');
+    const savedId = localStorage.getItem('cypherCharacterId');
+    if (savedId) {
+        window.activeCharacterId = savedId;
+    }
     if (saved) {
         try {
             const parsedData = JSON.parse(saved);
@@ -882,7 +889,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const deleteConfirmModal = document.getElementById('cs-delete-confirm-modal');
 
     document.getElementById('cs-btn-delete').addEventListener('click', () => {
-        if (window.isMJ && window.activeCharacterId) {
+        // Fallback to identity name if activeCharacterId is somehow lost
+        const charIdToDelete = window.activeCharacterId || (characterData.identity && characterData.identity.name);
+        if (window.isMJ && charIdToDelete) {
             deleteConfirmModal.style.display = 'flex';
         }
     });
@@ -899,10 +908,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('cs-delete-confirm-accept').addEventListener('click', () => {
         deleteConfirmModal.style.display = 'none';
-        if (window.socket && window.socket.readyState === WebSocket.OPEN && window.activeCharacterId) {
+        const charIdToDelete = window.activeCharacterId || (characterData.identity && characterData.identity.name);
+        if (window.socket && window.socket.readyState === WebSocket.OPEN && charIdToDelete) {
             window.socket.send(JSON.stringify({
                 type: 'delete-character',
-                id: window.activeCharacterId
+                id: charIdToDelete
             }));
             // The view switching is now handled by the 'character-deleted' event listener.
         }
