@@ -24,6 +24,7 @@ const limiter = rateLimit({
 });
 
 app.use(limiter);
+app.use(express.json());
 
 let apiKeys = {};
 let server; // To be defined after config is loaded
@@ -836,7 +837,10 @@ const storage = multer.diskStorage({
         cb(null, Date.now() + '-' + sanitizedOriginalName)
     }
 });
-const upload = multer({ storage: storage });
+const upload = multer({
+    storage: storage,
+    limits: { fileSize: 50 * 1024 * 1024 } // 50 MB limit
+});
 
 app.post('/upload-music', upload.single('musicFile'), (req, res) => {
     if (!req.file) {
@@ -845,7 +849,6 @@ app.post('/upload-music', upload.single('musicFile'), (req, res) => {
     res.json({ url: '/music/' + req.file.filename, filename: path.basename(req.file.originalname) });
 });
 
-app.use(express.json());
 app.post('/download-music-url', async (req, res) => {
     const urlStr = req.body.url;
     if (!urlStr || (!urlStr.startsWith('http://') && !urlStr.startsWith('https://'))) {

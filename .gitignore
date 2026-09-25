@@ -6,3 +6,4 @@ whiteboard.json
 playlist.json
 images.json
 *.log
+data/music/
