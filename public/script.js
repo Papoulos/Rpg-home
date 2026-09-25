@@ -61,6 +61,7 @@
         mjConfirmAccept.addEventListener('click', () => {
             mjConfirmModal.style.display = 'none';
             setUsername('MJ');
+            window.userPortraitUrl = 'mj_icon';
             finishLogin();
         });
 
@@ -73,6 +74,7 @@
                 // will be handled in the character-sheet.js when rendering an empty sheet.
                 // However, we should send an update-character to server to initialize it.
                 setUsername(name);
+                window.userPortraitUrl = 'https://via.placeholder.com/100?text=?';
 
                 // Initialize default character
                 const newCharData = JSON.parse(JSON.stringify(window.defaultCharacterData || { identity: {} }));
@@ -121,6 +123,7 @@
                 `;
                 card.addEventListener('click', () => {
                     setUsername(char.name);
+                    window.userPortraitUrl = char.portraitUrl || 'https://via.placeholder.com/100?text=?';
 
                     // Request to load this character
                     if (socket && socket.readyState === WebSocket.OPEN) {
@@ -142,6 +145,7 @@
         // Now register with the server
         if (socket && socket.readyState === WebSocket.OPEN) {
             sendMessage({ type: 'register', username: getUsername() });
+            checkAndSendConnectionMessage();
         }
 
         // Re-render character sheet UI to show tabs if applicable
@@ -150,8 +154,28 @@
         }
     }
 
+    function checkAndSendConnectionMessage() {
+        if (!window.connectionMessageSent && getUsername()) {
+            window.connectionMessageSent = true;
+
+            let messageContent = '';
+            if (getUsername() === 'MJ') {
+                messageContent = `<span class="material-symbols-outlined" style="vertical-align: middle; font-size: 20px; margin-right: 5px;">shield_person</span> <strong>MJ</strong>&nbsp;s'est connecté - Bienvenue`;
+            } else {
+                const imgStyle = 'width: 24px; height: 24px; border-radius: 50%; vertical-align: middle; margin-right: 8px; object-fit: cover;';
+                messageContent = `<img src="${window.userPortraitUrl || 'https://via.placeholder.com/100?text=?'}" style="${imgStyle}" alt="Portrait"> <strong>${getUsername()}</strong>&nbsp;s'est connecté - Bienvenue`;
+            }
+
+            sendMessage({
+                type: 'chat',
+                message: `<div style="color: #888; font-style: italic; display: flex; align-items: center;">${messageContent}</div>`,
+                isSystemEvent: true
+            });
+        }
+    }
+
     // --- DOM Manipulation ---
-    function addMessage({ sender, message, type, system, prepend = false }) {
+    function addMessage({ sender, message, type, system, isSystemEvent, prepend = false }) {
         if (!sender || !message) {
             console.warn('[UI] Ignoring malformed message object:', { sender, message, type, system });
             return;
@@ -164,19 +188,23 @@
         const senderContainer = document.createElement('strong');
         senderContainer.style.color = sender === 'System' ? '#aaa' : userColor;
 
-        if (type === 'game-roll') {
-            messageElement.classList.add('game-roll-message');
-            senderContainer.textContent = `${sender}: `;
-            messageElement.appendChild(senderContainer);
+        if (!isSystemEvent) {
+            if (type === 'game-roll') {
+                messageElement.classList.add('game-roll-message');
+                senderContainer.textContent = `${sender}: `;
+                messageElement.appendChild(senderContainer);
+            } else {
+                senderContainer.textContent = `${sender}: `;
+                messageElement.appendChild(senderContainer);
+            }
         } else {
-            senderContainer.textContent = `${sender}: `;
-            messageElement.appendChild(senderContainer);
+             messageElement.classList.add('system-event-message');
         }
 
         const bodyElement = document.createElement('span');
         bodyElement.classList.add('message-body');
 
-        if (sender === 'System' || type === 'game-roll' || type === 'dice') {
+        if (sender === 'System' || type === 'game-roll' || type === 'dice' || isSystemEvent) {
             // System and game messages are safe and may contain HTML (like <strong> for dice)
             bodyElement.innerHTML = message;
         } else {
@@ -404,6 +432,7 @@
             // Enregistre l'utilisateur SEULEMENT si l'utilisateur a fini de se connecter
             if (getUsername()) {
                 sendMessage({ type: 'register', username: getUsername() });
+                checkAndSendConnectionMessage();
             }
 
             if (window._pendingMediaError) {
