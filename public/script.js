@@ -57,11 +57,11 @@
         });
 
         // Accept MJ confirm
-        mjConfirmAccept.addEventListener('click', () => {
+        mjConfirmAccept.addEventListener('click', async () => {
             mjConfirmModal.style.display = 'none';
             setUsername('MJ');
             window.userPortraitUrl = 'mj_icon';
-            finishLogin();
+            await finishLogin();
         });
 
 
@@ -76,7 +76,7 @@
                     <img src="${char.portraitUrl || 'https://via.placeholder.com/100?text=?'}" class="character-portrait" alt="${char.name}">
                     <div class="character-name">${char.name}</div>
                 `;
-                card.addEventListener('click', () => {
+                card.addEventListener('click', async () => {
                     setUsername(char.name);
                     window.userPortraitUrl = char.portraitUrl || 'https://via.placeholder.com/100?text=?';
 
@@ -87,15 +87,17 @@
                         window.pendingCharacterLoad = char.id;
                     }
 
-                    finishLogin();
+                    await finishLogin();
                 });
                 charactersList.appendChild(card);
             });
         };
     }
 
-    function finishLogin() {
+    async function finishLogin() {
         document.getElementById('login-overlay').style.display = 'none';
+
+        await setupLocalMedia();
 
         // Now register with the server
         if (socket && socket.readyState === WebSocket.OPEN) {
@@ -689,7 +691,7 @@
     }
 
     // Execute when the DOM is fully loaded
-    document.addEventListener('DOMContentLoaded', async () => {
+    document.addEventListener('DOMContentLoaded', () => {
         // Define all DOM elements
         chatMessages = document.getElementById('chat-messages');
         chatInput = document.getElementById('chat-input');
@@ -705,7 +707,6 @@
 
         initLogin();
         // Do not askForUsername() anymore, login handles it
-        await setupLocalMedia();
 
         connect(); // Start the WebSocket connection and set up listeners
 
