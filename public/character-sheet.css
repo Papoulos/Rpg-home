@@ -467,37 +467,60 @@
     cursor: pointer;
 }
 
+/* Skills & Abilities layout */
+.cs-skills-abilities-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+@media (max-width: 900px) {
+    .cs-skills-abilities-section {
+        grid-template-columns: 1fr;
+    }
+}
+
+.cs-skills-col,
+.cs-abilities-col {
+    display: flex;
+    flex-direction: column;
+}
+
 /* Skills, Abilities, Equipement */
 .cs-list-container {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 5px;
 }
 
 .cs-list-item {
     display: flex;
     align-items: center;
     background: #222;
-    padding: 8px;
+    padding: 4px 6px;
     border-radius: 4px;
-    gap: 10px;
+    gap: 6px;
 }
 
-.cs-list-item input[type="text"] {
+.cs-list-item input[type="text"],
+.cs-list-item input[type="number"] {
     flex-grow: 1;
     background: #1a1a1a;
     border: 1px solid #444;
     color: #fff;
-    padding: 6px;
+    padding: 4px;
     border-radius: 4px;
+    font-size: 0.9rem;
+    min-width: 30px;
 }
 
 .cs-list-item select {
     background: #1a1a1a;
     border: 1px solid #444;
     color: #fff;
-    padding: 6px;
+    padding: 4px;
     border-radius: 4px;
+    font-size: 0.9rem;
 }
 
 .cs-delete-btn {
@@ -505,13 +528,23 @@
     border: none;
     color: #fff;
     cursor: pointer;
-    padding: 6px;
+    padding: 2px 4px;
     border-radius: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
 }
+.cs-delete-btn .material-symbols-outlined {
+    font-size: 16px;
+}
 .cs-delete-btn:hover { background: #7a3a3a; }
+
+.cs-compact-col-wrap {
+    display: flex;
+    width: 100%;
+    gap: 6px;
+    align-items: center;
+}
 
 .cs-add-btn {
     background: #2a5a2a;
