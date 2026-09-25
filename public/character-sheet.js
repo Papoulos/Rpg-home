@@ -356,10 +356,12 @@ function saveToLocalStorage() {
     }
 
     // Also save to server if socket is open
-    if (window.socket && window.socket.readyState === WebSocket.OPEN && window.activeCharacterId) {
+    // We send an update even if we are just a player viewing our active character
+    let saveId = window.activeCharacterId || (characterData.identity && characterData.identity.name);
+    if (window.socket && window.socket.readyState === WebSocket.OPEN && saveId) {
         window.socket.send(JSON.stringify({
             type: 'update-character',
-            id: window.activeCharacterId,
+            id: saveId,
             data: characterData
         }));
     }
@@ -681,8 +683,20 @@ document.addEventListener('DOMContentLoaded', () => {
             // Actually, for a single source of truth, if we are viewing it, we update it.
             // If it's our character and we are making rapid changes, there could be slight cursor jumps,
             // but for simple inputs handled by 'change' event, it should be fine.
+
+            // Rebuild characterData based on the incoming event data
             characterData = deepMerge(JSON.parse(JSON.stringify(defaultCharacterData)), e.detail.data);
-            renderCharacterSheet();
+
+            // Prevent replacing inputs while focused to avoid cursor jumps
+            const activeElement = document.activeElement;
+            const isEditing = activeElement &&
+                              (activeElement.tagName === 'INPUT' ||
+                               activeElement.tagName === 'TEXTAREA' ||
+                               activeElement.tagName === 'SELECT');
+
+            if (!isEditing) {
+                renderCharacterSheet();
+            }
         }
     });
 
