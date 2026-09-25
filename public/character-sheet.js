@@ -116,6 +116,7 @@ window.renderCharacterTabs = function() {
     const characters = window.availableCharacters || [];
 
     tabsContainer.innerHTML = '';
+    const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23444"/><text x="50" y="50" font-family="Arial" font-size="40" fill="white" dominant-baseline="middle" text-anchor="middle">?</text></svg>';
     characters.forEach(char => {
         const tab = document.createElement('div');
         tab.className = 'cs-tab';
@@ -126,7 +127,7 @@ window.renderCharacterTabs = function() {
         }
 
         tab.innerHTML = `
-            <img src="${char.portraitUrl || 'https://via.placeholder.com/24?text=?'}" alt="${char.name}">
+            <img src="${char.portraitUrl || defaultAvatar}" alt="${char.name}">
             <span>${char.name}</span>
         `;
 
