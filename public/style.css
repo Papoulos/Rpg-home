@@ -245,15 +245,6 @@ body, html {
     min-height: 0;
 }
 
-#pj-content {
-    /* This is a flex container for its children */
-}
-
-#sheet-display-area {
-    flex-grow: 1; /* The iframe container should take all available space */
-    display: flex;
-}
-
 /* Menu de navigation */
 .main-menu {
     display: flex;
@@ -336,8 +327,8 @@ body, html {
     height: 36px;
 }
 
-/* --- Shared Controls Bar (for Sheets & Images) --- */
-.sheets-controls, .image-controls {
+/* --- Shared Controls Bar (for Images) --- */
+.image-controls {
     display: flex;
     align-items: center;
     gap: 5px;
@@ -350,7 +341,7 @@ body, html {
     display: none;
 }
 
-.sheets-controls select, .image-controls select {
+.image-controls select {
     background-color: #3e3e3e;
     color: #e0e0e0;
     border: 1px solid #555;
@@ -360,7 +351,7 @@ body, html {
     flex-grow: 1;
 }
 
-.sheets-controls select:hover, .image-controls select:hover {
+.image-controls select:hover {
     background-color: #4a4a4a;
 }
 

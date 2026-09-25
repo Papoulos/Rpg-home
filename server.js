@@ -68,12 +68,10 @@ const WIKI_DIR = path.join(__dirname, 'wiki');
 let chatHistory = [];
 let imageList = [];
 let currentImageUrl = null; // Track the currently displayed image
-let sheetsList = [];
 const clients = new Map();
 let whiteboardState = null; // Will store the JSON string of the fabric canvas
 
 const PLAYLIST_FILE = path.join(__dirname, 'playlist.json');
-const SHEETS_FILE = path.join(__dirname, 'sheets.json');
 const CHARACTERS_DIR = path.join(__dirname, 'data/characters');
 let charactersList = []; // Will store just metadata (name, portrait)
 
@@ -107,31 +105,6 @@ function loadCharactersList() {
 
 function broadcastCharactersList() {
     broadcast({ type: 'characters-list-update', list: charactersList });
-}
-
-function loadSheetsList() {
-    if (fs.existsSync(SHEETS_FILE)) {
-        try {
-            const fileContent = fs.readFileSync(SHEETS_FILE, 'utf-8');
-            sheetsList = JSON.parse(fileContent);
-            console.log(`[SHEETS] Loaded ${sheetsList.length} sheets.`);
-        } catch (error) {
-            console.error('[SHEETS] Failed to parse sheets.json:', error);
-            sheetsList = [];
-        }
-    }
-}
-
-function saveSheetsList() {
-    try {
-        fs.writeFileSync(SHEETS_FILE, JSON.stringify(sheetsList, null, 2));
-    } catch (error) {
-        console.error('[SHEETS] FAILED to save sheets list:', error);
-    }
-}
-
-function broadcastSheetsList() {
-    broadcast({ type: 'sheets-update', list: sheetsList });
 }
 
 // --- Music State ---
@@ -619,7 +592,6 @@ wss.on('connection', (ws) => {
                 ws.send(JSON.stringify({ type: 'history', messages: chatHistory }));
                 ws.send(JSON.stringify({ type: 'image-list-update', list: imageList }));
                 ws.send(JSON.stringify({ type: 'show-image', url: currentImageUrl }));
-                ws.send(JSON.stringify({ type: 'sheets-update', list: sheetsList }));
                 if (whiteboardState) ws.send(JSON.stringify({ type: 'fabric-load', payload: whiteboardState }));
                 ws.send(JSON.stringify({ type: 'wiki-page-list', publicPages: publicWikiPages, mjPages: mjWikiPages }));
                 if (isMJ) ws.send(JSON.stringify({ type: 'mj-status', isMJ: true }));
@@ -738,22 +710,6 @@ wss.on('connection', (ws) => {
                 if (client && client.isMJ) {
                     currentImageUrl = data.url;
                     broadcast({ type: 'show-image', url: data.url });
-                }
-                break;
-
-            case 'add-sheet':
-                if (client) {
-                    sheetsList.push({ name: data.name, url: data.url });
-                    saveSheetsList();
-                    broadcastSheetsList();
-                }
-                break;
-
-            case 'delete-sheet':
-                if (client) {
-                    sheetsList = sheetsList.filter(s => s.url !== data.url);
-                    saveSheetsList();
-                    broadcastSheetsList();
                 }
                 break;
 
@@ -909,7 +865,6 @@ function broadcastWikiPageList() {
     loadWhiteboardState();
     loadPlaylist();
     loadWikiPages();
-    loadSheetsList();
     loadCharactersList();
     const SERVER_LOG_FILE = path.join(__dirname, 'server.log');
 

@@ -506,9 +506,6 @@
                 case 'character-deleted':
                     window.dispatchEvent(new CustomEvent('character-deleted', { detail: { id: data.id } }));
                     break;
-                case 'sheets-update':
-                    window.dispatchEvent(new CustomEvent('sheets-update', { detail: { list: data.list } }));
-                    break;
                 case 'show-image':
                     displayImage(data.url);
                     break;

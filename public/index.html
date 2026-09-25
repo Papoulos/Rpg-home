@@ -79,18 +79,6 @@
                         <p>Aucune image sélectionnée.</p>
                     </div>
                 </div>
-                <div id="pj-content" class="tab-content">
-                    <div class="sheets-controls">
-                        <select id="sheet-select">
-                            <option value="">Choisir une fiche</option>
-                        </select>
-                        <button id="add-sheet-btn" class="control-btn btn-add" title="Ajouter une fiche"><span class="material-symbols-outlined">add</span></button>
-                        <button id="delete-sheet-btn" class="control-btn btn-delete" title="Supprimer la fiche"><span class="material-symbols-outlined">remove</span></button>
-                    </div>
-                    <div id="sheet-display-area">
-                        <!-- L'iframe de la Google Sheet ira ici -->
-                    </div>
-                </div>
                 <div id="fabric-content" class="tab-content">
                     <div class="whiteboard-controls">
                         <div id="fabric-toolbar">
@@ -407,7 +395,6 @@
             </div>
             <nav class="main-menu">
                 <a href="#carte" class="menu-item" data-target="carte-content" title="Carte"><span class="material-symbols-outlined">map</span></a>
-                <a href="#pj" class="menu-item" data-target="pj-content" title="Personnages"><span class="material-symbols-outlined">group</span></a>
                 <a href="#character-sheet" class="menu-item" data-target="character-sheet-content" title="Fiche de Personnage"><span class="material-symbols-outlined">person_book</span></a>
                 <a href="#fabric" class="menu-item" data-target="fabric-content" title="Tableau Blanc"><span class="material-symbols-outlined">draw</span></a>
                 <a href="#wiki" class="menu-item" data-target="wiki-content" title="Wiki"><span class="material-symbols-outlined">library_books</span></a>
@@ -517,7 +504,6 @@
     <script src="navigation.js" defer></script>
     <script src="game-systems.js" defer></script>
     <script src="script.js" defer></script>
-    <script src="sheets.js" defer></script>
     <script src="images.js" defer></script>
     <script src="fabric-whiteboard.js" defer></script>
     <script src="music.js" defer></script>
