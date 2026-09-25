@@ -57,6 +57,9 @@
                 <button class="dice-button" data-die="20">20</button>
                 <button class="dice-button" data-die="100">100</button>
             </div>
+            <div id="mj-chat-controls" style="display: none; margin-top: 10px; text-align: center;">
+                <button id="clear-chat-btn" class="cs-btn-confirm" style="background-color: #8b0000; border-color: #5a0000; padding: 4px 8px; width: 100%;">Vider le chat</button>
+            </div>
         </aside>
         <div class="resizer" id="resizer-left"></div>
         <main class="main-content">
@@ -408,8 +411,8 @@
             <div class="panel-header">
                 <h2>Vidéo</h2>
                 <div id="global-controls">
-                    <button id="mute-mic-btn" title="Couper le micro"><span class="material-symbols-outlined">mic</span></button>
-                    <button id="toggle-video-btn" title="Désactiver la caméra"><span class="material-symbols-outlined">videocam</span></button>
+                    <button id="mute-mic-btn" class="muted" title="Activer le micro"><span class="material-symbols-outlined">mic_off</span></button>
+                    <button id="toggle-video-btn" class="muted" title="Activer la caméra"><span class="material-symbols-outlined">videocam_off</span></button>
                 </div>
             </div>
             <div id="video-grid">
@@ -520,6 +523,18 @@
             <div class="cs-modal-actions">
                 <button id="cs-delete-confirm-cancel" class="cs-btn-cancel">Annuler</button>
                 <button id="cs-delete-confirm-accept" class="cs-btn-confirm" style="background-color: #8b0000;">Supprimer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale de confirmation de suppression du chat -->
+    <div id="chat-clear-confirm-modal" class="cs-modal-overlay" style="display: none; z-index: 10002;">
+        <div class="cs-modal-content">
+            <h3 style="color: #ff4444;">Vider le chat</h3>
+            <p>Êtes-vous sûr de vouloir effacer tout l'historique du chat pour tous les joueurs ? Cette action est irréversible.</p>
+            <div class="cs-modal-actions">
+                <button id="chat-clear-confirm-cancel" class="cs-btn-cancel">Annuler</button>
+                <button id="chat-clear-confirm-accept" class="cs-btn-confirm" style="background-color: #8b0000;">Vider</button>
             </div>
         </div>
     </div>

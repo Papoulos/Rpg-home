@@ -501,9 +501,18 @@
                         }
                     });
                     break;
+                case 'chat-cleared':
+                    if (chatMessages) chatMessages.innerHTML = '';
+                    break;
                 case 'mj-status': { // Use block scope
                     window.isMJ = data.isMJ; // Set the global flag
                     window.dispatchEvent(new CustomEvent('mj-status', { detail: { isMJ: data.isMJ } }));
+
+                    // Show MJ specific chat controls
+                    const mjChatControls = document.getElementById('mj-chat-controls');
+                    if (mjChatControls) {
+                        mjChatControls.style.display = data.isMJ ? 'block' : 'none';
+                    }
 
                     // Directly control image controls visibility and attach listeners
                     const imageControls = document.querySelector('.image-controls');
@@ -616,6 +625,14 @@
     async function setupLocalMedia() {
         try {
             localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+
+            // Disable video and audio tracks by default upon connection
+            const audioTrack = localStream.getAudioTracks()[0];
+            if (audioTrack) audioTrack.enabled = false;
+
+            const videoTrack = localStream.getVideoTracks()[0];
+            if (videoTrack) videoTrack.enabled = false;
+
             addVideoStream(localStream, getUsername());
         } catch (error) {
             console.error('Error accessing media devices:', error);
@@ -697,6 +714,40 @@
         // Global media controls
         const muteMicBtn = document.getElementById('mute-mic-btn');
         const toggleVideoBtn = document.getElementById('toggle-video-btn');
+
+        // Clear Chat controls
+        const clearChatBtn = document.getElementById('clear-chat-btn');
+        const chatClearConfirmModal = document.getElementById('chat-clear-confirm-modal');
+        const chatClearConfirmAccept = document.getElementById('chat-clear-confirm-accept');
+        const chatClearConfirmCancel = document.getElementById('chat-clear-confirm-cancel');
+
+        if (clearChatBtn) {
+            clearChatBtn.addEventListener('click', () => {
+                chatClearConfirmModal.style.display = 'flex';
+            });
+        }
+
+        if (chatClearConfirmCancel) {
+            chatClearConfirmCancel.addEventListener('click', () => {
+                chatClearConfirmModal.style.display = 'none';
+            });
+        }
+
+        if (chatClearConfirmAccept) {
+            chatClearConfirmAccept.addEventListener('click', () => {
+                chatClearConfirmModal.style.display = 'none';
+                sendMessage({ type: 'clear-chat' });
+            });
+        }
+
+        // Close clear chat modal on backdrop click
+        if (chatClearConfirmModal) {
+            chatClearConfirmModal.addEventListener('click', (e) => {
+                if (e.target === chatClearConfirmModal) {
+                    chatClearConfirmModal.style.display = 'none';
+                }
+            });
+        }
 
         muteMicBtn.addEventListener('click', () => {
             const audioTrack = localStream.getAudioTracks()[0];

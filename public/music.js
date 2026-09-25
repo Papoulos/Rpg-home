@@ -84,7 +84,7 @@
             if (currentIndex === -1 && playlist.length > 0) {
                 sendMusicControl('play', { index: 0 });
             } else {
-                sendMusicControl('play', { index: currentIndex });
+                sendMusicControl('resume');
             }
         }
     }
@@ -210,7 +210,7 @@
             item.dataset.url = song.url || '';
             item.draggable = true;
 
-            const iconName = song.type === 'local' ? 'audio_file' : 'youtube_tv';
+            const iconName = song.type === 'local' ? 'audio_file' : 'youtube_activity';
             // Prevent XSS by creating elements or using textContent for user input
             const safeTitle = document.createElement('div');
             safeTitle.textContent = song.title || song.videoId;
@@ -226,7 +226,13 @@
             `;
             item.querySelector('.playlist-item-title').textContent = safeTitle.textContent;
 
-            item.addEventListener('click', () => sendMusicControl('play', { index }));
+            item.addEventListener('click', () => {
+                if (index === currentIndex) {
+                    handlePlayPauseClick();
+                } else {
+                    sendMusicControl('play', { index });
+                }
+            });
             item.querySelector('.btn-delete').addEventListener('click', (e) => {
                 e.stopPropagation();
                 sendMusicControl('playlist-remove', { videoId: song.videoId, url: song.url });
@@ -369,6 +375,17 @@
             case 'pause':
                 player.pauseVideo();
                 localAudioPlayer.pause();
+                break;
+            case 'resume':
+                if (currentIndex >= 0 && currentIndex < playlist.length) {
+                    const currentSong = playlist[currentIndex];
+                    if (currentSong.type === 'local') {
+                        localAudioPlayer.play();
+                    } else {
+                        player.playVideo();
+                    }
+                    updatePlaylistUI();
+                }
                 break;
             case 'volume':
                 player.setVolume(value.volume);
