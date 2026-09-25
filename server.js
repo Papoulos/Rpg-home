@@ -786,6 +786,22 @@ wss.on('connection', (ws) => {
                 }
                 break;
 
+            case 'clear-chat':
+                if (client && client.isMJ) {
+                    chatHistory = [];
+                    // Clear the content of the chat log file if it exists
+                    if (fs.existsSync(CHAT_LOG_FILE)) {
+                        try {
+                            fs.writeFileSync(CHAT_LOG_FILE, '');
+                            console.log(`[CHAT] Chat history cleared by MJ (${client.username}).`);
+                        } catch (err) {
+                            console.error('[CHAT] Error clearing chat log file:', err);
+                        }
+                    }
+                    broadcast({ type: 'chat-cleared' });
+                }
+                break;
+
             case 'chat':
             case 'dice':
             case 'game-roll':
