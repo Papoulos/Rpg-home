@@ -1105,10 +1105,21 @@ document.addEventListener('DOMContentLoaded', () => {
             let finalCost = cost - edge;
             if (finalCost < 0) finalCost = 0;
 
+            let currentPool = characterData.stats[currentRollStat].pool;
+
+            if (currentPool < finalCost || (currentPool === 0 && finalCost > 0)) {
+                if (window.sendMessage) {
+                    const charName = characterData.identity.name || "Le personnage";
+                    const statName = currentRollStat.charAt(0).toUpperCase() + currentRollStat.slice(1);
+                    window.sendMessage({ type: 'game-roll', system: 'Cypher System', message: `<em>${charName} n'a plus assez de ${statName} pour faire cet effort. (Coût: ${finalCost}, Restant: ${currentPool})</em>` });
+                }
+                closeRollModal();
+                return;
+            }
+
             command += ` /C ${finalCost}`;
 
             // Deduct from pool and update UI
-            let currentPool = characterData.stats[currentRollStat].pool;
             let newPool = currentPool - finalCost;
             if (newPool < 0) newPool = 0;
 
