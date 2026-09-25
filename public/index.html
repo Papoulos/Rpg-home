@@ -124,10 +124,15 @@
 
                         <!-- Add Song Section -->
                         <div id="music-add-section">
-                            <input type="text" id="youtube-url-input" placeholder="Coller une URL YouTube pour l'ajouter à la playlist...">
+                            <input type="text" id="youtube-url-input" placeholder="Coller une URL YouTube ou MP3...">
                             <button id="music-add-btn" class="control-btn btn-add" title="Ajouter à la playlist">
                                 <span class="material-symbols-outlined">playlist_add</span>
                             </button>
+                            <input type="file" id="music-upload-input" accept="audio/mpeg, audio/mp3" style="display:none">
+                            <button id="music-upload-btn" class="control-btn btn-upload" title="Uploader un fichier MP3 local">
+                                <span class="material-symbols-outlined">upload_file</span>
+                            </button>
+                            <audio id="local-audio-player" style="display:none"></audio>
                         </div>
 
                         <!-- Playlist Options -->
