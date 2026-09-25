@@ -666,6 +666,12 @@ wss.on('connection', (ws) => {
                         throw new Error('Invalid character data for saving.');
                     }
 
+                    // Verify authorization: only MJ or the character owner can update the sheet
+                    // The client variable is defined above using clients.get(ws)
+                    if (client && !client.isMJ && client.username !== charId) {
+                        throw new Error('Non autorisé à modifier ce personnage.');
+                    }
+
                     const filePath = path.join(CHARACTERS_DIR, `${charId}.json`);
                     fs.writeFileSync(filePath, JSON.stringify(charData, null, 2));
 
