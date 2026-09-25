@@ -507,26 +507,23 @@ function renderWeapons() {
 
     characterData.equipment.weapons.forEach((wpn, index) => {
         const item = createListItem(`
-            <div style="display:flex; flex-direction:column; width:100%; gap:5px;">
-                <div style="display:flex; gap:10px; width:100%;">
-                    <input type="text" class="wpn-name" value="${escapeHtml(wpn.name)}" placeholder="Arme">
-                    <select class="wpn-type">
-                        <option value="light" ${wpn.type === 'light' ? 'selected' : ''}>Légère (Light)</option>
-                        <option value="medium" ${wpn.type === 'medium' ? 'selected' : ''}>Moyenne (Medium)</option>
-                        <option value="heavy" ${wpn.type === 'heavy' ? 'selected' : ''}>Lourde (Heavy)</option>
-                    </select>
-                    <input type="number" class="wpn-damage" value="${wpn.damage || 0}" style="width:50px;" title="Dégâts">
-                    <button class="cs-delete-btn" data-type="weapon" data-index="${index}"><span class="material-symbols-outlined">close</span></button>
-                </div>
-                <input type="text" class="wpn-notes" value="${escapeHtml(wpn.notes || '')}" placeholder="Notes..." style="width:100%; font-size:0.8rem; background:#111;">
+            <div style="display:flex; gap:10px; width:100%; align-items:center;">
+                <input type="text" class="wpn-name" value="${escapeHtml(wpn.name)}" placeholder="Arme" style="flex-grow:1;">
+                <select class="wpn-type" style="width:90px;">
+                    <option value="light" ${wpn.type === 'light' ? 'selected' : ''}>Light</option>
+                    <option value="medium" ${wpn.type === 'medium' ? 'selected' : ''}>Medium</option>
+                    <option value="heavy" ${wpn.type === 'heavy' ? 'selected' : ''}>Heavy</option>
+                </select>
+                <input type="number" class="wpn-damage" value="${wpn.damage || 0}" style="width:40px;" title="Dégâts">
+                <span class="material-symbols-outlined cs-desc-icon" data-type="weapon" data-index="${index}" title="${escapeHtml(wpn.notes || 'Notes')}" style="cursor:pointer; color:#aaa; font-size: 1.2rem;">help</span>
+                <button class="cs-delete-btn" data-type="weapon" data-index="${index}"><span class="material-symbols-outlined">close</span></button>
             </div>
         `);
-        item.querySelectorAll('input, select').forEach(el => {
+        item.querySelectorAll('input:not(.wpn-notes), select').forEach(el => {
             el.addEventListener('change', () => {
                 wpn.name = item.querySelector('.wpn-name').value;
                 wpn.type = item.querySelector('.wpn-type').value;
                 wpn.damage = parseInt(item.querySelector('.wpn-damage').value) || 0;
-                wpn.notes = item.querySelector('.wpn-notes').value;
                 updateCharacterDataFromInputs();
             });
         });
@@ -541,18 +538,15 @@ function renderImplants() {
     if (characterData.equipment.implants) {
         characterData.equipment.implants.forEach((implant, index) => {
             const item = createListItem(`
-                <div style="display:flex; flex-direction:column; width:100%; gap:5px;">
-                    <div style="display:flex; gap:10px; width:100%; align-items:center;">
-                        <input type="text" class="imp-name" value="${escapeHtml(implant.name || '')}" placeholder="Nom de l'implant" style="flex-grow:1;">
-                        <button class="cs-delete-btn" data-type="implant" data-index="${index}"><span class="material-symbols-outlined">close</span></button>
-                    </div>
-                    <input type="text" class="imp-desc" value="${escapeHtml(implant.description || '')}" placeholder="Description..." style="width:100%; font-size:0.8rem; background:#111;">
+                <div style="display:flex; gap:10px; width:100%; align-items:center;">
+                    <input type="text" class="imp-name" value="${escapeHtml(implant.name || '')}" placeholder="Nom de l'implant" style="flex-grow:1;">
+                    <span class="material-symbols-outlined cs-desc-icon" data-type="implant" data-index="${index}" title="${escapeHtml(implant.description || 'Description')}" style="cursor:pointer; color:#aaa; font-size: 1.2rem;">help</span>
+                    <button class="cs-delete-btn" data-type="implant" data-index="${index}"><span class="material-symbols-outlined">close</span></button>
                 </div>
             `);
             item.querySelectorAll('input').forEach(el => {
                 el.addEventListener('change', () => {
                     implant.name = item.querySelector('.imp-name').value;
-                    implant.description = item.querySelector('.imp-desc').value;
                     updateCharacterDataFromInputs();
                 });
             });
@@ -568,20 +562,17 @@ function renderGeneralItems() {
     if (characterData.equipment.generalItems) {
         characterData.equipment.generalItems.forEach((itemObj, index) => {
             const item = createListItem(`
-                <div style="display:flex; flex-direction:column; width:100%; gap:5px;">
-                    <div style="display:flex; gap:10px; width:100%; align-items:center;">
-                        <input type="text" class="gi-name" value="${escapeHtml(itemObj.name || '')}" placeholder="Nom de l'objet" style="flex-grow:1;">
-                        <input type="text" class="gi-level" value="${escapeHtml(itemObj.level || '1')}" style="width:50px;" title="Niveau">
-                        <button class="cs-delete-btn" data-type="generalItem" data-index="${index}"><span class="material-symbols-outlined">close</span></button>
-                    </div>
-                    <input type="text" class="gi-desc" value="${escapeHtml(itemObj.description || '')}" placeholder="Description..." style="width:100%; font-size:0.8rem; background:#111;">
+                <div style="display:flex; gap:10px; width:100%; align-items:center;">
+                    <input type="text" class="gi-name" value="${escapeHtml(itemObj.name || '')}" placeholder="Nom de l'objet" style="flex-grow:1;">
+                    <input type="text" class="gi-level" value="${escapeHtml(itemObj.level || '1')}" style="width:50px;" title="Niveau">
+                    <span class="material-symbols-outlined cs-desc-icon" data-type="generalItem" data-index="${index}" title="${escapeHtml(itemObj.description || 'Description')}" style="cursor:pointer; color:#aaa; font-size: 1.2rem;">help</span>
+                    <button class="cs-delete-btn" data-type="generalItem" data-index="${index}"><span class="material-symbols-outlined">close</span></button>
                 </div>
             `);
             item.querySelectorAll('input').forEach(el => {
                 el.addEventListener('change', () => {
                     itemObj.name = item.querySelector('.gi-name').value;
                     itemObj.level = item.querySelector('.gi-level').value;
-                    itemObj.description = item.querySelector('.gi-desc').value;
                     updateCharacterDataFromInputs();
                 });
             });
@@ -599,21 +590,18 @@ function renderCyphers() {
     if (characterData.cyphers && characterData.cyphers.carried) {
         characterData.cyphers.carried.forEach((cypher, index) => {
             const item = createListItem(`
-                <div style="display:flex; flex-direction:column; width:100%; gap:5px;">
-                    <div style="display:flex; gap:10px; width:100%; align-items:center;">
-                        <input type="text" class="cy-name" value="${escapeHtml(cypher.name || '')}" placeholder="Nom du cypher" style="flex-grow:1;">
-                        <input type="text" class="cy-level" value="${escapeHtml(cypher.level || '1')}" style="width:50px;" title="Niveau">
-                        <label style="display:flex; align-items:center; gap:5px; font-size:0.8rem; cursor:pointer;"><input type="checkbox" class="cy-identified" ${cypher.identified ? 'checked' : ''}> Id.</label>
-                        <button class="cs-delete-btn" data-type="cypher" data-index="${index}"><span class="material-symbols-outlined">close</span></button>
-                    </div>
-                    <input type="text" class="cy-effect" value="${escapeHtml(cypher.effect || '')}" placeholder="Effet..." style="width:100%; font-size:0.8rem; background:#111;">
+                <div style="display:flex; gap:10px; width:100%; align-items:center;">
+                    <input type="text" class="cy-name" value="${escapeHtml(cypher.name || '')}" placeholder="Nom du cypher" style="flex-grow:1;">
+                    <input type="text" class="cy-level" value="${escapeHtml(cypher.level || '1')}" style="width:50px;" title="Niveau">
+                    <label style="display:flex; align-items:center; gap:5px; font-size:0.8rem; cursor:pointer;"><input type="checkbox" class="cy-identified" ${cypher.identified ? 'checked' : ''}> Id.</label>
+                    <span class="material-symbols-outlined cs-desc-icon" data-type="cypher" data-index="${index}" title="${escapeHtml(cypher.effect || 'Effet')}" style="cursor:pointer; color:#aaa; font-size: 1.2rem;">help</span>
+                    <button class="cs-delete-btn" data-type="cypher" data-index="${index}"><span class="material-symbols-outlined">close</span></button>
                 </div>
             `);
-            item.querySelectorAll('input').forEach(el => {
+            item.querySelectorAll('input:not(.cy-effect)').forEach(el => {
                 el.addEventListener('change', () => {
                     cypher.name = item.querySelector('.cy-name').value;
-                    cypher.level = item.querySelector('.cy-level').value; // Keep as string for ? or ranges
-                    cypher.effect = item.querySelector('.cy-effect').value;
+                    cypher.level = item.querySelector('.cy-level').value;
                     cypher.identified = item.querySelector('.cy-identified').checked;
                     updateCharacterDataFromInputs();
                 });
@@ -629,22 +617,19 @@ function renderArtifacts() {
 
     characterData.artifactsAndOddities.artifacts.forEach((artifact, index) => {
         const item = createListItem(`
-            <div style="display:flex; flex-direction:column; width:100%; gap:5px;">
-                <div style="display:flex; gap:10px; width:100%;">
-                    <input type="text" class="art-name" value="${escapeHtml(artifact.name || '')}" placeholder="Nom de l'artéfact" style="flex-grow:1;">
-                    <input type="text" class="art-level" value="${escapeHtml(artifact.level || '1')}" style="width:50px;" title="Niveau">
-                    <input type="text" class="art-depletion" value="${escapeHtml(artifact.depletion || '1 in 1d6')}" style="width:70px;" title="Depletion">
-                    <button class="cs-delete-btn" data-type="artifact" data-index="${index}"><span class="material-symbols-outlined">close</span></button>
-                </div>
-                <input type="text" class="art-effect" value="${escapeHtml(artifact.effect || '')}" placeholder="Effet..." style="width:100%; font-size:0.8rem; background:#111;">
+            <div style="display:flex; gap:10px; width:100%; align-items:center;">
+                <input type="text" class="art-name" value="${escapeHtml(artifact.name || '')}" placeholder="Nom de l'artéfact" style="flex-grow:1;">
+                <input type="text" class="art-level" value="${escapeHtml(artifact.level || '1')}" style="width:40px;" title="Niveau">
+                <input type="text" class="art-depletion" value="${escapeHtml(artifact.depletion || '1 in 1d6')}" style="width:60px;" title="Depletion">
+                <span class="material-symbols-outlined cs-desc-icon" data-type="artifact" data-index="${index}" title="${escapeHtml(artifact.effect || 'Effet')}" style="cursor:pointer; color:#aaa; font-size: 1.2rem;">help</span>
+                <button class="cs-delete-btn" data-type="artifact" data-index="${index}"><span class="material-symbols-outlined">close</span></button>
             </div>
         `);
-        item.querySelectorAll('input').forEach(el => {
+        item.querySelectorAll('input:not(.art-effect)').forEach(el => {
             el.addEventListener('change', () => {
                 artifact.name = item.querySelector('.art-name').value;
                 artifact.level = item.querySelector('.art-level').value;
                 artifact.depletion = item.querySelector('.art-depletion').value;
-                artifact.effect = item.querySelector('.art-effect').value;
                 updateCharacterDataFromInputs();
             });
         });
@@ -658,8 +643,11 @@ function renderOddities() {
 
     characterData.artifactsAndOddities.oddities.forEach((oddity, index) => {
         const item = createListItem(`
-            <input type="text" class="odd-name" value="${escapeHtml(oddity.name || '')}" placeholder="Description de l'oddity" style="flex-grow:1;">
-            <button class="cs-delete-btn" data-type="oddity" data-index="${index}"><span class="material-symbols-outlined">close</span></button>
+            <div style="display:flex; gap:10px; width:100%; align-items:center;">
+                <input type="text" class="odd-name" value="${escapeHtml(oddity.name || '')}" placeholder="Nom de l'oddity" style="flex-grow:1;">
+                <span class="material-symbols-outlined cs-desc-icon" data-type="oddity" data-index="${index}" title="${escapeHtml(oddity.description || 'Description')}" style="cursor:pointer; color:#aaa; font-size: 1.2rem;">help</span>
+                <button class="cs-delete-btn" data-type="oddity" data-index="${index}"><span class="material-symbols-outlined">close</span></button>
+            </div>
         `);
         item.querySelectorAll('input').forEach(el => {
             el.addEventListener('change', () => {
@@ -1018,20 +1006,42 @@ document.addEventListener('DOMContentLoaded', () => {
     const descBtnCancel = document.getElementById('cs-desc-modal-cancel');
     const descBtnConfirm = document.getElementById('cs-desc-modal-confirm');
     let currentDescIndex = -1;
+    let currentDescType = '';
 
     function closeDescModal() {
         descModal.style.display = 'none';
         descModalText.value = '';
         currentDescIndex = -1;
+        currentDescType = '';
     }
 
     descBtnCancel.addEventListener('click', closeDescModal);
 
     descBtnConfirm.addEventListener('click', () => {
-        if (currentDescIndex >= 0 && characterData.abilities[currentDescIndex]) {
-            characterData.abilities[currentDescIndex].description = descModalText.value;
+        if (currentDescIndex >= 0) {
+            if (currentDescType === 'ability' && characterData.abilities[currentDescIndex]) {
+                characterData.abilities[currentDescIndex].description = descModalText.value;
+                renderAbilities(); // Re-render to update the tooltip
+            } else if (currentDescType === 'weapon' && characterData.equipment.weapons[currentDescIndex]) {
+                characterData.equipment.weapons[currentDescIndex].notes = descModalText.value;
+                renderWeapons();
+            } else if (currentDescType === 'implant' && characterData.equipment.implants[currentDescIndex]) {
+                characterData.equipment.implants[currentDescIndex].description = descModalText.value;
+                renderImplants();
+            } else if (currentDescType === 'generalItem' && characterData.equipment.generalItems[currentDescIndex]) {
+                characterData.equipment.generalItems[currentDescIndex].description = descModalText.value;
+                renderGeneralItems();
+            } else if (currentDescType === 'cypher' && characterData.cyphers && characterData.cyphers.carried[currentDescIndex]) {
+                characterData.cyphers.carried[currentDescIndex].effect = descModalText.value;
+                renderCyphers();
+            } else if (currentDescType === 'artifact' && characterData.artifactsAndOddities.artifacts[currentDescIndex]) {
+                characterData.artifactsAndOddities.artifacts[currentDescIndex].effect = descModalText.value;
+                renderArtifacts();
+            } else if (currentDescType === 'oddity' && characterData.artifactsAndOddities.oddities[currentDescIndex]) {
+                characterData.artifactsAndOddities.oddities[currentDescIndex].description = descModalText.value;
+                renderOddities();
+            }
             saveToLocalStorage();
-            renderAbilities(); // Re-render to update the tooltip
         }
         closeDescModal();
     });
@@ -1136,11 +1146,44 @@ document.addEventListener('DOMContentLoaded', () => {
         // Clic sur l'icône de description
         if (e.target.classList.contains('cs-desc-icon')) {
             const index = parseInt(e.target.getAttribute('data-index'));
-            if (!isNaN(index) && characterData.abilities[index]) {
+            let type = e.target.getAttribute('data-type');
+            if (!type) {
+                // Backward compatibility for abilities which didn't have data-type before
+                type = 'ability';
+            }
+
+            if (!isNaN(index)) {
                 currentDescIndex = index;
-                const ability = characterData.abilities[index];
-                descModalTitle.textContent = `Description : ${ability.name || 'Capacité'}`;
-                descModalText.value = ability.description || '';
+                currentDescType = type;
+
+                let title = "Description";
+                let text = "";
+
+                if (type === 'ability' && characterData.abilities[index]) {
+                    title = `Description : ${characterData.abilities[index].name || 'Capacité'}`;
+                    text = characterData.abilities[index].description || '';
+                } else if (type === 'weapon' && characterData.equipment.weapons[index]) {
+                    title = `Notes : ${characterData.equipment.weapons[index].name || 'Arme'}`;
+                    text = characterData.equipment.weapons[index].notes || '';
+                } else if (type === 'implant' && characterData.equipment.implants[index]) {
+                    title = `Description : ${characterData.equipment.implants[index].name || 'Implant'}`;
+                    text = characterData.equipment.implants[index].description || '';
+                } else if (type === 'generalItem' && characterData.equipment.generalItems[index]) {
+                    title = `Description : ${characterData.equipment.generalItems[index].name || 'Objet'}`;
+                    text = characterData.equipment.generalItems[index].description || '';
+                } else if (type === 'cypher' && characterData.cyphers && characterData.cyphers.carried[index]) {
+                    title = `Effet : ${characterData.cyphers.carried[index].name || 'Cypher'}`;
+                    text = characterData.cyphers.carried[index].effect || '';
+                } else if (type === 'artifact' && characterData.artifactsAndOddities.artifacts[index]) {
+                    title = `Effet : ${characterData.artifactsAndOddities.artifacts[index].name || 'Artéfact'}`;
+                    text = characterData.artifactsAndOddities.artifacts[index].effect || '';
+                } else if (type === 'oddity' && characterData.artifactsAndOddities.oddities[index]) {
+                    title = `Description : ${characterData.artifactsAndOddities.oddities[index].name || 'Oddity'}`;
+                    text = characterData.artifactsAndOddities.oddities[index].description || '';
+                }
+
+                descModalTitle.textContent = title;
+                descModalText.value = text;
                 descModal.style.display = 'flex';
                 descModalText.focus();
             }
@@ -1212,7 +1255,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (damageTrackState === 'debilitated' && stat !== 'might') {
                 if (window.sendMessage) {
                     const charName = characterData.identity.name || "Le personnage";
-                    window.sendMessage({ type: 'chat', message: `<em>${charName} tente d'utiliser ${rollName}, mais échoue car il est Débilité (Debilitated) et ne peut faire que des actions de Might ou ramper.</em>` });
+                    window.sendMessage({ type: 'chat', message: `<em>${charName} tente d'utiliser ${rollName}, mais échoue car il est Debilitated et ne peut faire que des actions de Might ou ramper.</em>` });
                 }
                 return;
             }
