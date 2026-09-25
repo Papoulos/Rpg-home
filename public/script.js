@@ -44,8 +44,7 @@
         const mjConfirmAccept = document.getElementById('mj-confirm-accept');
         const mjConfirmCancel = document.getElementById('mj-confirm-cancel');
         const charactersList = document.getElementById('login-characters-list');
-        const newCharName = document.getElementById('newCharName');
-        const newCharBtn = document.getElementById('newCharBtn');
+
 
         // Show MJ confirm modal
         loginMjBtn.addEventListener('click', () => {
@@ -65,51 +64,7 @@
             finishLogin();
         });
 
-        // Create new character
-        newCharBtn.addEventListener('click', () => {
-            const name = newCharName.value.trim();
-            if (name) {
-                // We will send a request to create/update character once WebSocket is ready,
-                // but for now, we set the username and hide login. The actual creation
-                // will be handled in the character-sheet.js when rendering an empty sheet.
-                // However, we should send an update-character to server to initialize it.
-                setUsername(name);
-                window.userPortraitUrl = 'https://via.placeholder.com/100?text=?';
 
-                // Initialize default character
-                const newCharData = JSON.parse(JSON.stringify(window.defaultCharacterData || { identity: {} }));
-                if (!newCharData.identity) {
-                    newCharData.identity = {};
-                }
-                newCharData.identity.name = name;
-
-                // We must ensure the socket is connected before sending
-                if (socket && socket.readyState === WebSocket.OPEN) {
-                   socket.send(JSON.stringify({
-                       type: 'update-character',
-                       id: name,
-                       data: newCharData
-                   }));
-                   socket.send(JSON.stringify({ type: 'load-character', id: name }));
-                } else {
-                   // If socket isn't ready yet, save it to send later
-                   window.pendingCharacterCreation = { id: name, data: newCharData };
-                   window.pendingCharacterLoad = name;
-                }
-
-                // Also store it locally for immediate rendering
-                localStorage.setItem('cypherCharacterData', JSON.stringify(newCharData));
-
-                finishLogin();
-            }
-        });
-
-        // Add Enter key listener for new character
-        newCharName.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                newCharBtn.click();
-            }
-        });
 
         // Function to render character cards
         window.renderLoginCharacters = function(characters) {
