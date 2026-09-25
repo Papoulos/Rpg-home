@@ -616,6 +616,14 @@
     async function setupLocalMedia() {
         try {
             localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+
+            // Disable video and audio tracks by default upon connection
+            const audioTrack = localStream.getAudioTracks()[0];
+            if (audioTrack) audioTrack.enabled = false;
+
+            const videoTrack = localStream.getVideoTracks()[0];
+            if (videoTrack) videoTrack.enabled = false;
+
             addVideoStream(localStream, getUsername());
         } catch (error) {
             console.error('Error accessing media devices:', error);
