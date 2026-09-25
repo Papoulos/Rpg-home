@@ -1255,7 +1255,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (damageTrackState === 'debilitated' && stat !== 'might') {
                 if (window.sendMessage) {
                     const charName = characterData.identity.name || "Le personnage";
-                    window.sendMessage({ type: 'chat', message: `<em>${charName} tente d'utiliser ${rollName}, mais échoue car il est Debilitated et ne peut faire que des actions de Might ou ramper.</em>` });
+                    window.sendMessage({ type: 'game-roll', system: 'Cypher System', message: `<em>${charName} tente d'utiliser ${rollName}, mais échoue car il est Debilitated et ne peut faire que des actions de Might ou ramper.</em>` });
                 }
                 return;
             }
