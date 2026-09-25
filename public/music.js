@@ -99,7 +99,7 @@
             youtubeUrlInput.placeholder = 'Téléchargement du MP3...';
 
             try {
-                const response = await fetch('/download-music-url', {
+                const response = await fetch('./download-music-url', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ url })
@@ -183,7 +183,7 @@
         musicUploadBtn.disabled = true;
 
         try {
-            const response = await fetch('/upload-music', {
+            const response = await fetch('./upload-music', {
                 method: 'POST',
                 body: formData
             });
