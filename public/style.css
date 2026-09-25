@@ -136,6 +136,11 @@ body, html {
     margin-bottom: 15px;
 }
 
+.system-event-message {
+    margin-bottom: 8px;
+    margin-top: 8px;
+}
+
 /* --- Panel Toggle Buttons --- */
 #toggle-chat-btn, #toggle-video-panel-btn {
     position: fixed;
