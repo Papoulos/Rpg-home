@@ -69,16 +69,17 @@
         // Function to render character cards
         window.renderLoginCharacters = function(characters) {
             charactersList.innerHTML = '';
+            const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23444"/><text x="50" y="50" font-family="Arial" font-size="40" fill="white" dominant-baseline="middle" text-anchor="middle">?</text></svg>';
             characters.forEach(char => {
                 const card = document.createElement('div');
                 card.className = 'character-card';
                 card.innerHTML = `
-                    <img src="${char.portraitUrl || 'https://via.placeholder.com/100?text=?'}" class="character-portrait" alt="${char.name}">
+                    <img src="${char.portraitUrl || defaultAvatar}" class="character-portrait" alt="${char.name}">
                     <div class="character-name">${char.name}</div>
                 `;
                 card.addEventListener('click', async () => {
                     setUsername(char.name);
-                    window.userPortraitUrl = char.portraitUrl || 'https://via.placeholder.com/100?text=?';
+                    window.userPortraitUrl = char.portraitUrl || defaultAvatar;
 
                     // Request to load this character
                     if (socket && socket.readyState === WebSocket.OPEN) {
@@ -120,7 +121,8 @@
                 messageContent = `<span class="material-symbols-outlined" style="vertical-align: middle; font-size: 20px; margin-right: 5px;">shield_person</span> MJ s'est connecté - Bienvenue`;
             } else {
                 const imgStyle = 'width: 24px; height: 24px; border-radius: 50%; vertical-align: middle; margin-right: 8px; object-fit: cover;';
-                messageContent = `<img src="${window.userPortraitUrl || 'https://via.placeholder.com/100?text=?'}" style="${imgStyle}" alt="Portrait"> ${getUsername()} s'est connecté - Bienvenue`;
+                const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23444"/><text x="50" y="50" font-family="Arial" font-size="40" fill="white" dominant-baseline="middle" text-anchor="middle">?</text></svg>';
+                messageContent = `<img src="${window.userPortraitUrl || defaultAvatar}" style="${imgStyle}" alt="Portrait"> ${getUsername()} s'est connecté - Bienvenue`;
             }
 
             sendMessage({
