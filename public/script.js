@@ -44,6 +44,8 @@
         const mjConfirmAccept = document.getElementById('mj-confirm-accept');
         const mjConfirmCancel = document.getElementById('mj-confirm-cancel');
         const charactersList = document.getElementById('login-characters-list');
+        const newCharName = document.getElementById('newCharName');
+        const newCharBtn = document.getElementById('newCharBtn');
 
         // Show MJ confirm modal
         loginMjBtn.addEventListener('click', () => {
@@ -153,20 +155,21 @@
     }
 
     function checkAndSendConnectionMessage() {
-        if (!window.connectionMessageSent && getUsername()) {
-            window.connectionMessageSent = true;
+        if (!sessionStorage.getItem('hasSentWelcome') && getUsername()) {
+            sessionStorage.setItem('hasSentWelcome', 'true');
 
             let messageContent = '';
             if (getUsername() === 'MJ') {
-                messageContent = `<span class="material-symbols-outlined" style="vertical-align: middle; font-size: 20px; margin-right: 5px;">shield_person</span> <strong>MJ</strong>&nbsp;s'est connecté - Bienvenue`;
+                messageContent = `<span class="material-symbols-outlined" style="vertical-align: middle; font-size: 20px; margin-right: 5px;">shield_person</span> MJ s'est connecté - Bienvenue`;
             } else {
                 const imgStyle = 'width: 24px; height: 24px; border-radius: 50%; vertical-align: middle; margin-right: 8px; object-fit: cover;';
-                messageContent = `<img src="${window.userPortraitUrl || 'https://via.placeholder.com/100?text=?'}" style="${imgStyle}" alt="Portrait"> <strong>${getUsername()}</strong>&nbsp;s'est connecté - Bienvenue`;
+                messageContent = `<img src="${window.userPortraitUrl || 'https://via.placeholder.com/100?text=?'}" style="${imgStyle}" alt="Portrait"> ${getUsername()} s'est connecté - Bienvenue`;
             }
 
             sendMessage({
                 type: 'chat',
-                message: `<div style="color: #888; font-style: italic; display: flex; align-items: center;">${messageContent}</div>`,
+                sender: 'System',
+                message: messageContent,
                 isSystemEvent: true
             });
         }
