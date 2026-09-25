@@ -26,6 +26,71 @@ const limiter = rateLimit({
 app.use(limiter);
 app.use(express.json());
 
+// --- MP3 Upload and Download Routes ---
+const musicDir = path.join(__dirname, 'data/music');
+if (!fs.existsSync(musicDir)) {
+    fs.mkdirSync(musicDir, { recursive: true });
+}
+app.use('/music', express.static(musicDir));
+
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, musicDir)
+    },
+    filename: function (req, file, cb) {
+        // Sanitize the filename to prevent path traversal
+        const sanitizedOriginalName = path.basename(file.originalname);
+        cb(null, Date.now() + '-' + sanitizedOriginalName)
+    }
+});
+const upload = multer({
+    storage: storage,
+    limits: { fileSize: 50 * 1024 * 1024 } // 50 MB limit
+});
+
+app.post('/upload-music', upload.single('musicFile'), (req, res) => {
+    if (!req.file) {
+        return res.status(400).send('No file uploaded.');
+    }
+    res.json({ url: '/music/' + req.file.filename, filename: path.basename(req.file.originalname) });
+});
+
+app.post('/download-music-url', async (req, res) => {
+    const urlStr = req.body.url;
+    if (!urlStr || (!urlStr.startsWith('http://') && !urlStr.startsWith('https://'))) {
+        return res.status(400).send('Invalid URL.');
+    }
+
+    try {
+        const parsedUrl = new URL(urlStr);
+        // Prevent SSRF by disallowing localhost, loopback, private IPs
+        const hostname = parsedUrl.hostname;
+        if (hostname === 'localhost' || hostname.startsWith('127.') || hostname.startsWith('10.') ||
+            hostname.startsWith('192.168.') || hostname.startsWith('169.254.') ||
+            (hostname.startsWith('172.') && parseInt(hostname.split('.')[1]) >= 16 && parseInt(hostname.split('.')[1]) <= 31)) {
+            return res.status(403).send('URL points to a restricted address.');
+        }
+
+        const response = await axios({
+            method: 'get',
+            url: urlStr,
+            responseType: 'stream'
+        });
+
+        const filename = Date.now() + '-downloaded.mp3';
+        const dest = path.join(musicDir, filename);
+        const writer = fs.createWriteStream(dest);
+
+        response.data.pipe(writer);
+        writer.on('finish', () => res.json({ url: '/music/' + filename, filename: filename }));
+        writer.on('error', () => res.status(500).send('Error saving file.'));
+    } catch (err) {
+        console.error('Error downloading music:', err.message);
+        res.status(500).send('Failed to download from URL.');
+    }
+});
+
+
 let apiKeys = {};
 let server; // To be defined after config is loaded
 
@@ -821,68 +886,6 @@ wss.on('connection', (ws) => {
 
 // --- HTTP Server ---
 app.use(express.static(path.join(__dirname, 'public')));
-const musicDir = path.join(__dirname, 'data/music');
-if (!fs.existsSync(musicDir)) {
-    fs.mkdirSync(musicDir, { recursive: true });
-}
-app.use('/music', express.static(musicDir));
-
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, musicDir)
-    },
-    filename: function (req, file, cb) {
-        // Sanitize the filename to prevent path traversal
-        const sanitizedOriginalName = path.basename(file.originalname);
-        cb(null, Date.now() + '-' + sanitizedOriginalName)
-    }
-});
-const upload = multer({
-    storage: storage,
-    limits: { fileSize: 50 * 1024 * 1024 } // 50 MB limit
-});
-
-app.post('/upload-music', upload.single('musicFile'), (req, res) => {
-    if (!req.file) {
-        return res.status(400).send('No file uploaded.');
-    }
-    res.json({ url: '/music/' + req.file.filename, filename: path.basename(req.file.originalname) });
-});
-
-app.post('/download-music-url', async (req, res) => {
-    const urlStr = req.body.url;
-    if (!urlStr || (!urlStr.startsWith('http://') && !urlStr.startsWith('https://'))) {
-        return res.status(400).send('Invalid URL.');
-    }
-
-    try {
-        const parsedUrl = new URL(urlStr);
-        // Prevent SSRF by disallowing localhost, loopback, private IPs
-        const hostname = parsedUrl.hostname;
-        if (hostname === 'localhost' || hostname.startsWith('127.') || hostname.startsWith('10.') ||
-            hostname.startsWith('192.168.') || hostname.startsWith('169.254.') ||
-            (hostname.startsWith('172.') && parseInt(hostname.split('.')[1]) >= 16 && parseInt(hostname.split('.')[1]) <= 31)) {
-            return res.status(403).send('URL points to a restricted address.');
-        }
-
-        const response = await axios({
-            method: 'get',
-            url: urlStr,
-            responseType: 'stream'
-        });
-
-        const filename = Date.now() + '-downloaded.mp3';
-        const dest = path.join(musicDir, filename);
-        const writer = fs.createWriteStream(dest);
-
-        response.data.pipe(writer);
-        writer.on('finish', () => res.json({ url: '/music/' + filename, filename: filename }));
-        writer.on('error', () => res.status(500).send('Error saving file.'));
-    } catch (err) {
-        console.error('Error downloading music:', err.message);
-        res.status(500).send('Failed to download from URL.');
-    }
-});
 
 const MJ_WIKI_DIR = path.join(WIKI_DIR, 'mj');
 
