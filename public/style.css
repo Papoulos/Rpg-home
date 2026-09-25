@@ -81,22 +81,6 @@ body, html {
     border-top: 1px solid #444;
 }
 
-.login-new-character {
-    display: flex;
-    gap: 10px;
-    justify-content: center;
-    margin-top: 20px;
-}
-
-.login-new-character input {
-    padding: 10px;
-    border-radius: 4px;
-    border: 1px solid #555;
-    background-color: #1a1a1a;
-    color: #fff;
-    width: 250px;
-}
-
 /* Conteneur principal avec Flexbox */
 .container {
     display: flex;

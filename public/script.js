@@ -43,8 +43,6 @@
         const mjConfirmModal = document.getElementById('mj-confirm-modal');
         const mjConfirmAccept = document.getElementById('mj-confirm-accept');
         const mjConfirmCancel = document.getElementById('mj-confirm-cancel');
-        const newCharBtn = document.getElementById('login-new-char-btn');
-        const newCharName = document.getElementById('login-new-char-name');
         const charactersList = document.getElementById('login-characters-list');
 
         // Show MJ confirm modal
@@ -412,16 +410,6 @@
 
             // Request character list for login screen
             socket.send(JSON.stringify({ type: 'get-characters' }));
-
-            // If we have a pending character creation, send it now
-            if (window.pendingCharacterCreation) {
-                socket.send(JSON.stringify({
-                    type: 'update-character',
-                    id: window.pendingCharacterCreation.id,
-                    data: window.pendingCharacterCreation.data
-                }));
-                window.pendingCharacterCreation = null;
-            }
 
             // If we have a pending character load, send it now
             if (window.pendingCharacterLoad) {
