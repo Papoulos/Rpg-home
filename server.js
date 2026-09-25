@@ -687,10 +687,27 @@ wss.on('connection', (ws) => {
                         break;
 
                     case 'pause':
-                        musicState.isPlaying = false;
-                        musicState.pauseTime = Date.now();
-                        updatePayload.action = 'pause';
-                        broadcast(updatePayload);
+                        if (musicState.isPlaying) {
+                            musicState.isPlaying = false;
+                            musicState.pauseTime = Date.now();
+                            updatePayload.action = 'pause';
+                            broadcast(updatePayload);
+                        }
+                        break;
+
+                    case 'resume':
+                        if (!musicState.isPlaying && musicState.currentIndex !== -1) {
+                            musicState.isPlaying = true;
+                            if (musicState.pauseTime && musicState.startTime) {
+                                // Shift startTime forward by the amount of time we were paused
+                                musicState.startTime += (Date.now() - musicState.pauseTime);
+                            } else if (!musicState.startTime) {
+                                musicState.startTime = Date.now();
+                            }
+                            musicState.pauseTime = null;
+                            updatePayload.action = 'resume';
+                            broadcast(updatePayload);
+                        }
                         break;
 
                     case 'volume':
