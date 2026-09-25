@@ -73,7 +73,7 @@
                 if (malus > 0) paramsLine.push(`Malus : ${malus} (-${malus * 3})`);
                 if (skillBonus !== 0) paramsLine.push(`Compétence : ${skillBonus > 0 ? '+' + skillBonus : skillBonus}`);
                 if (statusPenalty !== 0) paramsLine.push(`État : ${statusPenalty}`);
-                if (impaired > 0) paramsLine.push(`État : Diminué (Impaired)`);
+                if (impaired > 0) paramsLine.push(`État : Impaired`);
                 if (bonus !== 0) paramsLine.push(`Divers : ${bonus > 0 ? '+' + bonus : bonus}`);
 
                 if (paramsLine.length > 0) {
