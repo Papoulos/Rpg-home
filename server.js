@@ -668,7 +668,7 @@ wss.on('connection', (ws) => {
 
                     // Verify authorization: only MJ or the character owner can update the sheet
                     // The client variable is defined above using clients.get(ws)
-                    if (client && !client.isMJ && client.username !== charId) {
+                    if (!client || (!client.isMJ && client.username !== charId)) {
                         throw new Error('Non autorisé à modifier ce personnage.');
                     }
 
