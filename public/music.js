@@ -10,7 +10,8 @@
 
     // --- DOM Elements ---
     let musicContainer, musicMainControls, musicCurrentTitle, musicPlayPauseBtn,
-        musicVolumeSlider, youtubeUrlInput, musicAddBtn, musicLoopToggle, musicPlaylistContainer;
+        musicVolumeSlider, youtubeUrlInput, musicAddBtn, musicLoopToggle, musicPlaylistContainer,
+        musicUploadBtn, musicUploadInput, localAudioPlayer;
 
     // --- YouTube Player API Functions ---
 
@@ -34,8 +35,11 @@
     }
 
     function onPlayerStateChange(event) {
-        updatePlayPauseIcon(event.data);
-        if (event.data === YT.PlayerState.ENDED) {
+        // Handle both YouTube events (event.data) and native audio events
+        const state = event && event.data !== undefined ? event.data : null;
+        updatePlayPauseIcon(state);
+
+        if (state === YT.PlayerState.ENDED || (event && event.type === 'ended')) {
             playNextSong();
         }
     }
@@ -71,8 +75,10 @@
     }
 
     function handlePlayPauseClick() {
+        const isLocalPlaying = localAudioPlayer && !localAudioPlayer.paused;
         const playerState = player && typeof player.getPlayerState === 'function' ? player.getPlayerState() : -1;
-        if (playerState === YT.PlayerState.PLAYING) {
+
+        if (playerState === YT.PlayerState.PLAYING || isLocalPlaying) {
             sendMusicControl('pause');
         } else {
             if (currentIndex === -1 && playlist.length > 0) {
@@ -83,9 +89,32 @@
         }
     }
 
-    function handleAddClick() {
+    async function handleAddClick() {
         const url = youtubeUrlInput.value.trim();
         if (!url) return;
+
+        if (url.endsWith('.mp3')) {
+            musicAddBtn.disabled = true;
+            youtubeUrlInput.value = '';
+            youtubeUrlInput.placeholder = 'Téléchargement du MP3...';
+
+            try {
+                const response = await fetch('/download-music-url', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url })
+                });
+                if (!response.ok) throw new Error('Download failed');
+                const data = await response.json();
+                sendMusicControl('playlist-add', { videoId: data.url, title: data.filename, type: 'local', url: data.url });
+            } catch (err) {
+                alert("Erreur lors du téléchargement du MP3: " + err.message);
+            } finally {
+                cleanupTempPlayer();
+            }
+            return;
+        }
+
         const videoId = getYouTubeVideoId(url);
 
         if (videoId) {
@@ -120,7 +149,7 @@
 
     function cleanupTempPlayer(targetPlayer, container) {
         musicAddBtn.disabled = false;
-        youtubeUrlInput.placeholder = 'Coller une URL YouTube pour l\'ajouter à la playlist...';
+        youtubeUrlInput.placeholder = 'Coller une URL YouTube ou MP3...';
         if (targetPlayer && typeof targetPlayer.destroy === 'function') {
             targetPlayer.destroy();
         }
@@ -144,6 +173,31 @@
         return match ? match[1] : null;
     }
 
+    async function handleMusicUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('musicFile', file);
+
+        musicUploadBtn.disabled = true;
+
+        try {
+            const response = await fetch('/upload-music', {
+                method: 'POST',
+                body: formData
+            });
+            if (!response.ok) throw new Error('Upload failed');
+            const data = await response.json();
+            sendMusicControl('playlist-add', { videoId: data.url, title: data.filename, type: 'local', url: data.url });
+        } catch (err) {
+            alert("Erreur lors de l'upload: " + err.message);
+        } finally {
+            musicUploadBtn.disabled = false;
+            event.target.value = '';
+        }
+    }
+
     // --- UI Rendering ---
 
     function renderPlaylist() {
@@ -153,21 +207,29 @@
             item.className = 'playlist-item';
             item.dataset.index = index;
             item.dataset.videoId = song.videoId;
+            item.dataset.url = song.url || '';
             item.draggable = true;
 
+            const iconName = song.type === 'local' ? 'audio_file' : 'youtube_tv';
+            // Prevent XSS by creating elements or using textContent for user input
+            const safeTitle = document.createElement('div');
+            safeTitle.textContent = song.title || song.videoId;
+
             item.innerHTML = `
-                <span class="playlist-item-title">${song.title || song.videoId}</span>
+                <span class="playlist-item-icon material-symbols-outlined">${iconName}</span>
+                <span class="playlist-item-title"></span>
                 <div class="playlist-item-controls">
                     <button class="control-btn btn-delete" title="Supprimer">
                         <span class="material-symbols-outlined">delete</span>
                     </button>
                 </div>
             `;
+            item.querySelector('.playlist-item-title').textContent = safeTitle.textContent;
 
             item.addEventListener('click', () => sendMusicControl('play', { index }));
             item.querySelector('.btn-delete').addEventListener('click', (e) => {
                 e.stopPropagation();
-                sendMusicControl('playlist-remove', { videoId: song.videoId });
+                sendMusicControl('playlist-remove', { videoId: song.videoId, url: song.url });
             });
 
             item.addEventListener('dragstart', handleDragStart);
@@ -199,7 +261,9 @@
         const icon = musicPlayPauseBtn.querySelector('.material-symbols-outlined');
         if (!icon) return;
 
-        if (state === YT.PlayerState.PLAYING) {
+        const isLocalPlaying = localAudioPlayer && !localAudioPlayer.paused;
+
+        if (state === YT.PlayerState.PLAYING || isLocalPlaying) {
             icon.textContent = 'pause';
         } else {
             icon.textContent = 'play_arrow';
@@ -234,7 +298,7 @@
         const newOrderedPlaylist = [];
         const items = musicPlaylistContainer.querySelectorAll('.playlist-item');
         items.forEach(item => {
-            newOrderedPlaylist.push(playlist.find(song => song.videoId === item.dataset.videoId));
+            newOrderedPlaylist.push(playlist.find(song => song.videoId === item.dataset.videoId && (song.url || '') === item.dataset.url));
         });
         playlist = newOrderedPlaylist;
 
@@ -270,6 +334,8 @@
             musicAddBtn.addEventListener('click', handleAddClick);
             musicLoopToggle.addEventListener('change', handleLoopToggle);
             musicVolumeSlider.addEventListener('input', handleVolumeChange);
+            musicUploadBtn.addEventListener('click', () => musicUploadInput.click());
+            musicUploadInput.addEventListener('change', handleMusicUpload);
         } else {
             musicContainer.classList.add('hidden');
         }
@@ -285,16 +351,28 @@
             case 'play':
                 if (value.index >= 0 && value.index < playlist.length) {
                     currentIndex = value.index;
-                    player.loadVideoById(playlist[currentIndex].videoId);
-                    player.playVideo();
+                    const currentSong = playlist[currentIndex];
+
+                    if (currentSong.type === 'local') {
+                        player.pauseVideo();
+                        localAudioPlayer.src = currentSong.url;
+                        localAudioPlayer.volume = isMJ ? musicVolumeSlider.value / 100 : (value.volume || 100) / 100;
+                        localAudioPlayer.play();
+                    } else {
+                        localAudioPlayer.pause();
+                        player.loadVideoById(currentSong.videoId);
+                        player.playVideo();
+                    }
                     updatePlaylistUI();
                 }
                 break;
             case 'pause':
                 player.pauseVideo();
+                localAudioPlayer.pause();
                 break;
             case 'volume':
                 player.setVolume(value.volume);
+                localAudioPlayer.volume = value.volume / 100;
                 if (isMJ) musicVolumeSlider.value = value.volume;
                 break;
             case 'playlist-update':
@@ -316,12 +394,23 @@
                 renderPlaylist();
 
                 if (currentIndex >= 0 && currentIndex < playlist.length) {
-                    player.loadVideoById(playlist[currentIndex].videoId, value.currentTime);
-                    player.setVolume(value.volume);
-                    if (value.isPlaying) {
-                        player.playVideo();
-                    } else {
+                    const currentSong = playlist[currentIndex];
+                    if (currentSong.type === 'local') {
                         player.pauseVideo();
+                        localAudioPlayer.src = currentSong.url;
+                        localAudioPlayer.currentTime = value.currentTime;
+                        localAudioPlayer.volume = value.volume / 100;
+                        if (value.isPlaying) localAudioPlayer.play();
+                        else localAudioPlayer.pause();
+                    } else {
+                        localAudioPlayer.pause();
+                        player.loadVideoById(currentSong.videoId, value.currentTime);
+                        player.setVolume(value.volume);
+                        if (value.isPlaying) {
+                            player.playVideo();
+                        } else {
+                            player.pauseVideo();
+                        }
                     }
                 }
                 updatePlaylistUI();
@@ -352,6 +441,13 @@
         musicAddBtn = document.getElementById('music-add-btn');
         musicLoopToggle = document.getElementById('music-loop-toggle');
         musicPlaylistContainer = document.getElementById('music-playlist');
+        musicUploadBtn = document.getElementById('music-upload-btn');
+        musicUploadInput = document.getElementById('music-upload-input');
+        localAudioPlayer = document.getElementById('local-audio-player');
+
+        localAudioPlayer.addEventListener('play', () => updatePlayPauseIcon());
+        localAudioPlayer.addEventListener('pause', () => updatePlayPauseIcon());
+        localAudioPlayer.addEventListener('ended', onPlayerStateChange); // Trigger next song if ended
 
         window.onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
         loadYoutubeAPI();

@@ -370,6 +370,13 @@ body, html {
     background-color: #45a049;
 }
 
+.btn-upload {
+    background-color: #2196F3;
+}
+.btn-upload:hover {
+    background-color: #0b7dda;
+}
+
 .btn-play {
     background-color: #4CAF50;
 }
@@ -754,7 +761,7 @@ body, html {
     gap: 10px;
 }
 
-#music-add-section input {
+#music-add-section input[type="text"] {
     flex-grow: 1;
     background-color: #333;
     border: 1px solid #444;
@@ -812,8 +819,17 @@ body, html {
     background: #555;
 }
 
+.playlist-item-icon {
+    margin-right: 8px;
+    font-size: 20px;
+    color: #aaa;
+}
+
 .playlist-item-title {
     flex-grow: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .playlist-item-controls {
