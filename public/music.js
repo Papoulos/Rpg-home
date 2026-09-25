@@ -210,7 +210,7 @@
             item.dataset.url = song.url || '';
             item.draggable = true;
 
-            const iconName = song.type === 'local' ? 'audio_file' : 'youtube_tv';
+            const iconName = song.type === 'local' ? 'audio_file' : 'youtube_activity';
             // Prevent XSS by creating elements or using textContent for user input
             const safeTitle = document.createElement('div');
             safeTitle.textContent = song.title || song.videoId;

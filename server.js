@@ -24,7 +24,7 @@ const limiter = rateLimit({
 });
 
 app.use(limiter);
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 
 // --- MP3 Upload and Download Routes ---
 const musicDir = path.join(__dirname, 'data/music');
@@ -39,8 +39,20 @@ const storage = multer.diskStorage({
     },
     filename: function (req, file, cb) {
         // Sanitize the filename to prevent path traversal
-        const sanitizedOriginalName = path.basename(file.originalname);
-        cb(null, Date.now() + '-' + sanitizedOriginalName)
+        let sanitizedOriginalName = path.basename(file.originalname);
+        // Ensure no path traversal and keep standard file names
+        sanitizedOriginalName = sanitizedOriginalName.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+
+        let filename = sanitizedOriginalName;
+        let counter = 1;
+        while (fs.existsSync(path.join(musicDir, filename))) {
+            const ext = path.extname(sanitizedOriginalName);
+            const base = path.basename(sanitizedOriginalName, ext);
+            filename = `${base}-${counter}${ext}`;
+            counter++;
+        }
+
+        cb(null, filename);
     }
 });
 const upload = multer({
@@ -77,7 +89,27 @@ app.post('/download-music-url', async (req, res) => {
             responseType: 'stream'
         });
 
-        const filename = Date.now() + '-downloaded.mp3';
+        let originalName = path.basename(parsedUrl.pathname);
+        if (!originalName || !originalName.toLowerCase().endsWith('.mp3')) {
+            originalName = 'downloaded.mp3';
+        }
+        // Decode URL encoding and sanitize safely
+        try {
+            originalName = decodeURIComponent(originalName);
+        } catch (e) {
+            console.error('Failed to decode original name', e);
+        }
+        let sanitizedName = originalName.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+
+        let filename = sanitizedName;
+        let counter = 1;
+        while (fs.existsSync(path.join(musicDir, filename))) {
+            const ext = path.extname(sanitizedName);
+            const base = path.basename(sanitizedName, ext);
+            filename = `${base}-${counter}${ext}`;
+            counter++;
+        }
+
         const dest = path.join(musicDir, filename);
         const writer = fs.createWriteStream(dest);
 
