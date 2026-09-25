@@ -413,19 +413,21 @@ function renderSkills() {
 
     allSkills.forEach((skill, index) => {
         const item = createListItem(`
-            <span class="material-symbols-outlined cs-roll-icon" data-stat="${escapeHtml(skill.stat)}" data-skill="${escapeHtml(skill.name)}" data-skill-level="${escapeHtml(skill.level)}" title="Lancer pour ${escapeHtml(skill.name)}">casino</span>
-            <input type="text" class="skill-name" value="${escapeHtml(skill.name)}" placeholder="Nom">
-            <select class="skill-stat">
-                <option value="might" ${skill.stat === 'might' ? 'selected' : ''}>Might</option>
-                <option value="speed" ${skill.stat === 'speed' ? 'selected' : ''}>Speed</option>
-                <option value="intel" ${skill.stat === 'intel' ? 'selected' : ''}>Intel</option>
-            </select>
-            <select class="skill-level">
-                <option value="trained" ${skill.level === 'trained' ? 'selected' : ''}>Entraîné (Trained)</option>
-                <option value="specialized" ${skill.level === 'specialized' ? 'selected' : ''}>Spécialisé (Spec.)</option>
-                <option value="inability" ${skill.level === 'inability' ? 'selected' : ''}>Incapacité (Inab.)</option>
-            </select>
-            <button class="cs-delete-btn" data-type="skill" data-index="${index}"><span class="material-symbols-outlined">close</span></button>
+            <div class="cs-compact-col-wrap">
+                <span class="material-symbols-outlined cs-roll-icon" data-stat="${escapeHtml(skill.stat)}" data-skill="${escapeHtml(skill.name)}" data-skill-level="${escapeHtml(skill.level)}" title="Lancer pour ${escapeHtml(skill.name)}">casino</span>
+                <input type="text" class="skill-name" value="${escapeHtml(skill.name)}" placeholder="Nom">
+                <select class="skill-stat">
+                    <option value="might" ${skill.stat === 'might' ? 'selected' : ''}>Might</option>
+                    <option value="speed" ${skill.stat === 'speed' ? 'selected' : ''}>Speed</option>
+                    <option value="intel" ${skill.stat === 'intel' ? 'selected' : ''}>Intel</option>
+                </select>
+                <select class="skill-level" style="width: 45px;">
+                    <option value="trained" ${skill.level === 'trained' ? 'selected' : ''}>T</option>
+                    <option value="specialized" ${skill.level === 'specialized' ? 'selected' : ''}>S</option>
+                    <option value="inability" ${skill.level === 'inability' ? 'selected' : ''}>H</option>
+                </select>
+                <button class="cs-delete-btn" data-type="skill" data-index="${index}"><span class="material-symbols-outlined">close</span></button>
+            </div>
         `);
         // Add listeners to update data
         item.querySelectorAll('input, select').forEach(el => {
@@ -468,37 +470,30 @@ function renderAbilities() {
 
     characterData.abilities.forEach((ability, index) => {
         const item = createListItem(`
-            <div style="display:flex; flex-direction:column; width:100%; gap:5px;">
-                <div style="display:flex; gap:10px; width:100%; align-items:center;">
-                    <input type="text" class="ab-name" value="${escapeHtml(ability.name)}" placeholder="Nom de capacité" style="flex-grow:1;">
-                    <select class="ab-type" style="width: 80px;" title="Type/Source">
-                        <option value="type" ${ability.type === 'type' ? 'selected' : ''}>Type</option>
-                        <option value="focus" ${ability.type === 'focus' ? 'selected' : ''}>Focus</option>
-                        <option value="descriptor" ${ability.type === 'descriptor' ? 'selected' : ''}>Desc.</option>
-                    </select>
-                    <input type="number" class="ab-cost" value="${ability.cost ? ability.cost.amount : 0}" style="width: 50px;" title="Coût">
-                    <select class="ab-pool">
-                        <option value="none" ${ability.cost && ability.cost.pool === 'none' ? 'selected' : ''}>-</option>
-                        <option value="might" ${ability.cost && ability.cost.pool === 'might' ? 'selected' : ''}>Might</option>
-                        <option value="speed" ${ability.cost && ability.cost.pool === 'speed' ? 'selected' : ''}>Speed</option>
-                        <option value="intel" ${ability.cost && ability.cost.pool === 'intel' ? 'selected' : ''}>Intel</option>
-                    </select>
-                    <label style="display:flex; align-items:center; gap:5px; font-size:0.8rem; cursor:pointer;"><input type="checkbox" class="ab-enabler" ${ability.enabler ? 'checked' : ''}> Enabler</label>
-                    <span class="material-symbols-outlined cs-desc-icon" data-index="${index}" title="${escapeHtml(ability.description || 'Description')}" style="cursor:pointer; color:#aaa; font-size: 1.2rem;">help</span>
-                    <button class="cs-delete-btn" data-type="ability" data-index="${index}"><span class="material-symbols-outlined">close</span></button>
-                </div>
+            <div class="cs-compact-col-wrap">
+                <input type="text" class="ab-name" value="${escapeHtml(ability.name)}" placeholder="Nom de capacité" style="flex-grow:1;">
+                <input type="number" class="ab-cost" value="${ability.cost ? ability.cost.amount : 0}" style="width: 40px;" title="Coût">
+                <select class="ab-pool" style="width: 50px;" title="Pool">
+                    <option value="none" ${ability.cost && ability.cost.pool === 'none' ? 'selected' : ''}>-</option>
+                    <option value="might" ${ability.cost && ability.cost.pool === 'might' ? 'selected' : ''}>M</option>
+                    <option value="speed" ${ability.cost && ability.cost.pool === 'speed' ? 'selected' : ''}>S</option>
+                    <option value="intel" ${ability.cost && ability.cost.pool === 'intel' ? 'selected' : ''}>I</option>
+                </select>
+                <label style="display:flex; align-items:center; gap:2px; font-size:0.8rem; cursor:pointer;" title="Enabler"><input type="checkbox" class="ab-enabler" ${ability.enabler ? 'checked' : ''}> E</label>
+                <span class="material-symbols-outlined cs-desc-icon" data-index="${index}" title="${escapeHtml(ability.description || 'Description')}" style="cursor:pointer; color:#aaa; font-size: 1.2rem;">help</span>
+                <button class="cs-delete-btn" data-type="ability" data-index="${index}"><span class="material-symbols-outlined">close</span></button>
             </div>
         `);
 
         item.querySelectorAll('input:not(.ab-desc), select').forEach(el => {
             el.addEventListener('change', () => {
                 ability.name = item.querySelector('.ab-name').value;
-                ability.type = item.querySelector('.ab-type').value;
+                // keep the type since it's in the data model but we removed it from UI
                 if (!ability.cost) ability.cost = {};
                 ability.cost.amount = parseInt(item.querySelector('.ab-cost').value) || 0;
                 ability.cost.pool = item.querySelector('.ab-pool').value;
                 ability.enabler = item.querySelector('.ab-enabler').checked;
-                ability.description = item.querySelector('.ab-desc').value;
+                // description is edited in modal
                 updateCharacterDataFromInputs();
             });
         });
