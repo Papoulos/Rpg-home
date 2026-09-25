@@ -9,6 +9,10 @@
     let fogBrushSize = 50;
     let fogLayer = null; // This will be a fabric.Group
 
+    const VIRTUAL_WIDTH = 1920;
+    const VIRTUAL_HEIGHT = 1080;
+
+
     // --- UTILITY ---
     const getNextId = (() => {
         let objectIdCounter = 0;
@@ -95,8 +99,8 @@
         const fogRect = new fabric.Rect({
             left: 0,
             top: 0,
-            width: canvas.width,
-            height: canvas.height,
+            width: VIRTUAL_WIDTH,
+            height: VIRTUAL_HEIGHT,
             fill: isMJ ? 'rgba(0,0,0,0.5)' : 'black',
             selectable: false,
             evented: false,
@@ -160,28 +164,45 @@
         const canvasElement = document.getElementById('fabric-canvas');
         if (!fabricContent || !canvasElement) return;
 
-        const setCanvasSize = () => {
+        const updateCanvasScaling = () => {
+            if (!canvas) return;
+            const fabricContent = document.getElementById('fabric-content');
             const controls = document.querySelector('.whiteboard-controls');
+            if (!fabricContent || !controls) return;
+
             const containerRect = fabricContent.getBoundingClientRect();
             const controlsRect = controls.getBoundingClientRect();
-            const newWidth = containerRect.width;
-            const newHeight = containerRect.height - controlsRect.height;
-            canvasElement.width = newWidth;
-            canvasElement.height = newHeight;
-            if (canvas) {
-                canvas.setDimensions({ width: newWidth, height: newHeight });
-                if (fogLayer) {
-                    const fogBase = fogLayer.getObjects('rect')[0];
-                    fogBase.set({ width: newWidth, height: newHeight });
+
+            const availableWidth = containerRect.width;
+            const availableHeight = containerRect.height - controlsRect.height;
+
+            // Calculate scale to fit while maintaining aspect ratio (letterboxing)
+            const scaleX = availableWidth / VIRTUAL_WIDTH;
+            const scaleY = availableHeight / VIRTUAL_HEIGHT;
+            const scale = Math.min(scaleX, scaleY);
+
+            const newWidth = VIRTUAL_WIDTH * scale;
+            const newHeight = VIRTUAL_HEIGHT * scale;
+
+            canvas.setDimensions({ width: newWidth, height: newHeight });
+            canvas.setZoom(scale);
+
+            // Fog base should always cover the virtual size
+            if (fogLayer) {
+                const fogBase = fogLayer.getObjects('rect')[0];
+                if (fogBase) {
+                    fogBase.set({ width: VIRTUAL_WIDTH, height: VIRTUAL_HEIGHT });
                 }
-                canvas.renderAll();
             }
         };
 
-        setCanvasSize();
+
+
+
         canvas = new fabric.Canvas('fabric-canvas', {
             isDrawingMode: false,
         });
+        updateCanvasScaling();
 
         setActiveTool('select');
         canvas.freeDrawingBrush.width = 5;
@@ -230,7 +251,8 @@
                 if (window.socket?.readyState === WebSocket.OPEN) {
                     const payload = {
                         pathData: path.path,
-                        id: path.id
+                        id: path.id,
+                        brushSize: fogBrushSize
                     };
                     window.socket.send(JSON.stringify({ type: 'fabric-fog-erase-raw', payload: payload }));
                 }
@@ -259,9 +281,10 @@
 
         const setBackground = (dataUrl) => {
             fabric.Image.fromURL(dataUrl, (img) => {
+                // Fit background to virtual resolution maintaining aspect ratio of the virtual resolution
                 canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas), {
-                    scaleX: canvas.width / img.width,
-                    scaleY: canvas.height / img.height
+                    scaleX: VIRTUAL_WIDTH / img.width,
+                    scaleY: VIRTUAL_HEIGHT / img.height
                 });
             });
         };
@@ -291,8 +314,8 @@
             const reader = new FileReader();
             reader.onload = (e) => {
                 fabric.Image.fromURL(e.target.result, (img) => {
-                    const scale = Math.min((canvas.width / 2) / img.width, (canvas.height / 2) / img.height);
-                    img.set({ scaleX: scale, scaleY: scale, left: (canvas.width - img.width * scale) / 2, top: (canvas.height - img.height * scale) / 2 });
+                    const scale = Math.min((VIRTUAL_WIDTH / 2) / img.width, (VIRTUAL_HEIGHT / 2) / img.height);
+                    img.set({ scaleX: scale, scaleY: scale, left: (VIRTUAL_WIDTH - img.width * scale) / 2, top: (VIRTUAL_HEIGHT - img.height * scale) / 2 });
                     img.id = getNextId();
                     canvas.add(img);
                     if (window.socket && window.socket.readyState === WebSocket.OPEN) {
@@ -431,7 +454,7 @@
             if (!fogLayer) return;
             const path = new fabric.Path(payload.pathData, {
                 stroke: 'white',
-                strokeWidth: fogBrushSize,
+                strokeWidth: payload.brushSize || fogBrushSize,
                 strokeLineCap: 'round',
                 strokeLineJoin: 'round',
                 fill: null,
@@ -565,17 +588,7 @@
             if (!canvas) return;
             clearTimeout(resizeTimeout);
             resizeTimeout = setTimeout(() => {
-                const controls = document.querySelector('.whiteboard-controls');
-                const containerRect = fabricContent.getBoundingClientRect();
-                const controlsRect = controls.getBoundingClientRect();
-                const newWidth = containerRect.width;
-                const newHeight = containerRect.height - controlsRect.height;
-                canvas.setDimensions({ width: newWidth, height: newHeight });
-                if (fogLayer) {
-                    const fogBase = fogLayer.getObjects('rect')[0];
-                    fogBase.set({ width: newWidth, height: newHeight });
-                }
-                canvas.renderAll();
+                updateCanvasScaling();
             }, 100);
         });
     });
