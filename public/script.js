@@ -233,11 +233,67 @@
         videoContainer.appendChild(video);
         videoContainer.appendChild(nameTag);
         videoGrid.appendChild(videoContainer);
+
+        monitorAudioVolume(stream, videoContainer);
     }
 
     function removeVideoStream(name) {
         const videoContainer = document.getElementById(`video-${name}`);
         if (videoContainer) videoContainer.remove();
+    }
+
+    let sharedAudioContext = null;
+
+    function monitorAudioVolume(stream, videoContainer) {
+        if (stream.getAudioTracks().length === 0) return;
+
+        try {
+            if (!sharedAudioContext) {
+                sharedAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (sharedAudioContext.state === 'suspended') {
+                sharedAudioContext.resume().catch(e => console.warn('Could not resume AudioContext', e));
+            }
+
+            const analyser = sharedAudioContext.createAnalyser();
+            analyser.fftSize = 256;
+            analyser.smoothingTimeConstant = 0.5;
+
+            const source = sharedAudioContext.createMediaStreamSource(stream);
+            source.connect(analyser);
+
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+            function updateVolume() {
+                if (!document.body.contains(videoContainer)) return;
+
+                const track = stream.getAudioTracks()[0];
+                if (!track || !track.enabled || track.readyState === 'ended') {
+                    videoContainer.classList.remove('speaking');
+                    requestAnimationFrame(updateVolume);
+                    return;
+                }
+
+                analyser.getByteFrequencyData(dataArray);
+                let sum = 0;
+                for (let i = 0; i < dataArray.length; i++) {
+                    sum += dataArray[i];
+                }
+                const average = sum / dataArray.length;
+
+                if (average > 10) {
+                    videoContainer.classList.add('speaking');
+                } else {
+                    videoContainer.classList.remove('speaking');
+                }
+
+                requestAnimationFrame(updateVolume);
+            }
+
+            updateVolume();
+        } catch (err) {
+            console.error("Error setting up audio monitoring", err);
+        }
     }
 
     // --- Messaging ---

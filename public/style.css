@@ -509,6 +509,13 @@ body, html {
     border-radius: 8px;
     overflow: hidden;
     position: relative;
+    border: 3px solid transparent;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.video-container.speaking {
+    border-color: #4CAF50;
+    box-shadow: 0 0 10px rgba(76, 175, 80, 0.8);
 }
 
 .video-container video {
