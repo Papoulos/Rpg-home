@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: rpg-app
+    restart: unless-stopped
+    expose:
+      - "3000"
+    volumes:
+      - ./data:/app/data
+      - ./wiki:/app/wiki
+    # Le Dockerfile actuel execute npm start, qui correspond a node server.js --nossl.
+
+  proxy:
+    build: ./docker-proxy
+    container_name: rpg-proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - app
+    env_file:
+      - .env
+    volumes:
+      - certbot-etc:/etc/letsencrypt
+      - certbot-var:/var/lib/letsencrypt
+      - nginx-conf:/etc/nginx/conf.d
+
+volumes:
+  certbot-etc:
+  certbot-var:
+  nginx-conf:
