@@ -1,0 +1,89 @@
+#!/bin/bash
+set -e
+
+# Vérification des variables d'environnement requises
+if [ -z "$DOMAIN" ] || [ -z "$EMAIL" ]; then
+  echo "Erreur: Les variables d'environnement DOMAIN et EMAIL doivent être définies."
+  exit 1
+fi
+
+echo "Démarrage du proxy pour le domaine : $DOMAIN"
+
+# 1. MISE À JOUR DE L'IP (DynDNS) si les variables sont définies
+if [ ! -z "$DYNHOST_USER" ] && [ ! -z "$DYNHOST_PASS" ]; then
+  echo "Mise à jour de l'IP DynHost..."
+  curl --user "$DYNHOST_USER:$DYNHOST_PASS" "https://www.ovh.com/nic/update?system=dyndns&hostname=$DOMAIN" || echo "Avertissement: Echec de la mise à jour DynHost."
+else
+  echo "Pas d'identifiants DynHost fournis, étape ignorée."
+fi
+
+# 2. CONFIGURATION DU REVERSE PROXY NGINX
+NGINX_CONF="/etc/nginx/conf.d/rpg-home.conf"
+
+if [ ! -f "$NGINX_CONF" ]; then
+  echo "Génération de la configuration Nginx pour $DOMAIN..."
+  cat <<CONF > "$NGINX_CONF"
+server {
+    listen 80;
+    server_name $DOMAIN;
+
+    # Redirection vers le conteneur Node.js (nommé 'app' dans docker-compose)
+    location / {
+        proxy_pass http://app:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_cache_bypass \$http_upgrade;
+    }
+}
+CONF
+fi
+
+# Démarrer Nginx en arrière-plan temporairement pour Certbot
+nginx -g "daemon on;"
+
+# 3. GESTION DU CERTIFICAT SSL (Let's Encrypt)
+if [ ! -d "/etc/letsencrypt/live/$DOMAIN" ]; then
+  echo "Demande d'un nouveau certificat SSL pour $DOMAIN..."
+  # Attente de la propagation DNS (si DynHost juste appelé)
+  echo "Attente de 15 secondes pour la propagation DNS éventuelle..."
+  sleep 15
+
+  certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos -m "$EMAIL" || {
+    echo "Erreur lors de la demande de certificat. Vérifiez que votre domaine pointe bien vers cette machine."
+    # Arrêter Nginx pour ne pas bloquer le conteneur s'il y a une erreur fatale
+    nginx -s stop
+    exit 1
+  }
+else
+  echo "Certificat existant trouvé pour $DOMAIN."
+  echo "Renouvellement du certificat (si nécessaire)..."
+  certbot renew --quiet
+fi
+
+# Arrêter Nginx en arrière-plan
+nginx -s quit
+sleep 2
+
+# 4. CRON POUR LE RENOUVELLEMENT SSL ET DYNDNS
+# Ajouter une tâche cron pour vérifier le renouvellement SSL tous les jours,
+# et pour mettre à jour le DynHost si nécessaire
+CRON_FILE="/etc/cron.d/certbot-renew"
+if [ ! -f "$CRON_FILE" ]; then
+    echo "0 12 * * * root certbot renew --quiet --post-hook 'nginx -s reload'" > "$CRON_FILE"
+
+    # Si DynHost est utilisé, mettre à jour régulièrement l'IP
+    if [ ! -z "$DYNHOST_USER" ] && [ ! -z "$DYNHOST_PASS" ]; then
+       echo "0 * * * * root curl -s --user '$DYNHOST_USER:$DYNHOST_PASS' 'https://www.ovh.com/nic/update?system=dyndns&hostname=$DOMAIN' > /dev/null" >> "$CRON_FILE"
+    fi
+    chmod 0644 "$CRON_FILE"
+    crontab "$CRON_FILE"
+fi
+
+# Lancer cron
+service cron start
+
+# 5. LANCEMENT FINAL DE NGINX EN PREMIER PLAN
+echo "Démarrage de Nginx..."
+exec nginx -g "daemon off;"

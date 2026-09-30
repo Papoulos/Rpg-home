@@ -43,9 +43,30 @@ node server.js --nossl
 ```
 Le serveur démarrera en mode HTTP et devrait être accessible via l'URL sécurisée de votre proxy.
 
-### Déploiement avec Docker (Cloud Run, etc.)
+### Déploiement avec Docker Compose (Serveur Complet avec SSL et DynDNS)
 
-Le projet contient un `Dockerfile` prêt à l'emploi.
+Le projet propose une architecture Docker Compose à deux conteneurs, idéale pour héberger l'application sur une machine virtuelle (VPS) avec gestion automatique du SSL (Let's Encrypt) et mise à jour d'un nom de domaine dynamique (DynDNS) :
+- Un conteneur pour l'application Node.js (tournant en mode sans SSL).
+- Un conteneur proxy (Nginx) gérant les requêtes HTTPS, les certificats et les redirections vers l'application.
+
+1.  **Configuration :**
+    Copiez le fichier d'exemple et renseignez vos informations (domaine, email, et identifiants DynHost si applicable).
+    ```sh
+    cp .env.example .env
+    nano .env
+    ```
+
+2.  **Lancement :**
+    Démarrez les deux conteneurs en arrière-plan. Le conteneur proxy s'occupera d'obtenir automatiquement le certificat SSL au premier lancement.
+    ```sh
+    docker-compose up -d --build
+    ```
+
+*Note : Le fichier `docker-proxy/entrypoint.sh` contient la logique de démarrage du proxy (Nginx, Certbot, DynDNS) et peut être consulté à titre d'exemple de script de déploiement automatisé.*
+
+### Déploiement avec Docker Simple (Cloud Run, Heroku, etc.)
+
+Si vous déployez sur un environnement managé gérant déjà le SSL (Google Cloud Run, etc.), vous pouvez n'utiliser que le `Dockerfile` à la racine :
 
 1.  **Construire l'image Docker :**
     ```sh
@@ -55,9 +76,8 @@ Le projet contient un `Dockerfile` prêt à l'emploi.
     ```sh
     docker run -p 3000:3000 rpg-web-app
     ```
-Le `Dockerfile` est configuré pour lancer l'application en mode `--nossl`, idéal pour les environnements managés (Google Cloud Run, Heroku, etc.).
 
-### Déploiement sur Machine Virtuelle (Google Cloud, AWS, etc.)
+### Déploiement sur Machine Virtuelle (Sans Docker)
 
 Il est possible de déployer facilement l'application sur une machine virtuelle classique (Google Cloud Compute Engine, AWS EC2, DigitalOcean Droplets, etc.) en utilisant un **script de démarrage** (startup script).
 
