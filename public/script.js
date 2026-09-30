@@ -218,21 +218,54 @@
         const videoContainer = document.createElement('div');
         videoContainer.id = `video-${name}`;
         videoContainer.classList.add('video-container');
-        const video = document.createElement('video');
-        video.srcObject = stream;
-        video.autoplay = true;
-        video.playsInline = true;
 
-        if (name === getUsername()) {
-            video.muted = true; // Local video is always muted to prevent feedback
-            video.style.transform = 'scaleX(-1)';
+        const hasVideo = stream && stream.getVideoTracks().length > 0;
+
+        if (hasVideo) {
+            const video = document.createElement('video');
+            video.srcObject = stream;
+            video.autoplay = true;
+            video.playsInline = true;
+
+            if (name === getUsername()) {
+                video.muted = true; // Local video is always muted to prevent feedback
+                video.style.transform = 'scaleX(-1)';
+            }
+            videoContainer.appendChild(video);
+        } else {
+            // Fallback to avatar image if no video track
+            const avatarImg = document.createElement('img');
+            avatarImg.classList.add('fallback-avatar');
+            avatarImg.style.width = '100%';
+            avatarImg.style.height = '100%';
+            avatarImg.style.objectFit = 'contain';
+            avatarImg.style.display = 'block';
+            avatarImg.style.backgroundColor = '#111';
+            avatarImg.style.aspectRatio = '4/3';
+
+            const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23444"/><text x="50" y="50" font-family="Arial" font-size="40" fill="white" dominant-baseline="middle" text-anchor="middle">?</text></svg>';
+
+            if (name === getUsername()) {
+                avatarImg.src = window.userPortraitUrl && window.userPortraitUrl !== 'mj_icon' ? window.userPortraitUrl : defaultAvatar;
+            } else {
+                const character = window.availableCharacters && window.availableCharacters.find(c => c.name === name);
+                avatarImg.src = character && character.portraitUrl ? character.portraitUrl : defaultAvatar;
+            }
+            videoContainer.appendChild(avatarImg);
+
+            // We must still attach the stream to an audio element to hear it
+            const audio = document.createElement('audio');
+            audio.srcObject = stream;
+            audio.autoplay = true;
+            if (name === getUsername()) {
+                audio.muted = true;
+            }
+            videoContainer.appendChild(audio);
         }
-        // Remote streams are NOT muted by default, relying on browser autoplay policy
 
         const nameTag = document.createElement('div');
         nameTag.classList.add('name-tag');
         nameTag.textContent = name;
-        videoContainer.appendChild(video);
         videoContainer.appendChild(nameTag);
         videoGrid.appendChild(videoContainer);
 
@@ -624,7 +657,19 @@
     // --- Initial Setup ---
     async function setupLocalMedia() {
         try {
-            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            } catch (err) {
+                console.warn('Could not get both video and audio, trying audio only...', err);
+                try {
+                    localStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+                    // Disable the video toggle button if we fell back to audio only
+                    const toggleVideoBtn = document.getElementById('toggle-video-btn');
+                    if (toggleVideoBtn) toggleVideoBtn.style.display = 'none';
+                } catch (audioErr) {
+                    throw err; // Re-throw the original error to trigger the main catch block
+                }
+            }
 
             // Disable video and audio tracks by default upon connection
             const audioTrack = localStream.getAudioTracks()[0];
