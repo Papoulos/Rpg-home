@@ -4,6 +4,7 @@
     let username = '';
     let localStream;
     const peerConnections = {};
+    const iceCandidateQueues = {};
     const iceServers = {
         iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
@@ -403,6 +404,7 @@
             if (pc.connectionState === 'disconnected' || pc.connectionState === 'closed' || pc.connectionState === 'failed') {
                 removeVideoStream(peerUsername);
                 delete peerConnections[peerUsername];
+                delete iceCandidateQueues[peerUsername];
             }
         };
 
@@ -430,6 +432,7 @@
             if (!users.includes(peerName)) {
                 peerConnections[peerName].close();
                 delete peerConnections[peerName];
+                delete iceCandidateQueues[peerName];
                 removeVideoStream(peerName);
                 window.dispatchEvent(new CustomEvent('pointer-disconnect', { detail: { sender: peerName } }));
             }
@@ -604,13 +607,39 @@
                         const answer = await pc.createAnswer();
                         await pc.setLocalDescription(answer);
                         sendMessage({ type: 'answer', target: data.sender, message: pc.localDescription });
+
+                        // Process queued ICE candidates
+                        if (iceCandidateQueues[data.sender]) {
+                            for (const candidate of iceCandidateQueues[data.sender]) {
+                                await pc.addIceCandidate(new RTCIceCandidate(candidate));
+                            }
+                            delete iceCandidateQueues[data.sender];
+                        }
                     }
                     break;
                 case 'answer':
-                    await peerConnections[data.sender]?.setRemoteDescription(new RTCSessionDescription(data.message));
+                    const answerPc = peerConnections[data.sender];
+                    if (answerPc) {
+                        await answerPc.setRemoteDescription(new RTCSessionDescription(data.message));
+                        // Process queued ICE candidates
+                        if (iceCandidateQueues[data.sender]) {
+                            for (const candidate of iceCandidateQueues[data.sender]) {
+                                await answerPc.addIceCandidate(new RTCIceCandidate(candidate));
+                            }
+                            delete iceCandidateQueues[data.sender];
+                        }
+                    }
                     break;
                 case 'ice-candidate':
-                    await peerConnections[data.sender]?.addIceCandidate(new RTCIceCandidate(data.message));
+                    const rtcPc = peerConnections[data.sender];
+                    if (rtcPc && rtcPc.remoteDescription) {
+                        await rtcPc.addIceCandidate(new RTCIceCandidate(data.message));
+                    } else {
+                        if (!iceCandidateQueues[data.sender]) {
+                            iceCandidateQueues[data.sender] = [];
+                        }
+                        iceCandidateQueues[data.sender].push(data.message);
+                    }
                     break;
 
                 case 'fabric-path-created':
