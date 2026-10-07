@@ -945,5 +945,18 @@
 
         resize(resizerLeft, leftPanel, document.getElementById('toggle-chat-btn'), 'left');
         resize(resizerRight, rightPanel, document.getElementById('toggle-video-panel-btn'), 'right');
-    }
+
+// === Service Worker Registration ===
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+            .then(registration => {
+                console.log('[SW] Registered:', registration.scope);
+            })
+            .catch(err => {
+                console.error('[SW] Registration failed:', err);
+            });
+    });
+}
+
 })();
