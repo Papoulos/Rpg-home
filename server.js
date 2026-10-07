@@ -58,7 +58,18 @@ const musicDir = path.join(__dirname, 'data/music');
 if (!fs.existsSync(musicDir)) {
     fs.mkdirSync(musicDir, { recursive: true });
 }
-app.use('/music', express.static(musicDir, { maxAge: '1d' }));
+app.use('/music', express.static(musicDir, {
+    maxAge: '1y',
+    setHeaders: (res, path) => {
+        // Long-term cache for MP3 files (immutable)
+        if (path.endsWith('.mp3')) {
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        } else {
+            // Default cache for other files in music directory
+            res.setHeader('Cache-Control', 'public, max-age=86400');
+        }
+    }
+}));
 
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
