@@ -995,7 +995,15 @@ wss.on('connection', (ws) => {
 
 // --- HTTP Server ---
 // Serve static files with caching for better performance
-app.use(express.static(path.join(__dirname, 'public'), { maxAge: '1d' }));
+app.use(express.static(path.join(__dirname, 'public'), {
+    maxAge: '1d',
+    setHeaders: (res, path) => {
+        // Immutable cache for minified files with version query
+        if (path.includes('.min.js') || path.includes('.min.css')) {
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        }
+    }
+}));
 
 // Serve libs directory with long-term caching (immutable)
 app.use('/libs', express.static(path.join(__dirname, 'public/libs'), { 

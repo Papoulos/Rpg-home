@@ -33,5 +33,9 @@
     "node-fetch": "^2.7.0",
     "ws": "^8.21.3",
     "xss": "^1.0.15"
+  },
+  "devDependencies": {
+    "clean-css": "^5.3.3",
+    "uglify-js": "^3.19.3"
   }
 }
