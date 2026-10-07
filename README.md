@@ -22,7 +22,12 @@ Si vous prévoyez d'utiliser Docker, assurez-vous d'avoir [Docker](https://www.d
 
 ### Configuration (Optionnelle)
 
-Vous pouvez configurer des clés d'API (pour le chatbot par exemple) en créant un fichier `apikeys.js` à la racine (non suivi par Git) ou en utilisant des variables d'environnement (ex: `APIKEY_GEMINI`).
+Vous pouvez configurer des clés d'API (pour le chatbot par exemple) de plusieurs manières :
+- **Fichier `.env` (recommandé)** : Copiez `.env.example` en `.env` et ajoutez vos clés (ex: `APIKEY_GEMINI=votre_clé`).
+- **Variables d'environnement** : Utilisez des variables préfixées par `APIKEY_` (ex: `APIKEY_GEMINI`).
+- **Fichier `apikeys.js`** : Créez ce fichier à la racine (non suivi par Git) avec un `module.exports = { gemini: '...' }`.
+
+> **Note** : Les placeholders dans `api.config.js` ont été supprimés. Utilisez uniquement les méthodes ci-dessus.
 
 ## Lancement
 
@@ -212,4 +217,36 @@ Le chat intègre des commandes pour invoquer un assistant IA configuré par le M
 Le backend et le frontend intègrent de nombreuses optimisations pour garantir des sessions fluides.
 - Utilisation de WebSockets avec mécanisme de pulsation (*heartbeat*) pour empêcher les déconnexions intempestives.
 - Chemins relatifs pour les APIs pour une meilleure compatibilité des environnements de déploiement.
+
+### 10. Optimisations de Rapidité et Cache
+Les dernières mises à jour ont apporté des améliorations significatives pour la performance :
+
+#### Self-Hosting des Bibliothèques
+- **Fabric.js** (993 Ko) : Chargé localement depuis `/libs/fabric/fabric.js` au lieu de Cloudflare CDN.
+- **EasyMDE** (319 Ko JS + 13 Ko CSS) : Chargé localement depuis `/libs/easymde/` au lieu de unpkg CDN.
+- **Showdown.js** (74 Ko) : Chargé localement depuis `/libs/showdown/showdown.min.js` au lieu de Cloudflare CDN.
+- **Avantage** : Zéro dépendance externe, chargement plus rapide, pas de risque de CDN indisponible.
+
+#### Minification des Assets
+- **script.js** : 42 Ko → **19 Ko** (-55%)
+- **style.css** : 17 Ko → **11 Ko** (-35%)
+- **Avantage** : Réduction de la taille des transferts et du temps de chargement.
+
+#### Cache Optimisé
+- **Fichiers minifiés** : Cache `immutable` de **1 an** (`max-age=31536000, immutable`)
+- **Bibliothèques** (`/libs/`) : Cache `immutable` de **1 an**
+- **MP3** : Cache `immutable` de **1 an**
+- **Autres fichiers statiques** : Cache de **1 jour**
+- **Avantage** : Les visiteurs récurrents ne rechargent jamais les assets statiques.
+
+#### Preloading et Preconnect
+- **Preloading** des ressources critiques (Fabric.js, EasyMDE, script.min.js, style.min.css)
+- **Preconnect** vers Google Fonts, Google Static, YouTube
+- **Avantage** : Le navigateur commence à charger les ressources dès qu'il voit le HTML.
+
+#### Content Security Policy (CSP)
+- **CSP strict** appliqué via `helmet` pour bloquer les chargements non autorisés.
+- **Avantage** : Protection contre les attaques XSS et les injections de scripts malveillants.
+- **Compression activée** pour toutes les réponses HTTP via `compression` middleware.
+- **Avantage** : Réduction de 60-80% de la taille des transferts.
 - Gestion robuste et centralisée des erreurs de connexion (caméra, fichiers manquants, placeholders, etc.).
