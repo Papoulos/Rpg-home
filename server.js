@@ -7,10 +7,16 @@ const fs = require('fs');
 const util = require('util');
 const fetch = require('node-fetch');
 const rateLimit = require('express-rate-limit');
+const compression = require('compression');
+const helmet = require('helmet');
 const { loadApiKeys, loadChatbotConfig } = require('./config-loader');
 let chatbotConfig = require('./api.config.js'); // Load base config
 const multer = require('multer');
 const axios = require('axios');
+
+// Load environment variables from .env file
+require('dotenv').config();
+
 const app = express();
 
 let originalConsoleLog = console.log;
@@ -26,12 +32,33 @@ const limiter = rateLimit({
 app.use(limiter);
 app.use(express.json({ limit: '50mb' }));
 
+// Enable compression (GZIP) for all responses
+app.use(compression());
+
+// Configure Content Security Policy
+app.use(
+    helmet.contentSecurityPolicy({
+        directives: {
+            'default-src': ["'self'"],
+            'script-src': ["'self'"],
+            'style-src': ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+            'font-src': ["'self'", "https://fonts.gstatic.com"],
+            'img-src': ["'self'", "data:", "blob:", "https://*.ytimg.com"],
+            'connect-src': ["'self'", "wss://", "ws://", "https://www.youtube.com"],
+            'frame-src': ["'self'", "https://www.youtube.com"],
+            'media-src': ["'self'", "blob:", "https://www.youtube.com"],
+            'worker-src': ["'self'", "blob:"],
+            'object-src': ["'none'"]
+        }
+    })
+);
+
 // --- MP3 Upload and Download Routes ---
 const musicDir = path.join(__dirname, 'data/music');
 if (!fs.existsSync(musicDir)) {
     fs.mkdirSync(musicDir, { recursive: true });
 }
-app.use('/music', express.static(musicDir));
+app.use('/music', express.static(musicDir, { maxAge: '1d' }));
 
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -956,7 +983,14 @@ wss.on('connection', (ws) => {
 });
 
 // --- HTTP Server ---
-app.use(express.static(path.join(__dirname, 'public')));
+// Serve static files with caching for better performance
+app.use(express.static(path.join(__dirname, 'public'), { maxAge: '1d' }));
+
+// Serve libs directory with long-term caching (immutable)
+app.use('/libs', express.static(path.join(__dirname, 'public/libs'), { 
+    maxAge: '1y',
+    immutable: true 
+}));
 
 const MJ_WIKI_DIR = path.join(WIKI_DIR, 'mj');
 
