@@ -238,7 +238,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 2000);
             alert('Erreur lors de la sauvegarde: ' + (event.detail.error || 'Inconnu'));
         }
-    });
+    }
+
+);
 
     window.addEventListener('mj-status', (event) => {
         isMJ = event.detail.isMJ;
