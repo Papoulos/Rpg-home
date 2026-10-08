@@ -478,25 +478,34 @@ function rotateLogIfNeeded(filePath, maxSizeMB = 5, originalLogger = null) {
 // --- Validation Helpers ---
 function isValidFileName(name) {
     // Allow slashes for folder structure in wiki, and spaces/accented characters/apostrophes for character names
-    return /^[\w\s\-\/À-ÿ']+$/.test(name);
+    return /^[\w\s\-/_'À-ÿ']+$/.test(name);
 }
 
 function getSafeWikiPath(dir, pageName) {
     if (!isValidFileName(pageName) || pageName.includes('..')) {
         throw new Error('Invalid file name or potential path traversal.');
     }
-    const resolvedPath = path.resolve(dir, `${pageName}.md`);
-    if (!resolvedPath.startsWith(dir)) {
+    
+    // Replace forward slashes with platform-specific separator for nested paths
+    const safePageName = pageName.replace(/\//g, path.sep);
+    const fileName = safePageName + '.md';
+    const fullPath = path.join(dir, fileName);
+    
+    // Normalize the path and check it's still within dir
+    const normalizedPath = path.normalize(fullPath);
+    const normalizedDir = path.normalize(dir);
+    
+    if (!normalizedPath.startsWith(normalizedDir + path.sep) && normalizedPath !== normalizedDir) {
         throw new Error('Access denied: path outside of directory.');
     }
 
     // Ensure parent directory exists for nested pages
-    const parentDir = path.dirname(resolvedPath);
+    const parentDir = path.dirname(normalizedPath);
     if (!fs.existsSync(parentDir)) {
         fs.mkdirSync(parentDir, { recursive: true });
     }
 
-    return resolvedPath;
+    return normalizedPath;
 }
 
 // --- Image List Functions ---
@@ -975,8 +984,13 @@ wss.on('connection', (ws) => {
 
                         // Confirm save by sending content back to the saver
                         ws.send(JSON.stringify({ type: 'wiki-page-content', pageName: pageName, content, isMJPage }));
+                        
+                        // Also send a save confirmation message
+                        ws.send(JSON.stringify({ type: 'wiki-save-confirm', pageName, success: true }));
                     } catch (error) {
                         console.error('[WIKI] Error saving page:', error);
+                        // Send error confirmation to client
+                        ws.send(JSON.stringify({ type: 'wiki-save-confirm', pageName: data.pageName, success: false, error: error.message }));
                     }
                 }
                 break;

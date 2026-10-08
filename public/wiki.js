@@ -177,12 +177,18 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Optimistic UI Update
-        const pageData = { pageName: newTitle, content: newContent, isMJPage: isSaveMJ };
-        renderPage(pageData);
+        // Show saving indicator
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Sauvegarde en cours...';
 
         // Send data to server
         sendWikiMessage({ type: 'wiki-save-page', pageName: newTitle, content: newContent, isMJPage: isSaveMJ });
+        
+        // Set timeout to reset button in case server doesn't respond
+        setTimeout(() => {
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Sauvegarder';
+        }, 3000);
     });
 
     addPageBtn.addEventListener('click', () => {
@@ -210,6 +216,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.addEventListener('wiki-update-page', (event) => {
         renderPage(event.detail);
+        // Re-enable save button after server confirms
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Sauvegarder';
+    });
+
+    window.addEventListener('wiki-save-confirm', (event) => {
+        if (event.detail.success) {
+            // Show success feedback
+            saveBtn.textContent = 'Sauvegard\u00e9!';
+            setTimeout(() => {
+                saveBtn.textContent = 'Sauvegarder';
+                saveBtn.disabled = false;
+            }, 1500);
+        } else {
+            // Show error
+            saveBtn.textContent = 'Erreur';
+            saveBtn.disabled = false;
+            setTimeout(() => {
+                saveBtn.textContent = 'Sauvegarder';
+            }, 2000);
+            alert('Erreur lors de la sauvegarde: ' + (event.detail.error || 'Inconnu'));
+        }
     });
 
     window.addEventListener('mj-status', (event) => {
