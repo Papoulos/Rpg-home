@@ -41,8 +41,8 @@ app.use(
         directives: {
             'default-src': ["'self'"],
             'script-src': ["'self'", "https://cdnjs.cloudflare.com", "https://www.youtube.com"],
-            'style-src': ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-            'font-src': ["'self'", "https://fonts.gstatic.com"],
+            'style-src': ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://maxcdn.bootstrapcdn.com"],
+            'font-src': ["'self'", "https://fonts.gstatic.com", "https://maxcdn.bootstrapcdn.com"],
             'img-src': ["'self'", "data:", "blob:", "https:"],
             'connect-src': ["'self'", "wss:", "ws:", "https://www.youtube.com"],
             'frame-src': ["'self'", "https://www.youtube.com"],
