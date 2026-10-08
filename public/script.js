@@ -679,6 +679,9 @@
                 case 'wiki-page-content':
                     window.dispatchEvent(new CustomEvent('wiki-update-page', { detail: data }));
                     break;
+                case 'wiki-save-confirm':
+                    window.dispatchEvent(new CustomEvent('wiki-save-confirm', { detail: data }));
+                    break;
             }
         };
     }
@@ -945,6 +948,7 @@
 
         resize(resizerLeft, leftPanel, document.getElementById('toggle-chat-btn'), 'left');
         resize(resizerRight, rightPanel, document.getElementById('toggle-video-panel-btn'), 'right');
+    }
 
 // === Service Worker Registration ===
 if ('serviceWorker' in navigator) {
