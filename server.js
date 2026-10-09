@@ -970,7 +970,7 @@ wss.on('connection', (ws) => {
             case 'wiki-save-page':
                 if (client) {
                     try {
-                        const { pageName, content, isMJPage } = data;
+                        const { pageName, content, isMJPage, originalPageName } = data;
                         if (isMJPage && !client.isMJ) return; // MJ-only check
 
                         const dir = isMJPage ? MJ_WIKI_DIR : WIKI_DIR;
@@ -978,6 +978,19 @@ wss.on('connection', (ws) => {
 
                         fs.writeFileSync(filePath, content, 'utf-8');
                         console.log(`[WIKI] Saved page: ${filePath}`);
+
+                        // Handle rename: if originalPageName exists and is different from pageName, delete original file
+                        if (originalPageName && originalPageName !== pageName) {
+                            try {
+                                const oldFilePath = getSafeWikiPath(dir, originalPageName);
+                                if (fs.existsSync(oldFilePath)) {
+                                    fs.unlinkSync(oldFilePath);
+                                    console.log(`[WIKI] Deleted old page after rename: ${oldFilePath}`);
+                                }
+                            } catch (renameErr) {
+                                console.error(`[WIKI] Failed to delete old page during rename: ${originalPageName}`, renameErr);
+                            }
+                        }
 
                         loadWikiPages();
                         broadcastWikiPageList();
@@ -991,6 +1004,33 @@ wss.on('connection', (ws) => {
                         console.error('[WIKI] Error saving page:', error);
                         // Send error confirmation to client
                         ws.send(JSON.stringify({ type: 'wiki-save-confirm', pageName: data.pageName, success: false, error: error.message }));
+                    }
+                }
+                break;
+
+            case 'wiki-delete-page':
+                if (client) {
+                    try {
+                        const { pageName, isMJPage } = data;
+                        if (isMJPage && !client.isMJ) return; // MJ-only check
+
+                        const dir = isMJPage ? MJ_WIKI_DIR : WIKI_DIR;
+                        const filePath = getSafeWikiPath(dir, pageName);
+
+                        if (fs.existsSync(filePath)) {
+                            fs.unlinkSync(filePath);
+                            console.log(`[WIKI] Deleted page: ${filePath}`);
+
+                            loadWikiPages();
+                            broadcastWikiPageList();
+
+                            ws.send(JSON.stringify({ type: 'wiki-delete-confirm', pageName, success: true }));
+                        } else {
+                            ws.send(JSON.stringify({ type: 'wiki-delete-confirm', pageName, success: false, error: "La page n'existe pas." }));
+                        }
+                    } catch (error) {
+                        console.error('[WIKI] Error deleting page:', error);
+                        ws.send(JSON.stringify({ type: 'wiki-delete-confirm', pageName: data.pageName, success: false, error: error.message }));
                     }
                 }
                 break;
