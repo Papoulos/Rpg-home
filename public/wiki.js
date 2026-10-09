@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const editorTitle = document.getElementById('wiki-editor-title');
     const editBtn = document.getElementById('wiki-edit-btn');
     const saveBtn = document.getElementById('wiki-save-btn');
+    const deleteBtn = document.getElementById('wiki-delete-btn');
     const cancelBtn = document.getElementById('wiki-cancel-btn');
 
     let easyMDE;
@@ -56,9 +57,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isNew) {
             editorTitle.value = '';
             easyMDE.value('');
+            if (deleteBtn) deleteBtn.style.display = 'none';
         } else if (currentPage) {
             editorTitle.value = currentPage.pageName;
             easyMDE.value(currentPage.content);
+            if (deleteBtn) deleteBtn.style.display = 'inline-block';
         }
     }
 
@@ -165,8 +168,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     saveBtn.addEventListener('click', () => {
         let isSaveMJ = isNewPageMJ;
+        let originalPageName = null;
         if (currentPage) {
             isSaveMJ = currentPage.isMJPage;
+            originalPageName = currentPage.pageName;
         }
 
         const newTitle = editorTitle.value.trim().replace(/\s+/g, '_');
@@ -182,7 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
         saveBtn.textContent = 'Sauvegarde en cours...';
 
         // Send data to server
-        sendWikiMessage({ type: 'wiki-save-page', pageName: newTitle, content: newContent, isMJPage: isSaveMJ });
+        sendWikiMessage({ type: 'wiki-save-page', pageName: newTitle, content: newContent, isMJPage: isSaveMJ, originalPageName: originalPageName });
         
         // Set timeout to reset button in case server doesn't respond
         setTimeout(() => {
@@ -190,6 +195,23 @@ document.addEventListener('DOMContentLoaded', () => {
             saveBtn.textContent = 'Sauvegarder';
         }, 3000);
     });
+
+    if (deleteBtn) {
+        deleteBtn.addEventListener('click', () => {
+            if (currentPage) {
+                if (confirm('Êtes-vous sûr de vouloir supprimer cette page ? Cette action est irréversible.')) {
+                    deleteBtn.disabled = true;
+                    deleteBtn.textContent = 'Suppression...';
+                    sendWikiMessage({ type: 'wiki-delete-page', pageName: currentPage.pageName, isMJPage: currentPage.isMJPage });
+
+                    setTimeout(() => {
+                        deleteBtn.disabled = false;
+                        deleteBtn.textContent = 'Supprimer';
+                    }, 3000);
+                }
+            }
+        });
+    }
 
     addPageBtn.addEventListener('click', () => {
         currentPage = null;
@@ -238,9 +260,21 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 2000);
             alert('Erreur lors de la sauvegarde: ' + (event.detail.error || 'Inconnu'));
         }
-    }
+    });
 
-);
+    window.addEventListener('wiki-delete-confirm', (event) => {
+        if (deleteBtn) {
+            deleteBtn.disabled = false;
+            deleteBtn.textContent = 'Supprimer';
+        }
+
+        if (event.detail.success) {
+            renderPage(null);
+            showViewer();
+        } else {
+            alert('Erreur lors de la suppression: ' + (event.detail.error || 'Inconnu'));
+        }
+    });
 
     window.addEventListener('mj-status', (event) => {
         isMJ = event.detail.isMJ;

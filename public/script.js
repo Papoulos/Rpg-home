@@ -682,6 +682,9 @@
                 case 'wiki-save-confirm':
                     window.dispatchEvent(new CustomEvent('wiki-save-confirm', { detail: data }));
                     break;
+                case 'wiki-delete-confirm':
+                    window.dispatchEvent(new CustomEvent('wiki-delete-confirm', { detail: data }));
+                    break;
             }
         };
     }
