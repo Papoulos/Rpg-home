@@ -4,7 +4,7 @@
   "description": "This is a web application for playing tabletop role-playing games (RPGs) with friends online. It provides a set of tools to facilitate remote gameplay, including video calling, chat, and more.",
   "main": "script.js",
   "scripts": {
-    "start": "node server.js --nossl"
+    "start": "node server.js"
   },
   "repository": {
     "type": "git",

@@ -10,7 +10,7 @@ services:
     volumes:
       - ./data:/app/data
       - ./wiki:/app/wiki
-    # Le Dockerfile actuel execute npm start, qui correspond a node server.js --nossl.
+    # Le Dockerfile actuel execute npm start, qui correspond a node server.js.
 
   proxy:
     build: ./docker-proxy
