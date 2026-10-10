@@ -37,16 +37,8 @@ Depuis le répertoire racine du projet, lancez la commande suivante :
 ```sh
 node server.js
 ```
-Le serveur démarrera en mode HTTPS par défaut (en utilisant des certificats auto-signés).
-Ouvrez votre navigateur web et naviguez vers `https://localhost:3000`. Vous devrez accepter l'avertissement de sécurité de votre navigateur lié au certificat auto-signé.
-
-### Lancement sans SSL (HTTP)
-
-Si vous exécutez cette application derrière un reverse proxy qui fournit déjà le SSL (comme GitHub Codespaces, Gitpod, ou Nginx en production), utilisez l'indicateur `--nossl` :
-```sh
-node server.js --nossl
-```
-Le serveur démarrera en mode HTTP et devrait être accessible via l'URL sécurisée de votre proxy.
+Le serveur démarrera en mode HTTP.
+Ouvrez votre navigateur web et naviguez vers `http://localhost:3000`.
 
 ### Déploiement avec Docker Compose (Serveur Complet avec SSL et DynDNS)
 
@@ -154,8 +146,8 @@ fi
 cd $APP_DIR
 npm install
 pkill node
-# Lancement de l'application en arrière-plan sans SSL (géré par Nginx)
-nohup node server.js --nossl > /var/log/rpg-home.log 2>&1 &
+# Lancement de l'application en arrière-plan
+nohup node server.js > /var/log/rpg-home.log 2>&1 &
 ```
 
 ## Fonctionnalités

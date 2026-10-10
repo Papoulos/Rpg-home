@@ -1,6 +1,5 @@
 const express = require('express');
 const http = require('http');
-const https = require('https');
 const WebSocket = require('ws');
 const path = require('path');
 const fs = require('fs');
@@ -171,25 +170,8 @@ async function startServer() {
     chatbotConfig = await loadChatbotConfig(chatbotConfig);
 
     // --- Server Initialization ---
-    const useSSL = !process.argv.includes('--nossl');
-
-    if (useSSL) {
-        console.log('[SERVER] Starting in HTTPS mode.');
-        try {
-            const options = {
-                key: fs.readFileSync(path.join(__dirname, 'certs/key.pem')),
-                cert: fs.readFileSync(path.join(__dirname, 'certs/cert.pem'))
-            };
-            server = https.createServer(options, app);
-        } catch (e) {
-            console.error('[SERVER] SSL certificate error. Please ensure `certs/key.pem` and `certs/cert.pem` exist.');
-            console.error('[SERVER] To run without SSL, use the --nossl flag.');
-            process.exit(1);
-        }
-    } else {
-        console.log('[SERVER] Starting in HTTP mode (SSL disabled).');
-        server = http.createServer(app);
-    }
+    console.log('[SERVER] Starting in HTTP mode.');
+    server = http.createServer(app);
 
     const wss = new WebSocket.Server({
         server,
