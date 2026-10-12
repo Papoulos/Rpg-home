@@ -1,5 +1,5 @@
 # Étape 1 : Utiliser une image Node.js officielle et légère
-FROM node:18-slim
+FROM node:22-slim
 
 # Créer un répertoire pour l'application
 WORKDIR /app

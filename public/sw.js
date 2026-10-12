@@ -16,7 +16,7 @@ const ASSETS_TO_CACHE = [
   '/fabric-whiteboard.js',
   '/music.js',
   '/wiki.js',
-  '/libs/fabric/fabric.js',
+  '/libs/fabric/fabric.min.js',
   '/libs/easymde/easymde.min.js',
   '/libs/easymde/easymde.min.css',
   '/libs/showdown/showdown.min.js',
