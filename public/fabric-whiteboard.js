@@ -272,7 +272,7 @@
 
         window.addEventListener('fabric-remote-path-created', (event) => {
             if (canvas) {
-                fabric.util.enlivenObjects([event.detail.payload], (objects) => {
+                fabric.util.enlivenObjects([event.detail.payload]).then((objects) => {
                     objects.forEach((obj) => canvas.add(obj));
                     canvas.renderAll();
                 });
@@ -280,7 +280,7 @@
         });
 
         const setBackground = (dataUrl) => {
-            fabric.Image.fromURL(dataUrl, (img) => {
+            fabric.Image.fromURL(dataUrl).then((img) => {
                 // Fit background to virtual resolution maintaining aspect ratio of the virtual resolution
                 canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas), {
                     scaleX: VIRTUAL_WIDTH / img.width,
@@ -313,7 +313,7 @@
             const file = event.target.files[0];
             const reader = new FileReader();
             reader.onload = (e) => {
-                fabric.Image.fromURL(e.target.result, (img) => {
+                fabric.Image.fromURL(e.target.result).then((img) => {
                     const scale = Math.min((VIRTUAL_WIDTH / 2) / img.width, (VIRTUAL_HEIGHT / 2) / img.height);
                     img.set({ scaleX: scale, scaleY: scale, left: (VIRTUAL_WIDTH - img.width * scale) / 2, top: (VIRTUAL_HEIGHT - img.height * scale) / 2 });
                     img.id = getNextId();
@@ -418,7 +418,7 @@
         };
 
         window.addEventListener('fabric-remote-add-object', remoteActionHandler((payload) => {
-            fabric.util.enlivenObjects([payload], (objects) => {
+            fabric.util.enlivenObjects([payload]).then((objects) => {
                 canvas.add(objects[0]);
                 canvas.renderAll();
             });
@@ -433,7 +433,7 @@
                 canvas.renderAll();
             } else {
                 // Fallback in case it doesn't exist yet
-                fabric.util.enlivenObjects([payload], (newObjects) => {
+                fabric.util.enlivenObjects([payload]).then((newObjects) => {
                     canvas.add(newObjects[0]);
                     canvas.renderAll();
                 });

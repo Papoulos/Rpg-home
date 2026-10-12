@@ -214,9 +214,9 @@ Le backend et le frontend intègrent de nombreuses optimisations pour garantir d
 Les dernières mises à jour ont apporté des améliorations significatives pour la performance :
 
 #### Self-Hosting des Bibliothèques
-- **Fabric.js** (993 Ko) : Chargé localement depuis `/libs/fabric/fabric.js` au lieu de Cloudflare CDN.
-- **EasyMDE** (319 Ko JS + 13 Ko CSS) : Chargé localement depuis `/libs/easymde/` au lieu de unpkg CDN.
-- **Showdown.js** (74 Ko) : Chargé localement depuis `/libs/showdown/showdown.min.js` au lieu de Cloudflare CDN.
+- **Fabric.js** (~1Mo) : Chargé localement depuis `/libs/fabric/fabric.min.js` au lieu de Cloudflare CDN.
+- **EasyMDE** (~350 Ko JS + 13 Ko CSS) : Chargé localement depuis `/libs/easymde/` au lieu de unpkg CDN.
+- **Showdown.js** (~75 Ko) : Chargé localement depuis `/libs/showdown/showdown.min.js` au lieu de Cloudflare CDN.
 - **Avantage** : Zéro dépendance externe, chargement plus rapide, pas de risque de CDN indisponible.
 
 #### Minification des Assets
