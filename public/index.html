@@ -439,6 +439,40 @@
         </button>
     </div>
 
+
+    <!-- Backup / Restore Button (MJ only) -->
+    <button id="mj-backup-btn" title="Gérer la sauvegarde" class="hidden" style="position: fixed; bottom: 10px; left: 10px; z-index: 9999; background: #333; color: white; border: 1px solid #444; border-radius: 50%; width: 40px; height: 40px; display: none; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.5);">
+        <span class="material-symbols-outlined">save</span>
+    </button>
+
+    <!-- Backup Modal -->
+    <div id="backup-modal" class="cs-modal-overlay" style="display: none; z-index: 10003;">
+        <div class="cs-modal-content" style="width: 400px; max-width: 90vw;">
+            <h3 style="margin-top:0;">Sauvegarde et Restauration</h3>
+            <p>Gérez l'état complet de la partie (Fiches, Chat, Carte, Images, Playlist).</p>
+
+            <div style="margin-top: 20px; display: flex; flex-direction: column; gap: 15px;">
+                <button id="backup-download-btn" class="cs-btn-confirm" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                    <span class="material-symbols-outlined">download</span> Télécharger la sauvegarde
+                </button>
+
+                <hr style="border: 1px solid #444; width: 100%;">
+
+                <div>
+                    <label for="backup-upload-input" style="display: block; margin-bottom: 5px; color: #ccc;">Restaurer une sauvegarde (.json)</label>
+                    <input type="file" id="backup-upload-input" accept=".json" style="width: 100%; background: #222; color: #fff; padding: 5px; border: 1px solid #444; border-radius: 4px;">
+                </div>
+                <button id="backup-restore-btn" class="cs-btn-cancel" style="width: 100%; background-color: #8b0000; display: flex; align-items: center; justify-content: center; gap: 10px;" disabled>
+                    <span class="material-symbols-outlined">upload</span> Restaurer (Attention: écrase tout)
+                </button>
+            </div>
+
+            <div class="cs-modal-actions" style="margin-top: 20px;">
+                <button id="backup-modal-close" class="cs-btn-cancel" style="margin-left: auto;">Fermer</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modale de lancer de dés pour la fiche -->
     <div id="cs-roll-modal" class="cs-modal-overlay" style="display: none;">
         <div class="cs-modal-content">

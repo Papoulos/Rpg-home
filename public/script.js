@@ -679,7 +679,27 @@
                 case 'wiki-page-content':
                     window.dispatchEvent(new CustomEvent('wiki-update-page', { detail: data }));
                     break;
-                case 'wiki-save-confirm':
+
+            case 'backup-data':
+                const blob = new Blob([JSON.stringify(data.data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const date = new Date().toISOString().slice(0, 10);
+                a.download = `rpg-backup-${date}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                break;
+            case 'backup-error':
+                alert(data.message);
+                break;
+            case 'force-reload':
+                window.location.reload();
+                break;
+
+            case 'wiki-save-confirm':
                     window.dispatchEvent(new CustomEvent('wiki-save-confirm', { detail: data }));
                     break;
                 case 'wiki-delete-confirm':
@@ -963,6 +983,82 @@ if ('serviceWorker' in navigator) {
             .catch(err => {
                 console.error('[SW] Registration failed:', err);
             });
+    });
+}
+
+
+// --- Backup & Restore Logic ---
+const mjBackupBtn = document.getElementById('mj-backup-btn');
+const backupModal = document.getElementById('backup-modal');
+const backupDownloadBtn = document.getElementById('backup-download-btn');
+const backupUploadInput = document.getElementById('backup-upload-input');
+const backupRestoreBtn = document.getElementById('backup-restore-btn');
+const backupModalClose = document.getElementById('backup-modal-close');
+
+if(mjBackupBtn) {
+    window.addEventListener('mj-status', (event) => {
+        if (event.detail.isMJ) {
+            mjBackupBtn.style.display = 'flex';
+            mjBackupBtn.classList.remove('hidden');
+        }
+    });
+
+    mjBackupBtn.addEventListener('click', () => {
+        backupModal.style.display = 'flex';
+    });
+
+    backupModalClose.addEventListener('click', () => {
+        backupModal.style.display = 'none';
+        backupUploadInput.value = '';
+        backupRestoreBtn.disabled = true;
+    });
+
+    backupModal.addEventListener('click', (event) => {
+        if (event.target === backupModal) {
+            backupModal.style.display = 'none';
+            backupUploadInput.value = '';
+            backupRestoreBtn.disabled = true;
+        }
+    });
+
+    backupDownloadBtn.addEventListener('click', () => {
+        if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ type: 'request-backup' }));
+        } else {
+            alert("Déconnecté du serveur.");
+        }
+    });
+
+    backupUploadInput.addEventListener('change', () => {
+        if (backupUploadInput.files.length > 0) {
+            backupRestoreBtn.disabled = false;
+        } else {
+            backupRestoreBtn.disabled = true;
+        }
+    });
+
+    backupRestoreBtn.addEventListener('click', () => {
+        if (backupUploadInput.files.length > 0) {
+            const file = backupUploadInput.files[0];
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (confirm("Attention: La restauration va écraser TOUTES les données actuelles (Fiches, Chat, Carte...). Êtes-vous sûr ?")) {
+                        if (socket.readyState === WebSocket.OPEN) {
+                            socket.send(JSON.stringify({ type: 'restore-backup', data: data }));
+                        } else {
+                            alert("Déconnecté du serveur.");
+                        }
+                        backupModal.style.display = 'none';
+                    }
+                } catch (err) {
+                    alert("Fichier de sauvegarde invalide (JSON mal formé).");
+                    console.error("Restore error", err);
+                }
+            };
+            reader.readAsText(file);
+        }
     });
 }
 
