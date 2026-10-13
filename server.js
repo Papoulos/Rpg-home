@@ -175,7 +175,7 @@ async function startServer() {
 
     const wss = new WebSocket.Server({
         server,
-        maxPayload: 5 * 1024 * 1024 // 5MB limit
+        maxPayload: 50 * 1024 * 1024 // 50MB limit for backups
     });
 
 const PORT = process.env.PORT || 3000;
@@ -986,6 +986,105 @@ wss.on('connection', (ws) => {
                         console.error('[WIKI] Error saving page:', error);
                         // Send error confirmation to client
                         ws.send(JSON.stringify({ type: 'wiki-save-confirm', pageName: data.pageName, success: false, error: error.message }));
+                    }
+                }
+                break;
+
+
+            case 'request-backup':
+                if (client && client.isMJ) {
+                    try {
+                        const backupData = {
+                            chatHistory: chatHistory,
+                            imageList: imageList,
+                            whiteboardState: whiteboardState,
+                            musicState: musicState, // Saves playlist, isLooping, volume, currentIndex
+                            characters: {}
+                        };
+
+                        // Load all character data
+                        if (fs.existsSync(CHARACTERS_DIR)) {
+                            const files = fs.readdirSync(CHARACTERS_DIR);
+                            files.forEach(file => {
+                                if (file.endsWith('.json')) {
+                                    const charId = file.replace('.json', '');
+                                    const filePath = path.join(CHARACTERS_DIR, file);
+                                    const charContent = fs.readFileSync(filePath, 'utf-8');
+                                    backupData.characters[charId] = JSON.parse(charContent);
+                                }
+                            });
+                        }
+
+                        ws.send(JSON.stringify({ type: 'backup-data', data: backupData }));
+                    } catch (error) {
+                        console.error('[BACKUP] Error creating backup:', error);
+                        ws.send(JSON.stringify({ type: 'backup-error', message: 'Erreur lors de la création de la sauvegarde.' }));
+                    }
+                }
+                break;
+
+            case 'restore-backup':
+                if (client && client.isMJ) {
+                    try {
+                        const backupData = data.data;
+
+                        // 1. Restore Characters
+                        if (backupData.characters) {
+                            // Clear existing characters
+                            if (fs.existsSync(CHARACTERS_DIR)) {
+                                const files = fs.readdirSync(CHARACTERS_DIR);
+                                files.forEach(file => {
+                                    if (file.endsWith('.json')) {
+                                        fs.unlinkSync(path.join(CHARACTERS_DIR, file));
+                                    }
+                                });
+                            }
+
+                            // Write new characters
+                            for (const [charId, charData] of Object.entries(backupData.characters)) {
+                                const filePath = path.join(CHARACTERS_DIR, `${charId}.json`);
+                                fs.writeFileSync(filePath, JSON.stringify(charData, null, 2));
+                            }
+                            loadCharactersList();
+                        }
+
+                        // 2. Restore Chat
+                        if (backupData.chatHistory) {
+                            chatHistory = backupData.chatHistory;
+                            if (fs.existsSync(CHAT_LOG_FILE)) fs.unlinkSync(CHAT_LOG_FILE); // Reset file
+                            chatHistory.forEach(msg => appendToHistory(msg));
+                        }
+
+                        // 3. Restore Images
+                        if (backupData.imageList) {
+                            imageList = backupData.imageList;
+                            saveImageList();
+                        }
+
+                        // 4. Restore Whiteboard
+                        if (backupData.whiteboardState !== undefined) {
+                            whiteboardState = backupData.whiteboardState;
+                            if (whiteboardState) {
+                                saveWhiteboardState(whiteboardState);
+                            } else if (fs.existsSync(WHITEBOARD_STATE_FILE)) {
+                                fs.unlinkSync(WHITEBOARD_STATE_FILE);
+                            }
+                        }
+
+                        // 5. Restore Music State
+                        if (backupData.musicState) {
+                            musicState = backupData.musicState;
+                            savePlaylist();
+                        }
+
+                        console.log(`[BACKUP] Restored by MJ (${client.username}). Broadcasting force-reload.`);
+
+                        // Force all clients to reload
+                        broadcast({ type: 'force-reload' });
+
+                    } catch (error) {
+                        console.error('[BACKUP] Error restoring backup:', error);
+                        ws.send(JSON.stringify({ type: 'backup-error', message: 'Erreur lors de la restauration.' }));
                     }
                 }
                 break;

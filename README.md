@@ -210,7 +210,13 @@ Le backend et le frontend intègrent de nombreuses optimisations pour garantir d
 - Utilisation de WebSockets avec mécanisme de pulsation (*heartbeat*) pour empêcher les déconnexions intempestives.
 - Chemins relatifs pour les APIs pour une meilleure compatibilité des environnements de déploiement.
 
-### 10. Optimisations de Rapidité et Cache
+
+### 11. Sauvegarde et Restauration
+Le Maître du Jeu (MJ) dispose d'une fonctionnalité exclusive permettant de générer une sauvegarde complète de l'état de la partie.
+- **Backup Global** : Via un bouton dédié, il est possible de télécharger un fichier unique `.json` regroupant toutes les fiches de personnages, l'historique du chat complet, l'état du tableau blanc (carte), la playlist musicale et la liste des images de référence.
+- **Restauration Simple** : L'upload d'un fichier de sauvegarde écrase l'état courant sur le serveur et rediffuse la scène restaurée à l'ensemble des joueurs en forçant le rafraîchissement de leurs pages instantanément.
+
+### 12. Optimisations de Rapidité et Cache
 Les dernières mises à jour ont apporté des améliorations significatives pour la performance :
 
 #### Self-Hosting des Bibliothèques
