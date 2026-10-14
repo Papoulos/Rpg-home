@@ -119,9 +119,21 @@
                 </div>
                 <div id="music-content" class="tab-content">
                     <div class="music-container hidden">
+                        <!-- Theme Controls (MJ only) -->
+                        <div id="music-theme-controls" class="music-controls hidden" style="justify-content: flex-start; margin-bottom: 10px; border-radius: 8px;">
+                            <label for="music-theme-select" style="color: #ccc; margin-right: 5px;">Thème :</label>
+                            <select id="music-theme-select" style="background-color: #3e3e3e; color: #e0e0e0; border: 1px solid #555; border-radius: 5px; padding: 4px 8px; flex-grow: 1;">
+                                <option value="default">Défaut</option>
+                            </select>
+                            <button id="music-theme-create-btn" class="control-btn btn-add" title="Nouveau thème" style="padding: 4px; width: 28px; height: 28px;"><span class="material-symbols-outlined" style="font-size: 18px;">add</span></button>
+                            <button id="music-theme-rename-btn" class="control-btn btn-show" title="Renommer le thème" style="padding: 4px; width: 28px; height: 28px;"><span class="material-symbols-outlined" style="font-size: 18px;">edit</span></button>
+                            <button id="music-theme-delete-btn" class="control-btn btn-delete" title="Supprimer le thème" style="padding: 4px; width: 28px; height: 28px;"><span class="material-symbols-outlined" style="font-size: 18px;">delete</span></button>
+                        </div>
+
                         <!-- Main Player Controls -->
                         <div id="music-main-controls">
                             <div id="music-current-track">
+                                <div id="music-active-theme-display" style="font-size: 0.8em; color: #888; margin-bottom: 2px;">Thème: Défaut</div>
                                 <span id="music-current-title">Aucune musique sélectionnée</span>
                             </div>
                             <div class="main-buttons">

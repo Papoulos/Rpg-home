@@ -3,7 +3,9 @@
     // --- State ---
     let player;
     let isMJ = false;
-    let playlist = [];
+    let playlists = { 'default': { id: 'default', name: 'Défaut', tracks: [] } };
+    let activePlaylistId = 'default';
+    let playlist = []; // Tracks of the active playlist
     let currentIndex = -1;
     let isLooping = false;
     let isPlayerReady = false;
@@ -11,7 +13,9 @@
     // --- DOM Elements ---
     let musicContainer, musicMainControls, musicCurrentTitle, musicPlayPauseBtn,
         musicVolumeSlider, youtubeUrlInput, musicAddBtn, musicLoopToggle, musicPlaylistContainer,
-        musicUploadBtn, musicUploadInput, localAudioPlayer;
+        musicUploadBtn, musicUploadInput, localAudioPlayer,
+        musicThemeSelect, musicThemeCreateBtn, musicThemeRenameBtn, musicThemeDeleteBtn,
+        musicActiveThemeDisplay;
 
     // --- YouTube Player API Functions ---
 
@@ -276,6 +280,63 @@
         }
     }
 
+    // --- Theme (Playlist) Handlers ---
+
+    function handlePlaylistCreate() {
+        const name = prompt("Entrez le nom du nouveau thème :");
+        if (name && name.trim()) {
+            const id = 'theme_' + Date.now();
+            sendMusicControl('playlist-create', { id, name: name.trim() });
+        }
+    }
+
+    function handlePlaylistRename() {
+        if (activePlaylistId === 'default') {
+            alert("Vous ne pouvez pas renommer le thème par défaut.");
+            return;
+        }
+        const currentName = playlists[activePlaylistId]?.name || '';
+        const name = prompt("Entrez le nouveau nom pour ce thème :", currentName);
+        if (name && name.trim() && name.trim() !== currentName) {
+            sendMusicControl('playlist-rename', { id: activePlaylistId, name: name.trim() });
+        }
+    }
+
+    function handlePlaylistDelete() {
+        if (activePlaylistId === 'default') {
+            alert("Vous ne pouvez pas supprimer le thème par défaut.");
+            return;
+        }
+        if (confirm(`Êtes-vous sûr de vouloir supprimer le thème "${playlists[activePlaylistId]?.name || ''}" ? Les pistes ne seront plus associées à ce thème.`)) {
+            sendMusicControl('playlist-delete', { id: activePlaylistId });
+        }
+    }
+
+    function handlePlaylistSelect(event) {
+        const selectedId = event.target.value;
+        if (selectedId !== activePlaylistId) {
+            sendMusicControl('playlist-select', { id: selectedId });
+        }
+    }
+
+    function renderThemeSelect() {
+        if (!isMJ) return;
+
+        musicThemeSelect.innerHTML = '';
+        Object.values(playlists).forEach(theme => {
+            const option = document.createElement('option');
+            option.value = theme.id;
+            option.textContent = theme.name;
+            if (theme.id === activePlaylistId) {
+                option.selected = true;
+            }
+            musicThemeSelect.appendChild(option);
+        });
+
+        musicThemeRenameBtn.disabled = activePlaylistId === 'default';
+        musicThemeDeleteBtn.disabled = activePlaylistId === 'default';
+    }
+
     // --- Drag and Drop Handlers ---
     let draggedItem = null;
 
@@ -336,14 +397,21 @@
     function setupMJControls() {
         if (isMJ) {
             musicContainer.classList.remove('hidden');
+            document.getElementById('music-theme-controls').classList.remove('hidden');
             musicPlayPauseBtn.addEventListener('click', handlePlayPauseClick);
             musicAddBtn.addEventListener('click', handleAddClick);
             musicLoopToggle.addEventListener('change', handleLoopToggle);
             musicVolumeSlider.addEventListener('input', handleVolumeChange);
             musicUploadBtn.addEventListener('click', () => musicUploadInput.click());
             musicUploadInput.addEventListener('change', handleMusicUpload);
+
+            musicThemeSelect.addEventListener('change', handlePlaylistSelect);
+            musicThemeCreateBtn.addEventListener('click', handlePlaylistCreate);
+            musicThemeRenameBtn.addEventListener('click', handlePlaylistRename);
+            musicThemeDeleteBtn.addEventListener('click', handlePlaylistDelete);
         } else {
             musicContainer.classList.add('hidden');
+            document.getElementById('music-theme-controls').classList.add('hidden');
         }
     }
 
@@ -393,19 +461,32 @@
                 if (isMJ) musicVolumeSlider.value = value.volume;
                 break;
             case 'playlist-update':
+                playlists = value.playlists || playlists;
+                activePlaylistId = value.activePlaylistId || activePlaylistId;
                 playlist = value.playlist || [];
                 isLooping = value.isLooping || false;
-                if (isMJ) musicLoopToggle.checked = isLooping;
+
+                musicActiveThemeDisplay.textContent = `Thème: ${playlists[activePlaylistId]?.name || 'Défaut'}`;
+
+                if (isMJ) {
+                    musicLoopToggle.checked = isLooping;
+                    renderThemeSelect();
+                }
                 renderPlaylist();
                 break;
             case 'sync':
+                if (value.playlists) playlists = value.playlists;
+                if (value.activePlaylistId) activePlaylistId = value.activePlaylistId;
                 playlist = value.playlist || [];
                 isLooping = value.isLooping || false;
                 currentIndex = value.currentIndex;
 
+                musicActiveThemeDisplay.textContent = `Thème: ${playlists[activePlaylistId]?.name || 'Défaut'}`;
+
                 if (isMJ) {
                     musicLoopToggle.checked = isLooping;
                     musicVolumeSlider.value = value.volume;
+                    renderThemeSelect();
                 }
 
                 renderPlaylist();
@@ -461,6 +542,12 @@
         musicUploadBtn = document.getElementById('music-upload-btn');
         musicUploadInput = document.getElementById('music-upload-input');
         localAudioPlayer = document.getElementById('local-audio-player');
+
+        musicThemeSelect = document.getElementById('music-theme-select');
+        musicThemeCreateBtn = document.getElementById('music-theme-create-btn');
+        musicThemeRenameBtn = document.getElementById('music-theme-rename-btn');
+        musicThemeDeleteBtn = document.getElementById('music-theme-delete-btn');
+        musicActiveThemeDisplay = document.getElementById('music-active-theme-display');
 
         localAudioPlayer.addEventListener('play', () => updatePlayPauseIcon());
         localAudioPlayer.addEventListener('pause', () => updatePlayPauseIcon());

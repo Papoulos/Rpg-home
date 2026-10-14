@@ -229,7 +229,10 @@ function broadcastCharactersList() {
 
 // --- Music State ---
 let musicState = {
-    playlist: [],
+    playlists: {
+        'default': { id: 'default', name: 'Défaut', tracks: [] }
+    },
+    activePlaylistId: 'default',
     currentIndex: -1,
     isPlaying: false,
     isLooping: false,
@@ -245,10 +248,34 @@ function loadPlaylist() {
         try {
             const fileContent = fs.readFileSync(PLAYLIST_FILE, 'utf-8');
             const savedState = JSON.parse(fileContent);
-            // Basic validation
-            if (savedState && Array.isArray(savedState.playlist)) {
-                musicState = { ...musicState, ...savedState };
-                console.log(`[PLAYLIST] Loaded ${musicState.playlist.length} songs.`);
+
+            if (savedState) {
+                // Migration from old format: { playlist: [...] }
+                if (savedState.playlist && Array.isArray(savedState.playlist) && !savedState.playlists) {
+                    musicState.playlists['default'].tracks = savedState.playlist;
+                    musicState.isLooping = savedState.isLooping || false;
+                    musicState.volume = savedState.volume !== undefined ? savedState.volume : 100;
+                    musicState.currentIndex = savedState.currentIndex !== undefined ? savedState.currentIndex : -1;
+                    console.log(`[PLAYLIST] Migrated old format with ${savedState.playlist.length} songs to 'Défaut'.`);
+                }
+                // New format
+                else if (savedState.playlists) {
+                    musicState.playlists = savedState.playlists;
+                    musicState.activePlaylistId = savedState.activePlaylistId || 'default';
+                    musicState.isLooping = savedState.isLooping || false;
+                    musicState.volume = savedState.volume !== undefined ? savedState.volume : 100;
+                    musicState.currentIndex = savedState.currentIndex !== undefined ? savedState.currentIndex : -1;
+                    console.log(`[PLAYLIST] Loaded ${Object.keys(musicState.playlists).length} playlists.`);
+                }
+
+                // Ensure default playlist exists
+                if (!musicState.playlists['default']) {
+                    musicState.playlists['default'] = { id: 'default', name: 'Défaut', tracks: [] };
+                }
+                if (!musicState.playlists[musicState.activePlaylistId]) {
+                    musicState.activePlaylistId = 'default';
+                    musicState.currentIndex = -1;
+                }
             }
         } catch (error) {
             console.error('[PLAYLIST] Failed to load or parse playlist.json:', error);
@@ -260,7 +287,8 @@ function savePlaylist() {
     try {
         // Only save the persistent parts of the state
         const stateToSave = {
-            playlist: musicState.playlist,
+            playlists: musicState.playlists,
+            activePlaylistId: musicState.activePlaylistId,
             isLooping: musicState.isLooping,
             volume: musicState.volume,
             currentIndex: musicState.currentIndex
@@ -739,10 +767,11 @@ wss.on('connection', (ws) => {
 
                 const { action, value } = data;
                 let updatePayload = { type: 'music-control' };
+                let activeTracks = musicState.playlists[musicState.activePlaylistId] ? musicState.playlists[musicState.activePlaylistId].tracks : [];
 
                 switch (action) {
                     case 'play':
-                        if (value.index >= 0 && value.index < musicState.playlist.length) {
+                        if (value.index >= 0 && value.index < activeTracks.length) {
                             musicState.isPlaying = true;
                             musicState.currentIndex = value.index;
                             musicState.startTime = Date.now();
@@ -784,10 +813,80 @@ wss.on('connection', (ws) => {
                         broadcast(updatePayload);
                         break;
 
+                    case 'playlist-create':
+                        if (value.id && value.name) {
+                            musicState.playlists[value.id] = { id: value.id, name: value.name, tracks: [] };
+                            // Switch to it immediately
+                            musicState.activePlaylistId = value.id;
+                            musicState.currentIndex = -1;
+                            musicState.isPlaying = false;
+
+                            broadcast({
+                                type: 'music-control',
+                                action: 'sync',
+                                value: { ...musicState, currentTime: 0, playlist: [] }
+                            });
+                            savePlaylist();
+                            return;
+                        }
+                        break;
+
+                    case 'playlist-rename':
+                        if (value.id && value.name && musicState.playlists[value.id]) {
+                            musicState.playlists[value.id].name = value.name;
+                        }
+                        break;
+
+                    case 'playlist-delete':
+                        if (value.id && musicState.playlists[value.id]) {
+                            delete musicState.playlists[value.id];
+                            if (musicState.activePlaylistId === value.id) {
+                                // Find another playlist or default
+                                const remainingKeys = Object.keys(musicState.playlists);
+                                musicState.activePlaylistId = remainingKeys.length > 0 ? remainingKeys[0] : 'default';
+                                if (!musicState.playlists[musicState.activePlaylistId]) {
+                                    musicState.playlists['default'] = { id: 'default', name: 'Défaut', tracks: [] };
+                                    musicState.activePlaylistId = 'default';
+                                }
+                                musicState.currentIndex = musicState.playlists[musicState.activePlaylistId].tracks.length > 0 ? 0 : -1;
+                                musicState.isPlaying = musicState.currentIndex !== -1;
+                                musicState.startTime = musicState.isPlaying ? Date.now() : null;
+                                musicState.pauseTime = null;
+
+                                broadcast({
+                                    type: 'music-control',
+                                    action: 'sync',
+                                    value: { ...musicState, currentTime: 0, playlist: musicState.playlists[musicState.activePlaylistId].tracks }
+                                });
+                                savePlaylist();
+                                return;
+                            }
+                        }
+                        break;
+
+                    case 'playlist-select':
+                        if (value.id && musicState.playlists[value.id]) {
+                            musicState.activePlaylistId = value.id;
+                            musicState.currentIndex = musicState.playlists[value.id].tracks.length > 0 ? 0 : -1;
+                            musicState.isPlaying = musicState.currentIndex !== -1;
+                            musicState.startTime = musicState.isPlaying ? Date.now() : null;
+                            musicState.pauseTime = null;
+
+                            // Broadcast a full sync to everyone
+                            broadcast({
+                                type: 'music-control',
+                                action: 'sync',
+                                value: { ...musicState, currentTime: 0, playlist: musicState.playlists[musicState.activePlaylistId].tracks }
+                            });
+                            savePlaylist();
+                            return; // Don't broadcast playlist-update below
+                        }
+                        break;
+
                     case 'playlist-add':
                         // The client now provides the title.
                         if (value.videoId && value.title) {
-                            musicState.playlist.push({
+                            activeTracks.push({
                                 videoId: value.videoId,
                                 title: value.title,
                                 type: value.type || 'youtube',
@@ -795,21 +894,22 @@ wss.on('connection', (ws) => {
                             });
                             // If nothing was playing, set the new song as current, but don't auto-play
                             if (musicState.currentIndex === -1) {
-                                musicState.currentIndex = musicState.playlist.length - 1;
+                                musicState.currentIndex = activeTracks.length - 1;
                             }
                         }
                         break;
 
                     case 'playlist-remove':
-                        musicState.playlist = musicState.playlist.filter(song => song.videoId !== value.videoId && song.url !== value.url);
+                        musicState.playlists[musicState.activePlaylistId].tracks = activeTracks.filter(song => song.videoId !== value.videoId && song.url !== value.url);
+                        activeTracks = musicState.playlists[musicState.activePlaylistId].tracks;
                         // Adjust currentIndex if needed
-                        if (musicState.currentIndex >= musicState.playlist.length) {
-                            musicState.currentIndex = musicState.playlist.length - 1;
+                        if (musicState.currentIndex >= activeTracks.length) {
+                            musicState.currentIndex = activeTracks.length - 1;
                         }
                         break;
 
                     case 'playlist-reorder':
-                        musicState.playlist = value.playlist;
+                        musicState.playlists[musicState.activePlaylistId].tracks = value.playlist;
                         break;
 
                     case 'playlist-toggle-loop':
@@ -829,14 +929,19 @@ wss.on('connection', (ws) => {
                         ws.send(JSON.stringify({
                             type: 'music-control',
                             action: 'sync',
-                            value: { ...musicState, currentTime }
+                            value: { ...musicState, currentTime, playlist: activeTracks }
                         }));
                         return; // Don't broadcast or save
                 }
 
                 // After any change, save and broadcast the full playlist to all clients
                 savePlaylist();
-                broadcast({ type: 'music-control', action: 'playlist-update', value: { playlist: musicState.playlist, isLooping: musicState.isLooping } });
+                broadcast({ type: 'music-control', action: 'playlist-update', value: {
+                    playlists: musicState.playlists,
+                    activePlaylistId: musicState.activePlaylistId,
+                    playlist: musicState.playlists[musicState.activePlaylistId] ? musicState.playlists[musicState.activePlaylistId].tracks : [],
+                    isLooping: musicState.isLooping
+                } });
                 break;
 
             case 'add-image':
@@ -1073,7 +1178,30 @@ wss.on('connection', (ws) => {
 
                         // 5. Restore Music State
                         if (backupData.musicState) {
-                            musicState = backupData.musicState;
+                            let restoredState = backupData.musicState;
+                            // Migrate on restore if needed
+                            if (restoredState.playlist && Array.isArray(restoredState.playlist) && !restoredState.playlists) {
+                                musicState.playlists = { 'default': { id: 'default', name: 'Défaut', tracks: restoredState.playlist } };
+                                musicState.activePlaylistId = 'default';
+                                musicState.isLooping = restoredState.isLooping || false;
+                                musicState.volume = restoredState.volume !== undefined ? restoredState.volume : 100;
+                                musicState.currentIndex = restoredState.currentIndex !== undefined ? restoredState.currentIndex : -1;
+                            } else if (restoredState.playlists) {
+                                musicState.playlists = restoredState.playlists;
+                                musicState.activePlaylistId = restoredState.activePlaylistId || 'default';
+                                musicState.isLooping = restoredState.isLooping || false;
+                                musicState.volume = restoredState.volume !== undefined ? restoredState.volume : 100;
+                                musicState.currentIndex = restoredState.currentIndex !== undefined ? restoredState.currentIndex : -1;
+                            }
+
+                            // Ensure default playlist exists
+                            if (!musicState.playlists['default']) {
+                                musicState.playlists['default'] = { id: 'default', name: 'Défaut', tracks: [] };
+                            }
+                            if (!musicState.playlists[musicState.activePlaylistId]) {
+                                musicState.activePlaylistId = 'default';
+                                musicState.currentIndex = -1;
+                            }
                             savePlaylist();
                         }
 
