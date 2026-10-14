@@ -8,9 +8,12 @@
     let isMJ = false;
     let fogBrushSize = 50;
     let fogLayer = null; // This will be a fabric.Group
+    window.tokensList = [];
+    let selectedTokenForPlacement = null;
 
     const VIRTUAL_WIDTH = 1920;
     const VIRTUAL_HEIGHT = 1080;
+    const GRID_CELL_SIZE = 100;
 
 
     // --- UTILITY ---
@@ -75,6 +78,10 @@
             canvas.defaultCursor = 'default';
             canvas.hoverCursor = 'move';
         } else if (tool === 'pointer') {
+            canvas.selection = false;
+            canvas.defaultCursor = 'crosshair';
+            canvas.hoverCursor = 'crosshair';
+        } else if (tool === 'place-token') {
             canvas.selection = false;
             canvas.defaultCursor = 'crosshair';
             canvas.hoverCursor = 'crosshair';
@@ -214,12 +221,18 @@
         function handleMJStatus(isNowMJ) {
             isMJ = isNowMJ;
             if (isMJ) {
-                fogToolbar.classList.remove('hidden');
+                if (fogToolbar) fogToolbar.classList.remove('hidden');
+                const addBtn = document.getElementById('tokens-lib-add-btn');
+                if(addBtn) addBtn.classList.remove('hidden');
+            } else {
+                if (fogToolbar) fogToolbar.classList.add('hidden');
+                const addBtn = document.getElementById('tokens-lib-add-btn');
+                if(addBtn) addBtn.classList.add('hidden');
             }
             // If fog exists, update its color based on MJ status
             if (fogLayer) {
                 const fogBase = fogLayer.getObjects('rect')[0];
-                fogBase.set('fill', isMJ ? 'rgba(0,0,0,0.5)' : 'black');
+                if (fogBase) fogBase.set('fill', isMJ ? 'rgba(0,0,0,0.5)' : 'black');
                 canvas.renderAll();
             }
         }
@@ -333,10 +346,19 @@
 
         canvas.on('mouse:down', (o) => {
             if (canvas.isDrawingMode || !o.pointer) return;
-            isDrawing = true;
+
             const pointer = canvas.getPointer(o.e);
             startX = pointer.x;
             startY = pointer.y;
+
+            if (activeTool === 'place-token' && selectedTokenForPlacement) {
+                placeTokenOnCanvas(startX, startY);
+                setActiveTool('select'); // Reset tool after placement
+                selectedTokenForPlacement = null;
+                return;
+            }
+
+            isDrawing = true;
 
             if (activeTool === 'select' || activeTool === 'pointer') return;
 
@@ -410,6 +432,273 @@
             isDrawing = false;
             currentShape = null;
         });
+
+        const placeTokenOnCanvas = (x, y) => {
+            if (!selectedTokenForPlacement) return;
+            const token = selectedTokenForPlacement;
+
+            fabric.Image.fromURL(token.url, (img) => {
+                let targetWidth = GRID_CELL_SIZE;
+                let targetHeight = GRID_CELL_SIZE;
+
+                if (token.size === '1x2') {
+                    targetHeight = GRID_CELL_SIZE * 2;
+                } else if (token.size === '2x1') {
+                    targetWidth = GRID_CELL_SIZE * 2;
+                }
+
+                // Scale image to fit within target dimensions while maintaining aspect ratio
+                const scaleX = targetWidth / img.width;
+                const scaleY = targetHeight / img.height;
+                const scale = Math.min(scaleX, scaleY);
+
+                img.set({
+                    scaleX: scale,
+                    scaleY: scale,
+                    left: x - (img.width * scale) / 2,
+                    top: y - (img.height * scale) / 2,
+                    id: getNextId(),
+                    customName: token.name // Store name for potential future use (tooltips etc)
+                });
+
+                canvas.add(img);
+                if (window.socket && window.socket.readyState === WebSocket.OPEN) {
+                    window.socket.send(JSON.stringify({ type: 'fabric-add-object', payload: img.toJSON(['id', 'customName']) }));
+                }
+                sendCanvasStateToServer();
+            });
+        };
+
+        // --- Tokens Library Logic ---
+        window.renderTokensLibrary = () => {
+            const categoriesContainer = document.querySelector('.tokens-categories');
+            const gridContainer = document.getElementById('tokens-grid');
+            if (!categoriesContainer || !gridContainer) return;
+
+            // Group tokens by category, injecting PJ automatically
+            const groupedTokens = {};
+
+            // Add automatic PJ tokens from charactersList
+            if (window.availableCharacters) {
+                groupedTokens['Personnages joueurs (PJ)'] = window.availableCharacters.map(char => ({
+                    id: 'char_' + char.id,
+                    name: char.name,
+                    category: 'Personnages joueurs (PJ)',
+                    url: char.portraitUrl || '/default-tokens/player.svg',
+                    size: '1x1',
+                    isDefault: true // Prevent deletion
+                })).filter(t => t.url);
+            }
+
+            console.log("Tokens to render:", window.tokensList);
+            if(window.tokensList) {
+                window.tokensList.forEach(token => {
+                    if (!groupedTokens[token.category]) {
+                        groupedTokens[token.category] = [];
+                    }
+                    // Avoid duplicates in PJ if they somehow get added
+                    if (token.category === 'Personnages joueurs (PJ)' && groupedTokens['Personnages joueurs (PJ)'].some(t => t.url === token.url)) {
+                        return;
+                    }
+                    groupedTokens[token.category].push(token);
+                });
+            } else {
+                console.log("No tokensList found on window");
+            }
+
+            // Make sure standard categories always appear even if empty
+            const standardCategories = ['Personnages joueurs (PJ)', 'Alliés et PNJ', 'Ennemis', 'Créatures', 'Objets', 'Divers'];
+            standardCategories.forEach(cat => {
+                if (!groupedTokens[cat]) groupedTokens[cat] = [];
+            });
+
+            categoriesContainer.innerHTML = '';
+
+            let activeCategory = document.querySelector('.tokens-category-btn.active')?.dataset.category || 'Personnages joueurs (PJ)';
+            if (!groupedTokens[activeCategory]) activeCategory = Object.keys(groupedTokens)[0];
+
+            Object.keys(groupedTokens).sort((a,b) => {
+                // Ensure standard order, custom categories at the end
+                const idxA = standardCategories.indexOf(a);
+                const idxB = standardCategories.indexOf(b);
+                if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                if (idxA !== -1) return -1;
+                if (idxB !== -1) return 1;
+                return a.localeCompare(b);
+            }).forEach(category => {
+                const btn = document.createElement('button');
+                btn.className = 'tokens-category-btn' + (category === activeCategory ? ' active' : '');
+                btn.dataset.category = category;
+                btn.textContent = category;
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.tokens-category-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    renderGrid(groupedTokens[category]);
+                });
+                categoriesContainer.appendChild(btn);
+            });
+
+            const renderGrid = (tokens) => {
+                gridContainer.innerHTML = '';
+                tokens.forEach(token => {
+                    const card = document.createElement('div');
+                    card.className = 'token-card';
+                    card.innerHTML = `
+                        <img src="${token.url}" alt="${token.name}" onerror="this.src='/default-tokens/item.svg'">
+                        <div class="token-name">${token.name}</div>
+                        <div class="token-size">${token.size}</div>
+                    `;
+
+                    if (isMJ && !token.isDefault) {
+                        const deleteBtn = document.createElement('button');
+                        deleteBtn.className = 'token-delete-btn';
+                        deleteBtn.innerHTML = '<span class="material-symbols-outlined">delete</span>';
+                        deleteBtn.title = 'Supprimer ce token';
+                        deleteBtn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            if (confirm(`Supprimer le token "${token.name}" ? (Les instances déjà placées sur la carte resteront)`)) {
+                                if (window.socket?.readyState === WebSocket.OPEN) {
+                                    window.socket.send(JSON.stringify({ type: 'delete-custom-token', id: token.id }));
+                                }
+                            }
+                        });
+                        card.appendChild(deleteBtn);
+                    }
+
+                    card.addEventListener('click', () => {
+                        selectedTokenForPlacement = token;
+                        document.getElementById('tokens-lib-modal').style.display = 'none';
+                        setActiveTool('place-token');
+                    });
+
+                    gridContainer.appendChild(card);
+                });
+            };
+
+            if (groupedTokens[activeCategory]) {
+                renderGrid(groupedTokens[activeCategory]);
+            }
+            console.log("Tokens rendered for category:", activeCategory, groupedTokens[activeCategory]);
+        };
+
+        window.addEventListener('tokens-list-update', (event) => {
+            window.tokensList = event.detail.list;
+            console.log("Tokens list updated: ", window.tokensList);
+            if (document.getElementById('tokens-lib-modal')?.style.display !== 'none') {
+                window.renderTokensLibrary();
+            }
+        });
+
+        // Also update when characters change
+        window.addEventListener('characters-list-update', () => {
+             if (document.getElementById('tokens-lib-modal')?.style.display === 'flex') {
+                window.renderTokensLibrary();
+            }
+        });
+
+        // Add this to properly hook the Toolbar logic for tokens
+        document.getElementById('fabric-tokens-lib-btn')?.addEventListener('click', () => {
+            if(window.socket && window.socket.readyState === WebSocket.OPEN) {
+                console.log("Requesting tokens via get-tokens...");
+                window.socket.send(JSON.stringify({ type: 'get-tokens' }));
+            }
+            const modal = document.getElementById('tokens-lib-modal');
+            if (modal) {
+                modal.style.display = 'flex';
+                modal.classList.remove('hidden');
+                modal.style.setProperty('display', 'flex', 'important');
+                modal.style.opacity = '1';
+                modal.style.visibility = 'visible';
+                modal.style.zIndex = '10005';
+                console.log("Tokens modal opened!");
+            } else {
+                console.log("Tokens modal not found!");
+            }
+            setTimeout(() => {
+                window.renderTokensLibrary();
+            }, 500); // Give it time to request and open
+        });
+
+        document.getElementById('tokens-lib-modal-close')?.addEventListener('click', () => {
+            document.getElementById('tokens-lib-modal').style.display = 'none';
+        });
+
+        document.getElementById('tokens-lib-add-btn')?.addEventListener('click', () => {
+            document.getElementById('add-token-modal').style.display = 'flex';
+        });
+
+        document.getElementById('add-token-modal-cancel')?.addEventListener('click', () => {
+            document.getElementById('add-token-modal').style.display = 'none';
+            document.getElementById('add-token-error').style.display = 'none';
+            document.getElementById('add-token-name').value = '';
+            document.getElementById('add-token-file').value = '';
+        });
+
+        document.getElementById('add-token-modal-confirm')?.addEventListener('click', async () => {
+            const nameInput = document.getElementById('add-token-name').value.trim();
+            const categorySelect = document.getElementById('add-token-category').value;
+            const sizeSelect = document.getElementById('add-token-size').value;
+            const fileInput = document.getElementById('add-token-file');
+            const errorDiv = document.getElementById('add-token-error');
+
+            if (!nameInput) {
+                errorDiv.textContent = "Veuillez entrer un nom.";
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            if (fileInput.files.length === 0) {
+                errorDiv.textContent = "Veuillez sélectionner une image.";
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('tokenImage', file);
+
+            try {
+                const response = await fetch('/upload-token', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error('Upload échoué.');
+                }
+
+                const result = await response.json();
+
+                if (window.socket && window.socket.readyState === WebSocket.OPEN) {
+                    window.socket.send(JSON.stringify({
+                        type: 'add-custom-token',
+                        name: nameInput,
+                        category: categorySelect,
+                        size: sizeSelect,
+                        url: result.url
+                    }));
+                }
+
+                document.getElementById('add-token-modal').style.display = 'none';
+                document.getElementById('add-token-error').style.display = 'none';
+                document.getElementById('add-token-name').value = '';
+                document.getElementById('add-token-file').value = '';
+
+            } catch (err) {
+                errorDiv.textContent = "Erreur lors de l'envoi de l'image.";
+                errorDiv.style.display = 'block';
+            }
+        });
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                if (activeTool === 'place-token') {
+                    setActiveTool('select');
+                    selectedTokenForPlacement = null;
+                }
+            }
+        });
+
 
         // --- Remote Event Handlers ---
         const remoteActionHandler = (handler) => (event) => {
