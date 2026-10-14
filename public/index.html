@@ -97,6 +97,7 @@
                             <button id="fabric-line-tool" class="control-btn" title="Line"><span class="material-symbols-outlined">horizontal_rule</span></button>
                             <button id="fabric-rect-tool" class="control-btn" title="Rectangle"><span class="material-symbols-outlined">rectangle</span></button>
                             <button id="fabric-circle-tool" class="control-btn" title="Circle"><span class="material-symbols-outlined">circle</span></button>
+                            <button id="fabric-tokens-lib-btn" class="control-btn" title="Bibliothèque de Tokens"><span class="material-symbols-outlined">category</span></button>
                             <input type="file" id="fabric-image-input" style="display: none;" accept="image/*" />
                             <label for="fabric-image-input" class="control-btn" title="Add Image"><span class="material-symbols-outlined">add_photo_alternate</span></label>
                             <input type="file" id="fabric-background-image-input" style="display: none;" accept="image/*" />
@@ -544,6 +545,72 @@
             <div class="cs-modal-actions">
                 <button id="cs-desc-modal-cancel" class="cs-btn-cancel">Annuler</button>
                 <button id="cs-desc-modal-confirm" class="cs-btn-confirm">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale de la bibliothèque de Tokens -->
+    <div id="tokens-lib-modal" class="cs-modal-overlay" style="display: none; z-index: 10003;">
+        <div class="cs-modal-content tokens-lib-content" style="width: 800px; max-width: 90vw; height: 80vh; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0;">Bibliothèque de Tokens</h3>
+                <button id="tokens-lib-add-btn" class="cs-btn-confirm hidden" style="background-color: #4CAF50; border-color: #388E3C; padding: 4px 8px;">
+                    <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; margin-right: 4px;">add</span> Ajouter
+                </button>
+            </div>
+            <div style="display: flex; flex-grow: 1; overflow: hidden; gap: 15px;">
+                <div class="tokens-categories" style="width: 200px; border-right: 1px solid #444; display: flex; flex-direction: column; gap: 5px; overflow-y: auto; padding-right: 10px;">
+                    <!-- Les catégories seront injectées ici -->
+                </div>
+                <div class="tokens-grid-container" style="flex-grow: 1; overflow-y: auto;">
+                    <div id="tokens-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 15px;">
+                        <!-- Les tokens seront injectés ici -->
+                    </div>
+                </div>
+            </div>
+            <div class="cs-modal-actions" style="margin-top: 15px;">
+                <button id="tokens-lib-modal-close" class="cs-btn-cancel" style="margin-left: auto;">Fermer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale d'ajout de Token (MJ uniquement) -->
+    <div id="add-token-modal" class="cs-modal-overlay" style="display: none; z-index: 10004;">
+        <div class="cs-modal-content" style="width: 400px; max-width: 90vw;">
+            <h3 style="margin-top:0;">Ajouter un Token</h3>
+            <div style="margin-top: 15px; display: flex; flex-direction: column; gap: 10px;">
+                <div class="cs-field">
+                    <label>Nom</label>
+                    <input type="text" id="add-token-name" style="width: 100%;">
+                </div>
+                <div class="cs-field">
+                    <label>Catégorie</label>
+                    <select id="add-token-category" style="width: 100%; background: #222; color: #fff; padding: 5px; border: 1px solid #444; border-radius: 4px;">
+                        <option value="Personnages joueurs (PJ)">Personnages joueurs (PJ)</option>
+                        <option value="Alliés et PNJ">Alliés et PNJ</option>
+                        <option value="Ennemis">Ennemis</option>
+                        <option value="Créatures">Créatures</option>
+                        <option value="Objets">Objets</option>
+                        <option value="Divers" selected>Divers</option>
+                    </select>
+                </div>
+                <div class="cs-field">
+                    <label>Taille (sur la carte)</label>
+                    <select id="add-token-size" style="width: 100%; background: #222; color: #fff; padding: 5px; border: 1px solid #444; border-radius: 4px;">
+                        <option value="1x1" selected>1 case (1x1)</option>
+                        <option value="1x2">2 cases, Vertical (1x2)</option>
+                        <option value="2x1">2 cases, Horizontal (2x1)</option>
+                    </select>
+                </div>
+                <div class="cs-field">
+                    <label>Image du Token</label>
+                    <input type="file" id="add-token-file" accept="image/jpeg, image/png, image/gif, image/webp, image/svg+xml" style="width: 100%; background: #222; color: #fff; padding: 5px; border: 1px solid #444; border-radius: 4px;">
+                </div>
+                <div id="add-token-error" style="color: #ff4444; font-size: 0.9em; display: none;"></div>
+            </div>
+            <div class="cs-modal-actions" style="margin-top: 15px;">
+                <button id="add-token-modal-cancel" class="cs-btn-cancel">Annuler</button>
+                <button id="add-token-modal-confirm" class="cs-btn-confirm">Ajouter</button>
             </div>
         </div>
     </div>
