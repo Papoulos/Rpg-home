@@ -2,13 +2,33 @@
 (() => {
     window.isMJ = false; // Global flag for MJ status
     let username = '';
+    let isLoggedIn = false;
+    let pendingUserList = null;
     let localStream;
     const peerConnections = {};
     const iceCandidateQueues = {};
+    const remoteStreams = {};
+    const peerMediaStates = {};
+    const disconnectTimers = {};
+    const restartCounts = {};
+    const restartTimers = {};
+    const activeAudioMonitors = {};
+    let signalingChain = Promise.resolve();
+
+    function enqueueSignaling(task) {
+        signalingChain = signalingChain.then(task).catch(err => {
+            console.error('[WebRTC] Signaling task error:', err);
+        });
+        return signalingChain;
+    }
+
     const iceServers = {
         iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
             { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:stun3.l.google.com:19302' },
+            { urls: 'stun:stun.cloudflare.com:3478' },
             {
                 urls: 'turn:openrelay.metered.ca:80',
                 username: 'openrelayproject',
@@ -18,8 +38,19 @@
                 urls: 'turn:openrelay.metered.ca:443',
                 username: 'openrelayproject',
                 credential: 'openrelayproject'
+            },
+            {
+                urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+                username: 'openrelayproject',
+                credential: 'openrelayproject'
+            },
+            {
+                urls: 'turns:openrelay.metered.ca:443?transport=tcp',
+                username: 'openrelayproject',
+                credential: 'openrelayproject'
             }
         ],
+        iceCandidatePoolSize: 4
     };
 
     let reconnectAttempts = 0;
@@ -96,15 +127,47 @@
         };
     }
 
+    function getLocalMediaState() {
+        const videoTrack = localStream ? localStream.getVideoTracks()[0] : null;
+        const audioTrack = localStream ? localStream.getAudioTracks()[0] : null;
+        return {
+            hasVideo: Boolean(videoTrack && videoTrack.readyState !== 'ended'),
+            hasAudio: Boolean(audioTrack && audioTrack.readyState !== 'ended'),
+            videoEnabled: Boolean(videoTrack && videoTrack.enabled && videoTrack.readyState !== 'ended'),
+            audioEnabled: Boolean(audioTrack && audioTrack.enabled && audioTrack.readyState !== 'ended')
+        };
+    }
+
+    function sendMediaState() {
+        if (isLoggedIn && getUsername() && socket && socket.readyState === WebSocket.OPEN) {
+            sendMessage({
+                type: 'media-state',
+                ...getLocalMediaState()
+            });
+        }
+    }
+
     async function finishLogin() {
         document.getElementById('login-overlay').style.display = 'none';
 
         await setupLocalMedia();
+        isLoggedIn = true;
 
         // Now register with the server
         if (socket && socket.readyState === WebSocket.OPEN) {
-            sendMessage({ type: 'register', username: getUsername() });
+            sendMessage({
+                type: 'register',
+                username: getUsername(),
+                mediaState: getLocalMediaState()
+            });
+            sendMediaState();
             checkAndSendConnectionMessage();
+        }
+
+        if (pendingUserList) {
+            const listToProcess = pendingUserList;
+            pendingUserList = null;
+            enqueueSignaling(() => handleUserList(listToProcess.users, listToProcess.mediaStates));
         }
 
         // Re-render character sheet UI to show tabs if applicable
@@ -214,28 +277,108 @@
         }
     }
 
+    const DEFAULT_AVATAR = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23444"/><text x="50" y="50" font-family="Arial" font-size="40" fill="white" dominant-baseline="middle" text-anchor="middle">?</text></svg>';
+
+    function getAvatarUrlForUser(name) {
+        if (name === getUsername()) {
+            return window.userPortraitUrl && window.userPortraitUrl !== 'mj_icon' ? window.userPortraitUrl : DEFAULT_AVATAR;
+        }
+        const character = window.availableCharacters && window.availableCharacters.find(c => c.name === name);
+        return character && character.portraitUrl ? character.portraitUrl : DEFAULT_AVATAR;
+    }
+
+    function updateAllAvatars() {
+        document.querySelectorAll('.video-container').forEach(container => {
+            const name = container.dataset.username;
+            const avatarImg = container.querySelector('.fallback-avatar');
+            if (name && avatarImg) {
+                avatarImg.src = getAvatarUrlForUser(name);
+            }
+        });
+    }
+
+    let audioUnlockRegistered = false;
+    function ensureAudioUnlocked() {
+        if (audioUnlockRegistered) return;
+        audioUnlockRegistered = true;
+        const unlock = () => {
+            if (sharedAudioContext && sharedAudioContext.state === 'suspended') {
+                sharedAudioContext.resume().catch(() => {});
+            }
+            document.querySelectorAll('.video-container audio, .video-container video').forEach(mediaEl => {
+                if (mediaEl.paused && mediaEl.srcObject) {
+                    mediaEl.play().catch(() => {});
+                }
+            });
+        };
+        document.addEventListener('click', unlock, { passive: true });
+        document.addEventListener('keydown', unlock, { passive: true });
+        document.addEventListener('touchstart', unlock, { passive: true });
+    }
+
+    function updateVideoVisibility(name) {
+        const videoContainer = document.getElementById(`video-${name}`);
+        if (!videoContainer) return;
+
+        const video = videoContainer.querySelector('video.peer-video');
+        const avatarImg = videoContainer.querySelector('img.fallback-avatar');
+        if (!video || !avatarImg) return;
+
+        let showVideo = false;
+        if (name === getUsername()) {
+            const videoTrack = localStream ? localStream.getVideoTracks()[0] : null;
+            showVideo = Boolean(videoTrack && videoTrack.enabled && videoTrack.readyState !== 'ended');
+        } else {
+            const rStream = remoteStreams[name];
+            const videoTrack = rStream ? rStream.getVideoTracks().find(t => t.readyState !== 'ended') : null;
+            const mState = peerMediaStates[name];
+            if (videoTrack) {
+                if (mState !== undefined && mState !== null) {
+                    showVideo = Boolean(mState.hasVideo !== false && mState.videoEnabled !== false);
+                } else {
+                    showVideo = !videoTrack.muted;
+                }
+            }
+        }
+
+        video.style.display = showVideo ? 'block' : 'none';
+        avatarImg.style.display = showVideo ? 'none' : 'block';
+
+        if (showVideo && video.paused && video.srcObject) {
+            video.play().catch(() => {});
+        }
+    }
+
     function addVideoStream(stream, name) {
-        if (document.getElementById(`video-${name}`)) return;
-        const videoContainer = document.createElement('div');
-        videoContainer.id = `video-${name}`;
-        videoContainer.classList.add('video-container');
+        if (!name || !videoGrid) return;
+        ensureAudioUnlocked();
 
-        const hasVideo = stream && stream.getVideoTracks().length > 0;
+        let videoContainer = document.getElementById(`video-${name}`);
+        let video;
+        let avatarImg;
+        let audio;
 
-        if (hasVideo) {
-            const video = document.createElement('video');
-            video.srcObject = stream;
+        if (!videoContainer) {
+            videoContainer = document.createElement('div');
+            videoContainer.id = `video-${name}`;
+            videoContainer.dataset.username = name;
+            videoContainer.classList.add('video-container');
+
+            video = document.createElement('video');
+            video.classList.add('peer-video');
             video.autoplay = true;
             video.playsInline = true;
-
+            video.defaultMuted = true;
+            video.muted = true; // Always mute <video> so browsers never block video autoplay; remote audio uses <audio>
+            video.setAttribute('autoplay', '');
+            video.setAttribute('playsinline', '');
+            video.setAttribute('muted', '');
             if (name === getUsername()) {
-                video.muted = true; // Local video is always muted to prevent feedback
                 video.style.transform = 'scaleX(-1)';
             }
             videoContainer.appendChild(video);
-        } else {
-            // Fallback to avatar image if no video track
-            const avatarImg = document.createElement('img');
+
+            avatarImg = document.createElement('img');
             avatarImg.classList.add('fallback-avatar');
             avatarImg.style.width = '100%';
             avatarImg.style.height = '100%';
@@ -243,45 +386,71 @@
             avatarImg.style.display = 'block';
             avatarImg.style.backgroundColor = '#111';
             avatarImg.style.aspectRatio = '4/3';
-
-            const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23444"/><text x="50" y="50" font-family="Arial" font-size="40" fill="white" dominant-baseline="middle" text-anchor="middle">?</text></svg>';
-
-            if (name === getUsername()) {
-                avatarImg.src = window.userPortraitUrl && window.userPortraitUrl !== 'mj_icon' ? window.userPortraitUrl : defaultAvatar;
-            } else {
-                const character = window.availableCharacters && window.availableCharacters.find(c => c.name === name);
-                avatarImg.src = character && character.portraitUrl ? character.portraitUrl : defaultAvatar;
-            }
+            avatarImg.src = getAvatarUrlForUser(name);
             videoContainer.appendChild(avatarImg);
 
-            // We must still attach the stream to an audio element to hear it
-            const audio = document.createElement('audio');
-            audio.srcObject = stream;
-            audio.autoplay = true;
-            if (name === getUsername()) {
-                audio.muted = true;
+            if (name !== getUsername()) {
+                audio = document.createElement('audio');
+                audio.classList.add('peer-audio');
+                audio.autoplay = true;
+                audio.setAttribute('autoplay', '');
+                videoContainer.appendChild(audio);
             }
-            videoContainer.appendChild(audio);
+
+            const nameTag = document.createElement('div');
+            nameTag.classList.add('name-tag');
+            nameTag.textContent = name;
+            videoContainer.appendChild(nameTag);
+            videoGrid.appendChild(videoContainer);
+        } else {
+            video = videoContainer.querySelector('video.peer-video');
+            avatarImg = videoContainer.querySelector('img.fallback-avatar');
+            audio = videoContainer.querySelector('audio.peer-audio');
+            if (avatarImg) {
+                avatarImg.src = getAvatarUrlForUser(name);
+            }
         }
 
-        const nameTag = document.createElement('div');
-        nameTag.classList.add('name-tag');
-        nameTag.textContent = name;
-        videoContainer.appendChild(nameTag);
-        videoGrid.appendChild(videoContainer);
+        if (stream) {
+            const videoTracks = stream.getVideoTracks();
+            if (video && videoTracks.length > 0) {
+                if (video.srcObject !== stream) {
+                    video.srcObject = stream;
+                }
+                video.muted = true;
+                video.play().catch(e => console.warn(`[WebRTC] Video play deferred for ${name}:`, e));
+            }
 
-        monitorAudioVolume(stream, videoContainer);
+            const audioTracks = stream.getAudioTracks();
+            if (audioTracks.length > 0) {
+                if (name !== getUsername() && audio) {
+                    if (audio.srcObject !== stream) {
+                        audio.srcObject = stream;
+                    }
+                    audio.play().catch(e => console.warn(`[WebRTC] Audio play deferred for ${name}:`, e));
+                }
+                monitorAudioVolume(stream, videoContainer, name);
+            }
+        }
+
+        updateVideoVisibility(name);
     }
 
     function removeVideoStream(name) {
+        delete activeAudioMonitors[name];
         const videoContainer = document.getElementById(`video-${name}`);
         if (videoContainer) videoContainer.remove();
     }
 
     let sharedAudioContext = null;
 
-    function monitorAudioVolume(stream, videoContainer) {
-        if (stream.getAudioTracks().length === 0) return;
+    function monitorAudioVolume(stream, videoContainer, name) {
+        const audioTrack = stream ? stream.getAudioTracks()[0] : null;
+        if (!audioTrack) return;
+
+        const monitorKey = name || videoContainer.id;
+        if (activeAudioMonitors[monitorKey] === audioTrack.id) return;
+        activeAudioMonitors[monitorKey] = audioTrack.id;
 
         try {
             if (!sharedAudioContext) {
@@ -301,7 +470,9 @@
             const dataArray = new Uint8Array(analyser.frequencyBinCount);
 
             function updateVolume() {
-                if (!document.body.contains(videoContainer)) return;
+                if (!document.body.contains(videoContainer) || activeAudioMonitors[monitorKey] !== audioTrack.id) {
+                    return;
+                }
 
                 const track = stream.getAudioTracks()[0];
                 if (!track || !track.enabled || track.readyState === 'ended') {
@@ -380,15 +551,103 @@
     }
 
     // --- WebRTC Logic ---
+    function closePeerConnection(peerUsername, removeUi = false) {
+        if (disconnectTimers[peerUsername]) {
+            clearTimeout(disconnectTimers[peerUsername]);
+            delete disconnectTimers[peerUsername];
+        }
+        if (restartTimers[peerUsername]) {
+            clearTimeout(restartTimers[peerUsername]);
+            delete restartTimers[peerUsername];
+        }
+        const pc = peerConnections[peerUsername];
+        if (pc) {
+            pc.onicecandidate = null;
+            pc.ontrack = null;
+            pc.onconnectionstatechange = null;
+            pc.oniceconnectionstatechange = null;
+            try {
+                pc.close();
+            } catch (e) {
+                // Ignore close errors
+            }
+            delete peerConnections[peerUsername];
+        }
+        delete iceCandidateQueues[peerUsername];
+        delete remoteStreams[peerUsername];
+        delete activeAudioMonitors[peerUsername];
+        if (removeUi) {
+            delete peerMediaStates[peerUsername];
+            delete restartCounts[peerUsername];
+            removeVideoStream(peerUsername);
+        }
+    }
+
+    async function flushIceCandidates(peerUsername, pc) {
+        const queue = iceCandidateQueues[peerUsername];
+        if (!queue || !queue.length || !pc || !pc.remoteDescription) return;
+        const candidates = queue.splice(0, queue.length);
+        delete iceCandidateQueues[peerUsername];
+        for (const candidate of candidates) {
+            try {
+                await pc.addIceCandidate(new RTCIceCandidate(candidate));
+            } catch (err) {
+                console.warn(`[WebRTC] Failed to add queued ICE candidate for ${peerUsername}:`, err);
+            }
+        }
+    }
+
+    function schedulePeerRestart(peerUsername) {
+        if (!isLoggedIn || !getUsername() || peerUsername === getUsername()) return;
+        if (restartTimers[peerUsername]) return;
+
+        const count = restartCounts[peerUsername] || 0;
+        if (count >= 4) {
+            console.warn(`[WebRTC] Max reconnect attempts reached for ${peerUsername}`);
+            return;
+        }
+        restartCounts[peerUsername] = count + 1;
+        const delay = Math.min(1500 * Math.pow(1.8, count), 10000);
+
+        restartTimers[peerUsername] = setTimeout(() => {
+            delete restartTimers[peerUsername];
+            enqueueSignaling(async () => {
+                if (!document.getElementById(`video-${peerUsername}`)) return;
+                const currentPc = peerConnections[peerUsername];
+                if (currentPc && (currentPc.connectionState === 'connected' || currentPc.iceConnectionState === 'connected' || currentPc.iceConnectionState === 'completed')) {
+                    restartCounts[peerUsername] = 0;
+                    return;
+                }
+                console.log(`[WebRTC] Attempting automatic reconnection with ${peerUsername} (attempt ${restartCounts[peerUsername]})`);
+                closePeerConnection(peerUsername, false);
+                if (getUsername() < peerUsername) {
+                    await createPeerConnection(peerUsername, true);
+                } else {
+                    sendMessage({ type: 'webrtc-restart', target: peerUsername });
+                }
+            });
+        }, delay);
+    }
+
     async function createPeerConnection(peerUsername, isInitiator = false) {
-        if (peerConnections[peerUsername] || peerUsername === getUsername()) return;
+        if (!isLoggedIn || !getUsername() || peerConnections[peerUsername] || peerUsername === getUsername()) {
+            return peerConnections[peerUsername];
+        }
 
         const pc = new RTCPeerConnection(iceServers);
         peerConnections[peerUsername] = pc;
 
-        if (localStream) {
-            localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+        // Immediately ensure the peer's card/avatar is visible in the video grid
+        if (!remoteStreams[peerUsername]) {
+            remoteStreams[peerUsername] = new MediaStream();
         }
+        addVideoStream(remoteStreams[peerUsername], peerUsername);
+
+        const audioTracks = localStream ? localStream.getAudioTracks() : [];
+        const videoTracks = localStream ? localStream.getVideoTracks() : [];
+
+        audioTracks.forEach(track => pc.addTrack(track, localStream));
+        videoTracks.forEach(track => pc.addTrack(track, localStream));
 
         pc.onicecandidate = event => {
             if (event.candidate) {
@@ -397,46 +656,140 @@
         };
 
         pc.ontrack = event => {
-            addVideoStream(event.streams[0], peerUsername);
+            let remoteStream = remoteStreams[peerUsername];
+            if (!remoteStream) {
+                remoteStream = new MediaStream();
+                remoteStreams[peerUsername] = remoteStream;
+            }
+
+            const track = event.track;
+            if (track) {
+                remoteStream.getTracks().forEach(existing => {
+                    if (existing.kind === track.kind && existing.id !== track.id) {
+                        remoteStream.removeTrack(existing);
+                    }
+                });
+                if (!remoteStream.getTracks().some(existing => existing.id === track.id)) {
+                    remoteStream.addTrack(track);
+                }
+
+                track.onunmute = () => {
+                    addVideoStream(remoteStream, peerUsername);
+                };
+                track.onmute = () => {
+                    updateVideoVisibility(peerUsername);
+                };
+                track.onended = () => {
+                    updateVideoVisibility(peerUsername);
+                };
+            } else if (event.streams && event.streams[0]) {
+                event.streams[0].getTracks().forEach(t => {
+                    if (!remoteStream.getTracks().some(existing => existing.id === t.id)) {
+                        remoteStream.addTrack(t);
+                    }
+                });
+            }
+
+            addVideoStream(remoteStream, peerUsername);
         };
 
-        pc.onconnectionstatechange = () => {
-            if (pc.connectionState === 'disconnected' || pc.connectionState === 'closed' || pc.connectionState === 'failed') {
-                removeVideoStream(peerUsername);
-                delete peerConnections[peerUsername];
-                delete iceCandidateQueues[peerUsername];
+        const handleStateChange = () => {
+            if ( peerConnections[peerUsername] !== pc ) return;
+            const state = pc.connectionState || pc.iceConnectionState;
+
+            if (state === 'connected' || state === 'completed') {
+                restartCounts[peerUsername] = 0;
+                if (disconnectTimers[peerUsername]) {
+                    clearTimeout(disconnectTimers[peerUsername]);
+                    delete disconnectTimers[peerUsername];
+                }
+                updateVideoVisibility(peerUsername);
+            } else if (state === 'disconnected') {
+                if (!disconnectTimers[peerUsername]) {
+                    disconnectTimers[peerUsername] = setTimeout(() => {
+                        delete disconnectTimers[peerUsername];
+                        if (peerConnections[peerUsername] === pc &&
+                            (pc.connectionState === 'disconnected' || pc.connectionState === 'failed' ||
+                             pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed')) {
+                            schedulePeerRestart(peerUsername);
+                        }
+                    }, 5000);
+                }
+            } else if (state === 'failed') {
+                schedulePeerRestart(peerUsername);
+            } else if (state === 'closed') {
+                closePeerConnection(peerUsername, false);
             }
         };
 
+        pc.onconnectionstatechange = handleStateChange;
+        pc.oniceconnectionstatechange = handleStateChange;
+
         if (isInitiator) {
-            const offer = await pc.createOffer();
+            // Ensure both audio and video m= sections exist in the Offer even if the initiator lacks a camera or mic
+            if (typeof pc.addTransceiver === 'function') {
+                if (audioTracks.length === 0) {
+                    pc.addTransceiver('audio', { direction: 'recvonly' });
+                }
+                if (videoTracks.length === 0) {
+                    pc.addTransceiver('video', { direction: 'recvonly' });
+                }
+            }
+
+            const offer = await pc.createOffer({
+                offerToReceiveAudio: true,
+                offerToReceiveVideo: true
+            });
             await pc.setLocalDescription(offer);
             sendMessage({ type: 'offer', target: peerUsername, message: pc.localDescription });
         }
+
+        return pc;
     }
 
-    async function handleUserList(users) {
-        const myUsername = getUsername();
-
-        // Create connections for new users and send offers
-        for (const user of users) {
-            if (user !== myUsername && !peerConnections[user]) {
-                // The user with the alphabetically lower name initiates the call
-                const isInitiator = myUsername < user;
-                await createPeerConnection(user, isInitiator);
-            }
+    async function handleUserList(users, mediaStates) {
+        if (mediaStates && typeof mediaStates === 'object') {
+            Object.entries(mediaStates).forEach(([u, st]) => {
+                if (st) peerMediaStates[u] = st;
+            });
         }
 
-        // Remove disconnected users
-        Object.keys(peerConnections).forEach(peerName => {
-            if (!users.includes(peerName)) {
-                peerConnections[peerName].close();
-                delete peerConnections[peerName];
-                delete iceCandidateQueues[peerName];
-                removeVideoStream(peerName);
+        if (!isLoggedIn || !getUsername()) {
+            pendingUserList = { users, mediaStates };
+            return;
+        }
+
+        const myUsername = getUsername();
+        const uniqueUsers = [...new Set(users)];
+
+        // Remove disconnected users first
+        const existingPeers = Object.keys(peerConnections);
+        existingPeers.forEach(peerName => {
+            if (!uniqueUsers.includes(peerName)) {
+                closePeerConnection(peerName, true);
                 window.dispatchEvent(new CustomEvent('pointer-disconnect', { detail: { sender: peerName } }));
             }
         });
+
+        // Also remove any lingering video containers for users no longer in the list
+        document.querySelectorAll('.video-container').forEach(container => {
+            const name = container.dataset.username;
+            if (name && name !== myUsername && !uniqueUsers.includes(name)) {
+                removeVideoStream(name);
+            }
+        });
+
+        // Create connections for new users and send offers
+        for (const user of uniqueUsers) {
+            if (user && user !== myUsername) {
+                if (!peerConnections[user]) {
+                    const isInitiator = myUsername < user;
+                    await createPeerConnection(user, isInitiator);
+                } else {
+                    updateVideoVisibility(user);
+                }
+            }
+        }
     }
 
     // --- WebSocket Connection Management ---
@@ -472,8 +825,13 @@
             }
 
             // Enregistre l'utilisateur SEULEMENT si l'utilisateur a fini de se connecter
-            if (getUsername()) {
-                sendMessage({ type: 'register', username: getUsername() });
+            if (isLoggedIn && getUsername()) {
+                sendMessage({
+                    type: 'register',
+                    username: getUsername(),
+                    mediaState: getLocalMediaState()
+                });
+                sendMediaState();
                 checkAndSendConnectionMessage();
             }
 
@@ -576,6 +934,7 @@
                     if (window.renderCharacterTabs) {
                         window.renderCharacterTabs();
                     }
+                    updateAllAvatars();
                     break;
                 case 'character-loaded':
                     window.dispatchEvent(new CustomEvent('character-loaded', { detail: { id: data.id, data: data.data } }));
@@ -590,7 +949,35 @@
                     displayImage(data.url);
                     break;
                 case 'user-list':
-                    await handleUserList(data.users);
+                    enqueueSignaling(() => handleUserList(data.users, data.mediaStates));
+                    break;
+                case 'peer-reconnected':
+                    if (data.username && data.username !== getUsername()) {
+                        if (data.mediaState) {
+                            peerMediaStates[data.username] = data.mediaState;
+                        }
+                        enqueueSignaling(async () => {
+                            if (!isLoggedIn || !getUsername()) return;
+                            closePeerConnection(data.username, false);
+                            const isInitiator = getUsername() < data.username;
+                            await createPeerConnection(data.username, isInitiator);
+                        });
+                    }
+                    break;
+                case 'media-state':
+                    if (data.sender && data.state) {
+                        peerMediaStates[data.sender] = data.state;
+                        updateVideoVisibility(data.sender);
+                    }
+                    break;
+                case 'webrtc-restart':
+                    if (data.sender && data.sender !== getUsername()) {
+                        enqueueSignaling(async () => {
+                            if (!isLoggedIn || !getUsername()) return;
+                            closePeerConnection(data.sender, false);
+                            await createPeerConnection(data.sender, true);
+                        });
+                    }
                     break;
                 case 'chat':
                 case 'dice':
@@ -598,48 +985,81 @@
                     addMessage({ ...data, prepend: true });
                     break;
                 case 'offer':
-                    if (!peerConnections[data.sender]) {
-                        await createPeerConnection(data.sender, false);
-                    }
-                    const pc = peerConnections[data.sender];
-                    if (pc && pc.signalingState === 'stable') {
+                    enqueueSignaling(async () => {
+                        if (!isLoggedIn || !getUsername() || !data.sender) return;
+
+                        let pc = peerConnections[data.sender];
+                        if (pc) {
+                            const isPolite = getUsername() > data.sender;
+                            if (pc.signalingState !== 'stable') {
+                                // Offer collision (glare)
+                                if (!isPolite) {
+                                    console.log(`[WebRTC] Ignoring colliding offer from ${data.sender} (impolite peer)`);
+                                    return;
+                                }
+                                closePeerConnection(data.sender, false);
+                                pc = null;
+                            } else if (pc.remoteDescription || pc.connectionState === 'connected' || pc.connectionState === 'disconnected' || pc.connectionState === 'failed' || pc.connectionState === 'closed') {
+                                // Remote peer recreated their connection; reset ours to match
+                                closePeerConnection(data.sender, false);
+                                pc = null;
+                            }
+                        }
+
+                        if (!pc) {
+                            pc = await createPeerConnection(data.sender, false);
+                        }
+                        if (!pc) return;
+
                         await pc.setRemoteDescription(new RTCSessionDescription(data.message));
+
+                        // Ensure local tracks attached via addTrack are active in the Answer
+                        if (typeof pc.getTransceivers === 'function') {
+                            pc.getTransceivers().forEach(t => {
+                                if (t.sender && t.sender.track && (t.direction === 'recvonly' || t.direction === 'inactive')) {
+                                    try {
+                                        t.direction = 'sendrecv';
+                                    } catch (e) {
+                                        // Ignore if browser disallows changing direction
+                                    }
+                                }
+                            });
+                        }
+
                         const answer = await pc.createAnswer();
                         await pc.setLocalDescription(answer);
                         sendMessage({ type: 'answer', target: data.sender, message: pc.localDescription });
 
-                        // Process queued ICE candidates
-                        if (iceCandidateQueues[data.sender]) {
-                            for (const candidate of iceCandidateQueues[data.sender]) {
-                                await pc.addIceCandidate(new RTCIceCandidate(candidate));
-                            }
-                            delete iceCandidateQueues[data.sender];
-                        }
-                    }
+                        await flushIceCandidates(data.sender, pc);
+                    });
                     break;
                 case 'answer':
-                    const answerPc = peerConnections[data.sender];
-                    if (answerPc) {
-                        await answerPc.setRemoteDescription(new RTCSessionDescription(data.message));
-                        // Process queued ICE candidates
-                        if (iceCandidateQueues[data.sender]) {
-                            for (const candidate of iceCandidateQueues[data.sender]) {
-                                await answerPc.addIceCandidate(new RTCIceCandidate(candidate));
-                            }
-                            delete iceCandidateQueues[data.sender];
+                    enqueueSignaling(async () => {
+                        if (!isLoggedIn || !getUsername() || !data.sender) return;
+                        const answerPc = peerConnections[data.sender];
+                        if (answerPc && answerPc.signalingState === 'have-local-offer') {
+                            await answerPc.setRemoteDescription(new RTCSessionDescription(data.message));
+                            await flushIceCandidates(data.sender, answerPc);
                         }
-                    }
+                    });
                     break;
                 case 'ice-candidate':
-                    const rtcPc = peerConnections[data.sender];
-                    if (rtcPc && rtcPc.remoteDescription) {
-                        await rtcPc.addIceCandidate(new RTCIceCandidate(data.message));
-                    } else {
-                        if (!iceCandidateQueues[data.sender]) {
-                            iceCandidateQueues[data.sender] = [];
+                    enqueueSignaling(async () => {
+                        if (!data.sender || !data.message) return;
+                        const rtcPc = peerConnections[data.sender];
+                        if (rtcPc && rtcPc.remoteDescription && rtcPc.remoteDescription.type) {
+                            try {
+                                await rtcPc.addIceCandidate(new RTCIceCandidate(data.message));
+                            } catch (err) {
+                                console.warn(`[WebRTC] Error adding ICE candidate from ${data.sender}:`, err);
+                            }
+                        } else {
+                            if (!iceCandidateQueues[data.sender]) {
+                                iceCandidateQueues[data.sender] = [];
+                            }
+                            iceCandidateQueues[data.sender].push(data.message);
                         }
-                        iceCandidateQueues[data.sender].push(data.message);
-                    }
+                    });
                     break;
 
                 case 'fabric-path-created':
@@ -711,18 +1131,38 @@
 
     // --- Initial Setup ---
     async function setupLocalMedia() {
+        const toggleVideoBtn = document.getElementById('toggle-video-btn');
+        const muteMicBtn = document.getElementById('mute-mic-btn');
+        const preferredVideoConstraints = {
+            width: { ideal: 640 },
+            height: { ideal: 480 },
+            frameRate: { ideal: 24 }
+        };
+
         try {
             try {
-                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-            } catch (err) {
-                console.warn('Could not get both video and audio, trying audio only...', err);
+                localStream = await navigator.mediaDevices.getUserMedia({
+                    video: preferredVideoConstraints,
+                    audio: true
+                });
+            } catch (firstErr) {
+                console.warn('Could not get preferred video+audio constraints, trying basic video+audio...', firstErr);
                 try {
-                    localStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
-                    // Disable the video toggle button if we fell back to audio only
-                    const toggleVideoBtn = document.getElementById('toggle-video-btn');
-                    if (toggleVideoBtn) toggleVideoBtn.style.display = 'none';
-                } catch (audioErr) {
-                    throw err; // Re-throw the original error to trigger the main catch block
+                    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                } catch (err) {
+                    console.warn('Could not get both video and audio, trying audio only...', err);
+                    try {
+                        localStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+                        if (toggleVideoBtn) toggleVideoBtn.style.display = 'none';
+                    } catch (audioErr) {
+                        console.warn('Could not get audio only, trying video only...', audioErr);
+                        try {
+                            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                            if (muteMicBtn) muteMicBtn.style.display = 'none';
+                        } catch (videoErr) {
+                            throw err; // Re-throw original error to trigger main catch block
+                        }
+                    }
                 }
             }
 
@@ -736,6 +1176,12 @@
             addVideoStream(localStream, getUsername());
         } catch (error) {
             console.error('Error accessing media devices:', error);
+
+            // Create an empty MediaStream so the user still has an avatar and can receive audio/video from all peers
+            localStream = new MediaStream();
+            if (toggleVideoBtn) toggleVideoBtn.style.display = 'none';
+            if (muteMicBtn) muteMicBtn.style.display = 'none';
+            addVideoStream(localStream, getUsername());
 
             let userMessage = 'Une erreur inconnue s\'est produite lors de l\'accès à votre caméra ou microphone.';
 
@@ -850,6 +1296,7 @@
         }
 
         muteMicBtn.addEventListener('click', () => {
+            if (!localStream) return;
             const audioTrack = localStream.getAudioTracks()[0];
             if (audioTrack) {
                 audioTrack.enabled = !audioTrack.enabled;
@@ -857,10 +1304,12 @@
                 muteMicBtn.title = audioTrack.enabled ? "Couper le micro" : "Activer le micro";
                 const icon = muteMicBtn.querySelector('.material-symbols-outlined');
                 if (icon) icon.textContent = audioTrack.enabled ? 'mic' : 'mic_off';
+                sendMediaState();
             }
         });
 
         toggleVideoBtn.addEventListener('click', () => {
+            if (!localStream) return;
             const videoTrack = localStream.getVideoTracks()[0];
             if (videoTrack) {
                 videoTrack.enabled = !videoTrack.enabled;
@@ -868,6 +1317,8 @@
                 toggleVideoBtn.title = videoTrack.enabled ? "Désactiver la caméra" : "Activer la caméra";
                 const icon = toggleVideoBtn.querySelector('.material-symbols-outlined');
                 if (icon) icon.textContent = videoTrack.enabled ? 'videocam' : 'videocam_off';
+                updateVideoVisibility(getUsername());
+                sendMediaState();
             }
         });
     }

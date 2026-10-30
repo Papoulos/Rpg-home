@@ -521,6 +521,7 @@ body, html {
     position: relative;
     border: 3px solid transparent;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    flex-shrink: 0;
 }
 
 .video-container.speaking {

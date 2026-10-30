@@ -1,11 +1,12 @@
-// Service Worker pour RPg-home
-// Cache les assets statiques pour un chargement offline plus rapide
+// Service Worker pour Rpg-home
+// Cache les assets statiques pour un chargement rapide tout en garantissant la fraîcheur du code applicatif
 
-const CACHE_NAME = 'rpg-home-v2';
+const CACHE_NAME = 'rpg-home-v3';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/script.min.js',
+  '/script.js',
   '/style.min.css',
   '/style.css',
   '/wiki.css',
@@ -66,51 +67,51 @@ self.addEventListener('activate', (event) => {
 
 // Interception des requêtes
 self.addEventListener('fetch', (event) => {
-  // Ignorer les requêtes POST et les requêtes non-GET
+  // Ignorer les requêtes non-GET
   if (event.request.method !== 'GET') {
     return;
   }
 
-  // Stratégie : Cache First pour les assets statiques
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Si trouvé dans le cache, retourner la réponse
-        if (response) {
-          console.log('[SW] Servi depuis le cache:', event.request.url);
-          return response;
-        }
+  const requestUrl = event.request.url;
+  const isImmutableLib = requestUrl.includes('/libs/') || requestUrl.includes('/music/');
 
-        // Sinon, faire la requête réseau
-        console.log('[SW] Récupération depuis le réseau:', event.request.url);
-        return fetch(event.request)
-          .then((response) => {
-            // Cloner la réponse pour la mettre en cache
-            const responseClone = response.clone();
-            
-            // Mettre en cache uniquement les requêtes réussies pour les assets statiques
-            if (response.status === 200 && 
-                (event.request.url.includes('.js') || 
-                 event.request.url.includes('.css') || 
-                 event.request.url.includes('.png') ||
-                 event.request.url.includes('.jpg') ||
-                 event.request.url.includes('.ico') ||
-                 event.request.url.includes('/libs/') ||
-                 event.request.url.endsWith('/'))) {
-              caches.open(CACHE_NAME)
-                .then((cache) => {
-                  cache.put(event.request, responseClone);
-                  console.log('[SW] Mise en cache de:', event.request.url);
-                });
-            }
-            
-            return response;
-          })
-          .catch((error) => {
-            console.error('[SW] Erreur lors de la récupération:', error);
-            // Retourner une réponse de fallback si disponible
-            return caches.match('/index.html');
-          });
+  if (isImmutableLib) {
+    // Stratégie Cache First uniquement pour les librairies tierces immuables
+    event.respondWith(
+      caches.match(event.request).then((cachedResponse) => {
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        return fetch(event.request).then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+          }
+          return networkResponse;
+        });
+      })
+    );
+    return;
+  }
+
+  // Stratégie Network First (avec repli sur le cache en cas de coupure réseau) pour le code applicatif
+  event.respondWith(
+    fetch(event.request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200 &&
+            (requestUrl.includes('.js') ||
+             requestUrl.includes('.css') ||
+             requestUrl.includes('.html') ||
+             requestUrl.endsWith('/'))) {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+        }
+        return networkResponse;
+      })
+      .catch(() => {
+        return caches.match(event.request).then((cachedResponse) => {
+          return cachedResponse || caches.match('/index.html');
+        });
       })
   );
 });
@@ -121,14 +122,4 @@ self.addEventListener('message', (event) => {
     console.log('[SW] Saut de l\'attente...');
     self.skipWaiting();
   }
-});
-
-// Écouteur pour les erreurs de fetch
-self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    fetch(event.request).catch(() => {
-      // Si la requête échoue, essayer de retourner une page offline
-      return caches.match('/index.html');
-    })
-  );
 });

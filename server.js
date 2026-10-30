@@ -310,8 +310,15 @@ function broadcast(message) {
 }
 
 function broadcastUserList() {
-    const userList = Array.from(clients.values()).map(c => c.username).filter(Boolean);
-    broadcast({ type: 'user-list', users: userList });
+    const activeClients = Array.from(clients.values()).filter(c => c.username && c.ws.readyState === WebSocket.OPEN);
+    const userList = [...new Set(activeClients.map(c => c.username))];
+    const mediaStates = {};
+    activeClients.forEach(c => {
+        if (c.mediaState) {
+            mediaStates[c.username] = c.mediaState;
+        }
+    });
+    broadcast({ type: 'user-list', users: userList, mediaStates });
 }
 
 function broadcastToOthers(ws, message) {
@@ -573,6 +580,7 @@ function loadWhiteboardState() {
 // This prevents idle connections from being dropped by intermediaries
 // and cleans up connections that are no longer responsive.
 const heartbeatInterval = setInterval(function ping() {
+  let removedAny = false;
   // Use wss.clients which is the raw Set of sockets from the 'ws' library
   wss.clients.forEach(function each(ws) {
     // Retrieve our associated client metadata from the Map
@@ -582,6 +590,7 @@ const heartbeatInterval = setInterval(function ping() {
     if (client && client.isAlive === false) {
       console.log(`[HEARTBEAT] Terminating unresponsive connection for user: ${client.username || 'N/A'}`);
       clients.delete(ws);
+      removedAny = true;
       return ws.terminate();
     }
 
@@ -592,6 +601,9 @@ const heartbeatInterval = setInterval(function ping() {
         ws.ping(() => {}); // The callback is optional but good practice
     }
   });
+  if (removedAny) {
+    broadcastUserList();
+  }
 }, 15000); // Run every 15 seconds to detect drops faster
 
 // Clean up the interval when the server is shut down
@@ -613,12 +625,6 @@ wss.on('connection', (ws) => {
     });
 
     ws.on('message', async (message) => {
-        messageCount++;
-        if (messageCount > 5) {
-            console.warn(`[WS] Rate limit exceeded for a client.`);
-            return;
-        }
-
         const client = clients.get(ws);
 
         // Any message from the client is a sign of life.
@@ -632,6 +638,24 @@ wss.on('connection', (ws) => {
         } catch (e) {
             console.error('[WS] Failed to parse message:', e);
             return;
+        }
+
+        // Exempt real-time WebRTC signaling, heartbeat, and canvas pointer/brush streams from strict rate limiting
+        const isRealtimeSignaling = data.type === 'offer' ||
+            data.type === 'answer' ||
+            data.type === 'ice-candidate' ||
+            data.type === 'webrtc-restart' ||
+            data.type === 'media-state' ||
+            data.type === 'ping' ||
+            data.type === 'pointer-move' ||
+            data.type === 'fabric-fog-erase-raw';
+
+        if (!isRealtimeSignaling) {
+            messageCount++;
+            if (messageCount > 50) {
+                console.warn(`[WS] Rate limit exceeded for client (${client ? client.username : 'unregistered'}).`);
+                return;
+            }
         }
 
 
@@ -749,7 +773,31 @@ wss.on('connection', (ws) => {
                 break;
             case 'register':
                 const isMJ = data.username.toLowerCase() === 'mj';
-                clients.set(ws, { username: data.username, ws: ws, isMJ, isAlive: true });
+                // Remove any stale connections for the same username (e.g. page refresh or reconnect)
+                for (const [existingWs, existingClient] of clients.entries()) {
+                    if (existingWs !== ws && existingClient.username === data.username) {
+                        clients.delete(existingWs);
+                        try {
+                            existingWs.terminate();
+                        } catch (e) {
+                            // Ignore errors when closing stale socket
+                        }
+                    }
+                }
+                clients.set(ws, {
+                    username: data.username,
+                    ws: ws,
+                    isMJ,
+                    isAlive: true,
+                    mediaState: data.mediaState || null
+                });
+
+                // Notify existing peers that this user (re)registered so they reset any stale RTCPeerConnection
+                broadcastToOthers(ws, {
+                    type: 'peer-reconnected',
+                    username: data.username,
+                    mediaState: data.mediaState || null
+                });
 
                 // Send initial state
                 ws.send(JSON.stringify({ type: 'history', messages: chatHistory }));
@@ -1003,8 +1051,32 @@ wss.on('connection', (ws) => {
             case 'offer':
             case 'answer':
             case 'ice-candidate':
-                const targetClient = Array.from(clients.values()).find(c => c.username === data.target);
-                if (targetClient) targetClient.ws.send(JSON.stringify(data));
+            case 'webrtc-restart': {
+                if (client && client.username) {
+                    data.sender = client.username;
+                }
+                const targetClients = Array.from(clients.values()).filter(
+                    c => c.username === data.target && c.ws.readyState === WebSocket.OPEN
+                );
+                const serializedSignal = JSON.stringify(data);
+                targetClients.forEach(tc => tc.ws.send(serializedSignal));
+                break;
+            }
+
+            case 'media-state':
+                if (client && client.username) {
+                    client.mediaState = {
+                        hasVideo: Boolean(data.hasVideo),
+                        hasAudio: Boolean(data.hasAudio),
+                        videoEnabled: Boolean(data.videoEnabled),
+                        audioEnabled: Boolean(data.audioEnabled)
+                    };
+                    broadcastToOthers(ws, {
+                        type: 'media-state',
+                        sender: client.username,
+                        state: client.mediaState
+                    });
+                }
                 break;
 
             case 'fabric-path-created':
@@ -1257,13 +1329,13 @@ wss.on('connection', (ws) => {
 });
 
 // --- HTTP Server ---
-// Serve static files with caching for better performance
+// Serve static files with ETag validation so code updates are picked up immediately
 app.use(express.static(path.join(__dirname, 'public'), {
-    maxAge: '1d',
-    setHeaders: (res, path) => {
-        // Immutable cache for minified files with version query
-        if (path.includes('.min.js') || path.includes('.min.css')) {
-            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    maxAge: 0,
+    etag: true,
+    setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.html') || filePath.endsWith('.js') || filePath.endsWith('.css')) {
+            res.setHeader('Cache-Control', ' public, no-cache');
         }
     }
 }));
