@@ -297,6 +297,68 @@
         });
     }
 
+    function getPoolGaugeColor(pool, max) {
+        if (pool <= 0 || max <= 0) return '#555555';
+        const pct = Math.max(0, Math.min(100, (pool / max) * 100));
+        const hue = Math.round((pct / 100) * 120);
+        return `hsl(${hue}, 70%, 42%)`;
+    }
+
+    function updateVideoPoolsForContainer(container) {
+        if (!container) return;
+        const poolsBar = container.querySelector('.video-pools-bar');
+        if (!poolsBar) return;
+
+        const name = container.dataset.username;
+        if (!name || name.toLowerCase() === 'mj') {
+            poolsBar.style.display = 'none';
+            return;
+        }
+
+        const character = window.availableCharacters && window.availableCharacters.find(
+            c => c.name === name || c.id === name
+        );
+        if (!character || !character.stats) {
+            poolsBar.style.display = 'none';
+            return;
+        }
+
+        poolsBar.style.display = 'flex';
+        const statConfigs = [
+            { key: 'might', label: 'Might' },
+            { key: 'speed', label: 'Speed' },
+            { key: 'intel', label: 'Intel' }
+        ];
+
+        statConfigs.forEach(({ key, label }) => {
+            const gauge = poolsBar.querySelector(`.video-pool-gauge[data-stat="${key}"]`);
+            if (!gauge) return;
+
+            const statObj = character.stats[key] || {};
+            const pool = Number(statObj.pool !== undefined ? statObj.pool : 0);
+            const max = Number(statObj.poolMax !== undefined ? statObj.poolMax : 0);
+            const pct = max > 0 ? Math.max(0, Math.min(100, (pool / max) * 100)) : 0;
+
+            const fill = gauge.querySelector('.video-pool-fill');
+            const valEl = gauge.querySelector('.pool-val');
+
+            if (fill) {
+                fill.style.width = `${pct}%`;
+                fill.style.backgroundColor = getPoolGaugeColor(pool, max);
+            }
+            if (valEl) {
+                valEl.textContent = pool;
+            }
+            gauge.title = `${label}: ${pool} / ${max}`;
+        });
+    }
+
+    function updateAllVideoPools() {
+        document.querySelectorAll('.video-container').forEach(container => {
+            updateVideoPoolsForContainer(container);
+        });
+    }
+
     let audioUnlockRegistered = false;
     function ensureAudioUnlocked() {
         if (audioUnlockRegistered) return;
@@ -364,6 +426,9 @@
             videoContainer.dataset.username = name;
             videoContainer.classList.add('video-container');
 
+            const mediaWrapper = document.createElement('div');
+            mediaWrapper.classList.add('video-media-wrapper');
+
             video = document.createElement('video');
             video.classList.add('peer-video');
             video.autoplay = true;
@@ -376,7 +441,7 @@
             if (name === getUsername()) {
                 video.style.transform = 'scaleX(-1)';
             }
-            videoContainer.appendChild(video);
+            mediaWrapper.appendChild(video);
 
             avatarImg = document.createElement('img');
             avatarImg.classList.add('fallback-avatar');
@@ -387,20 +452,47 @@
             avatarImg.style.backgroundColor = '#111';
             avatarImg.style.aspectRatio = '4/3';
             avatarImg.src = getAvatarUrlForUser(name);
-            videoContainer.appendChild(avatarImg);
+            mediaWrapper.appendChild(avatarImg);
 
             if (name !== getUsername()) {
                 audio = document.createElement('audio');
                 audio.classList.add('peer-audio');
                 audio.autoplay = true;
                 audio.setAttribute('autoplay', '');
-                videoContainer.appendChild(audio);
+                mediaWrapper.appendChild(audio);
             }
 
             const nameTag = document.createElement('div');
             nameTag.classList.add('name-tag');
             nameTag.textContent = name;
-            videoContainer.appendChild(nameTag);
+            mediaWrapper.appendChild(nameTag);
+
+            videoContainer.appendChild(mediaWrapper);
+
+            const poolsBar = document.createElement('div');
+            poolsBar.classList.add('video-pools-bar');
+            poolsBar.style.display = 'none';
+            [
+                { key: 'might', letter: 'M' },
+                { key: 'speed', letter: 'S' },
+                { key: 'intel', letter: 'I' }
+            ].forEach(stat => {
+                const gauge = document.createElement('div');
+                gauge.classList.add('video-pool-gauge');
+                gauge.dataset.stat = stat.key;
+
+                const fill = document.createElement('div');
+                fill.classList.add('video-pool-fill');
+
+                const label = document.createElement('div');
+                label.classList.add('video-pool-label');
+                label.innerHTML = `<span class="pool-letter">${stat.letter}</span><span class="pool-sep">-</span><span class="pool-val">0</span>`;
+
+                gauge.appendChild(fill);
+                gauge.appendChild(label);
+                poolsBar.appendChild(gauge);
+            });
+            videoContainer.appendChild(poolsBar);
             videoGrid.appendChild(videoContainer);
         } else {
             video = videoContainer.querySelector('video.peer-video');
@@ -434,6 +526,7 @@
         }
 
         updateVideoVisibility(name);
+        updateVideoPoolsForContainer(videoContainer);
     }
 
     function removeVideoStream(name) {
@@ -935,11 +1028,26 @@
                         window.renderCharacterTabs();
                     }
                     updateAllAvatars();
+                    updateAllVideoPools();
                     break;
                 case 'character-loaded':
+                    if (window.availableCharacters && data.data && data.data.stats) {
+                        const loadedChar = window.availableCharacters.find(
+                            c => c.id === data.id || c.name === (data.data.identity && data.data.identity.name)
+                        );
+                        if (loadedChar) loadedChar.stats = data.data.stats;
+                        updateAllVideoPools();
+                    }
                     window.dispatchEvent(new CustomEvent('character-loaded', { detail: { id: data.id, data: data.data } }));
                     break;
                 case 'character-updated':
+                    if (window.availableCharacters && data.data && data.data.stats) {
+                        const updatedChar = window.availableCharacters.find(
+                            c => c.id === data.id || c.name === (data.data.identity && data.data.identity.name)
+                        );
+                        if (updatedChar) updatedChar.stats = data.data.stats;
+                        updateAllVideoPools();
+                    }
                     window.dispatchEvent(new CustomEvent('character-updated', { detail: { id: data.id, data: data.data } }));
                     break;
                 case 'character-deleted':

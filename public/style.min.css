@@ -529,6 +529,11 @@ body, html {
     box-shadow: 0 0 10px rgba(76, 175, 80, 0.8);
 }
 
+.video-media-wrapper {
+    position: relative;
+    width: 100%;
+}
+
 .video-container video {
     width: 100%;
     display: block;
@@ -544,6 +549,60 @@ body, html {
     border-radius: 4px;
     font-size: 13px;
     z-index: 2;
+}
+
+.video-pools-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    background-color: #181818;
+    border-top: 1px solid #2c2c2c;
+}
+
+.video-pool-gauge {
+    position: relative;
+    flex: 1;
+    height: 18px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.video-pool-fill {
+    height: 100%;
+    width: 100%;
+    transition: width 0.25s ease, background-color 0.25s ease;
+}
+
+.video-pool-label {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #ffffff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95), 0 0 4px rgba(0, 0, 0, 0.8);
+    line-height: 1;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.video-pool-label .pool-letter {
+    opacity: 0.85;
+    font-weight: 600;
+}
+
+.video-pool-label .pool-sep {
+    opacity: 0.65;
+    font-weight: 400;
 }
 
 #global-controls {

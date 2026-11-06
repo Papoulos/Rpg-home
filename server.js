@@ -213,7 +213,8 @@ function loadCharactersList() {
                     charactersList.push({
                         id: file.replace('.json', ''),
                         name: charData.identity?.name || 'Inconnu',
-                        portraitUrl: charData.identity?.portraitUrl || ''
+                        portraitUrl: charData.identity?.portraitUrl || '',
+                        stats: charData.stats || null
                     });
                 } catch (error) {
                     console.error(`[CHARACTERS] Failed to load ${file}:`, error);
