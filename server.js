@@ -7,7 +7,6 @@ const util = require('util');
 const fetch = require('node-fetch');
 const rateLimit = require('express-rate-limit');
 const compression = require('compression');
-const helmet = require('helmet');
 const { loadApiKeys, loadChatbotConfig } = require('./config-loader');
 let chatbotConfig = require('./api.config.js'); // Load base config
 const multer = require('multer');
@@ -33,24 +32,6 @@ app.use(express.json({ limit: '50mb' }));
 
 // Enable compression (GZIP) for all responses
 app.use(compression());
-
-// Configure Content Security Policy
-app.use(
-    helmet.contentSecurityPolicy({
-        directives: {
-            'default-src': ["'self'"],
-            'script-src': ["'self'", "https://cdnjs.cloudflare.com", "https://www.youtube.com"],
-            'style-src': ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://maxcdn.bootstrapcdn.com"],
-            'font-src': ["'self'", "https://fonts.gstatic.com", "https://maxcdn.bootstrapcdn.com"],
-            'img-src': ["'self'", "data:", "blob:", "https:"],
-            'connect-src': ["'self'", "wss:", "ws:", "https://www.youtube.com"],
-            'frame-src': ["'self'", "https://www.youtube.com"],
-            'media-src': ["'self'", "blob:", "https://www.youtube.com"],
-            'worker-src': ["'self'", "blob:"],
-            'object-src': ["'none'"]
-        }
-    })
-);
 
 // --- MP3 Upload and Download Routes ---
 const musicDir = path.join(__dirname, 'data/music');

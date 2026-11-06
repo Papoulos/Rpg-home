@@ -1,7 +1,7 @@
 // Service Worker pour Rpg-home
 // Cache les assets statiques pour un chargement rapide tout en garantissant la fraîcheur du code applicatif
 
-const CACHE_NAME = 'rpg-home-v3';
+const CACHE_NAME = 'rpg-home-v4';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -67,8 +67,8 @@ self.addEventListener('activate', (event) => {
 
 // Interception des requêtes
 self.addEventListener('fetch', (event) => {
-  // Ignorer les requêtes non-GET
-  if (event.request.method !== 'GET') {
+  // Ignorer les requêtes non-GET ou externes (ex: images Pinterest, YouTube, etc.)
+  if (event.request.method !== 'GET' || !event.request.url.startsWith(self.location.origin)) {
     return;
   }
 
