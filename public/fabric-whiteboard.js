@@ -26,8 +26,8 @@
         if (!canvas) return;
         clearTimeout(debounceTimeout);
         debounceTimeout = setTimeout(() => {
-            const propertiesToInclude = ['id', 'isFog', 'isEraserPath', 'selectable', 'evented'];
-            const state = JSON.stringify(canvas.toJSON(propertiesToInclude));
+            const propertiesToInclude = ['id', 'isFog', 'isEraserPath', 'selectable', 'evented', 'customName'];
+            const state = JSON.stringify(canvas.toObject(propertiesToInclude));
             if (window.socket && window.socket.readyState === WebSocket.OPEN) {
                 window.socket.send(JSON.stringify({
                     type: 'fabric-state-update',
@@ -66,6 +66,9 @@
 
         if (canvas.isDrawingMode) {
             canvas.selection = false;
+            if (!canvas.freeDrawingBrush) {
+                canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+            }
             if (tool === 'pencil') {
                 canvas.freeDrawingBrush.color = currentColor;
                 canvas.freeDrawingBrush.width = 5;
@@ -123,7 +126,7 @@
         });
 
         canvas.add(fogLayer);
-        fogLayer.moveTo(999); // Ensure it's on top of everything
+        canvas.bringObjectToFront(fogLayer); // Ensure it's on top of everything
     };
 
     const toggleFog = (forceState) => {
@@ -159,9 +162,41 @@
             isEraserPath: true
         });
 
-        fogLayer.addWithUpdate(path);
+        fogLayer.add(path);
         canvas.renderAll();
         sendCanvasStateToServer();
+    };
+
+    const updateCanvasScaling = () => {
+        if (!canvas) return;
+        const fabricContent = document.getElementById('fabric-content');
+        const controls = document.querySelector('.whiteboard-controls');
+        if (!fabricContent || !controls) return;
+
+        const containerRect = fabricContent.getBoundingClientRect();
+        const controlsRect = controls.getBoundingClientRect();
+
+        const availableWidth = containerRect.width;
+        const availableHeight = containerRect.height - controlsRect.height;
+
+        // Calculate scale to fit while maintaining aspect ratio (letterboxing)
+        const scaleX = availableWidth / VIRTUAL_WIDTH;
+        const scaleY = availableHeight / VIRTUAL_HEIGHT;
+        const scale = Math.min(scaleX, scaleY);
+
+        const newWidth = VIRTUAL_WIDTH * scale;
+        const newHeight = VIRTUAL_HEIGHT * scale;
+
+        canvas.setDimensions({ width: newWidth, height: newHeight });
+        canvas.setZoom(scale);
+
+        // Fog base should always cover the virtual size
+        if (fogLayer) {
+            const fogBase = fogLayer.getObjects('rect')[0];
+            if (fogBase) {
+                fogBase.set({ width: VIRTUAL_WIDTH, height: VIRTUAL_HEIGHT });
+            }
+        }
     };
 
     const initializeCanvas = () => {
@@ -171,49 +206,15 @@
         const canvasElement = document.getElementById('fabric-canvas');
         if (!fabricContent || !canvasElement) return;
 
-        const updateCanvasScaling = () => {
-            if (!canvas) return;
-            const fabricContent = document.getElementById('fabric-content');
-            const controls = document.querySelector('.whiteboard-controls');
-            if (!fabricContent || !controls) return;
-
-            const containerRect = fabricContent.getBoundingClientRect();
-            const controlsRect = controls.getBoundingClientRect();
-
-            const availableWidth = containerRect.width;
-            const availableHeight = containerRect.height - controlsRect.height;
-
-            // Calculate scale to fit while maintaining aspect ratio (letterboxing)
-            const scaleX = availableWidth / VIRTUAL_WIDTH;
-            const scaleY = availableHeight / VIRTUAL_HEIGHT;
-            const scale = Math.min(scaleX, scaleY);
-
-            const newWidth = VIRTUAL_WIDTH * scale;
-            const newHeight = VIRTUAL_HEIGHT * scale;
-
-            canvas.setDimensions({ width: newWidth, height: newHeight });
-            canvas.setZoom(scale);
-
-            // Fog base should always cover the virtual size
-            if (fogLayer) {
-                const fogBase = fogLayer.getObjects('rect')[0];
-                if (fogBase) {
-                    fogBase.set({ width: VIRTUAL_WIDTH, height: VIRTUAL_HEIGHT });
-                }
-            }
-        };
-
-
-
-
         canvas = new fabric.Canvas('fabric-canvas', {
             isDrawingMode: false,
         });
+        canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+        canvas.freeDrawingBrush.width = 5;
+        canvas.freeDrawingBrush.color = '#ffffff';
         updateCanvasScaling();
 
         setActiveTool('select');
-        canvas.freeDrawingBrush.width = 5;
-        canvas.freeDrawingBrush.color = '#ffffff';
 
         // --- MJ and FOG Status ---
         const fogToolbar = document.getElementById('fabric-fog-toolbar');
@@ -276,7 +277,7 @@
                 if (window.socket && window.socket.readyState === WebSocket.OPEN) {
                     window.socket.send(JSON.stringify({
                         type: 'fabric-path-created',
-                        payload: path.toJSON(['id'])
+                        payload: path.toObject(['id'])
                     }));
                 }
                 sendCanvasStateToServer();
@@ -295,10 +296,15 @@
         const setBackground = (dataUrl) => {
             fabric.Image.fromURL(dataUrl).then((img) => {
                 // Fit background to virtual resolution maintaining aspect ratio of the virtual resolution
-                canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas), {
+                img.set({
                     scaleX: VIRTUAL_WIDTH / img.width,
-                    scaleY: VIRTUAL_HEIGHT / img.height
+                    scaleY: VIRTUAL_HEIGHT / img.height,
+                    originX: 'left',
+                    originY: 'top'
                 });
+                canvas.backgroundImage = img;
+                canvas.renderAll();
+                sendCanvasStateToServer();
             });
         };
 
@@ -312,7 +318,6 @@
                     window.socket.send(JSON.stringify({ type: 'fabric-set-background', payload: dataUrl }));
                 }
                 setBackground(dataUrl);
-                sendCanvasStateToServer();
             };
             reader.readAsDataURL(file);
         });
@@ -332,7 +337,7 @@
                     img.id = getNextId();
                     canvas.add(img);
                     if (window.socket && window.socket.readyState === WebSocket.OPEN) {
-                        window.socket.send(JSON.stringify({ type: 'fabric-add-object', payload: img.toJSON(['id']) }));
+                        window.socket.send(JSON.stringify({ type: 'fabric-add-object', payload: img.toObject(['id']) }));
                     }
                     sendCanvasStateToServer();
                 });
@@ -405,7 +410,7 @@
         const syncObjectLive = (e) => {
             if (e.target && !e.target.isFog) {
                 if (window.socket?.readyState === WebSocket.OPEN) {
-                    window.socket.send(JSON.stringify({ type: 'fabric-update-object', payload: e.target.toJSON(['id']) }));
+                    window.socket.send(JSON.stringify({ type: 'fabric-update-object', payload: e.target.toObject(['id']) }));
                 }
             }
         };
@@ -425,7 +430,7 @@
         canvas.on('mouse:up', () => {
             if (isDrawing && currentShape) {
                 if (window.socket?.readyState === WebSocket.OPEN) {
-                    window.socket.send(JSON.stringify({ type: 'fabric-add-object', payload: currentShape.toJSON(['id']) }));
+                    window.socket.send(JSON.stringify({ type: 'fabric-add-object', payload: currentShape.toObject(['id']) }));
                 }
                 sendCanvasStateToServer();
             }
@@ -437,7 +442,7 @@
             if (!selectedTokenForPlacement) return;
             const token = selectedTokenForPlacement;
 
-            fabric.Image.fromURL(token.url, (img) => {
+            fabric.Image.fromURL(token.url).then((img) => {
                 let targetWidth = GRID_CELL_SIZE;
                 let targetHeight = GRID_CELL_SIZE;
 
@@ -463,7 +468,7 @@
 
                 canvas.add(img);
                 if (window.socket && window.socket.readyState === WebSocket.OPEN) {
-                    window.socket.send(JSON.stringify({ type: 'fabric-add-object', payload: img.toJSON(['id', 'customName']) }));
+                    window.socket.send(JSON.stringify({ type: 'fabric-add-object', payload: img.toObject(['id', 'customName']) }));
                 }
                 sendCanvasStateToServer();
             });
@@ -753,7 +758,7 @@
         }));
 
         window.addEventListener('fabric-load', remoteActionHandler((payload) => {
-            canvas.loadFromJSON(payload, () => {
+            canvas.loadFromJSON(payload).then(() => {
                 fogLayer = canvas.getObjects().find(o => o.isFog && o.type === 'group') || null;
                 if (fogLayer) {
                     // Defensively set properties to prevent interaction after reload
@@ -762,7 +767,7 @@
                         evented: false,
                     });
                     const fogBase = fogLayer.getObjects('rect')[0];
-                    fogBase.set('fill', isMJ ? 'rgba(0,0,0,0.5)' : 'black');
+                    if (fogBase) fogBase.set('fill', isMJ ? 'rgba(0,0,0,0.5)' : 'black');
                 }
                 canvas.renderAll();
             });
@@ -782,7 +787,7 @@
         });
 
         window.addEventListener('pointer-disconnect', (event) => {
-            if (canvas?.remotePointers[event.detail.sender]) {
+            if (canvas && remotePointers[event.detail.sender]) {
                 canvas.remove(remotePointers[event.detail.sender]);
                 delete remotePointers[event.detail.sender];
                 canvas.renderAll();
@@ -841,14 +846,16 @@
         document.getElementById('fabric-color-picker').addEventListener('input', (e) => {
             currentColor = e.target.value;
             if (!canvas) return;
-            canvas.freeDrawingBrush.color = currentColor;
+            if (canvas.freeDrawingBrush) {
+                canvas.freeDrawingBrush.color = currentColor;
+            }
             const activeObject = canvas.getActiveObject();
             if (activeObject && !activeObject.isFog) {
                 activeObject.set('stroke', currentColor);
                 if (activeObject.type !== 'line') activeObject.set('fill', 'transparent');
                 canvas.renderAll();
                 if (window.socket?.readyState === WebSocket.OPEN) {
-                    window.socket.send(JSON.stringify({ type: 'fabric-update-object', payload: activeObject.toJSON(['id']) }));
+                    window.socket.send(JSON.stringify({ type: 'fabric-update-object', payload: activeObject.toObject(['id']) }));
                 }
             }
         });
