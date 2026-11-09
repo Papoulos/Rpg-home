@@ -73,7 +73,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   const requestUrl = event.request.url;
-  const isImmutableLib = requestUrl.includes('/libs/') || requestUrl.includes('/music/');
+  const isImmutableLib = requestUrl.includes('/libs/') || requestUrl.includes('/music/') || requestUrl.includes('/backgrounds/');
 
   if (isImmutableLib) {
     // Stratégie Cache First uniquement pour les librairies tierces immuables

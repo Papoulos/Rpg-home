@@ -311,6 +311,28 @@ body, html {
 
 #fabric-content .canvas-container {
     margin: auto; /* This centers the canvas horizontally and vertically within its available space */
+    position: relative;
+}
+
+#fabric-background-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
+    pointer-events: none;
+    user-select: none;
+    z-index: 0;
+}
+
+#fabric-content .canvas-container .lower-canvas {
+    position: relative;
+    z-index: 1;
+}
+
+#fabric-content .canvas-container .upper-canvas {
+    z-index: 2;
 }
 
 #fabric-color-picker {

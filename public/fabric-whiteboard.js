@@ -10,6 +10,8 @@
     let fogLayer = null; // This will be a fabric.Group
     window.tokensList = [];
     let selectedTokenForPlacement = null;
+    let pendingLoadPayload = null;
+    let pendingBackgroundUrl = undefined;
 
     const VIRTUAL_WIDTH = 1920;
     const VIRTUAL_HEIGHT = 1080;
@@ -26,7 +28,7 @@
         if (!canvas) return;
         clearTimeout(debounceTimeout);
         debounceTimeout = setTimeout(() => {
-            const propertiesToInclude = ['id', 'isFog', 'isEraserPath', 'selectable', 'evented', 'customName'];
+            const propertiesToInclude = ['id', 'isFog', 'isEraserPath', 'selectable', 'evented', 'customName', 'customBackground'];
             const state = JSON.stringify(canvas.toObject(propertiesToInclude));
             if (window.socket && window.socket.readyState === WebSocket.OPEN) {
                 window.socket.send(JSON.stringify({
@@ -36,6 +38,112 @@
             }
         }, 500); // Debounce for 500ms
     };
+
+    const ensureBackgroundElement = () => {
+        const canvasEl = document.getElementById('fabric-canvas');
+        const container = canvasEl?.parentElement;
+        if (!container) return null;
+
+        let bgImg = container.querySelector('#fabric-background-layer');
+        if (!bgImg) {
+            bgImg = document.createElement('img');
+            bgImg.id = 'fabric-background-layer';
+            bgImg.alt = '';
+            bgImg.draggable = false;
+            Object.assign(bgImg.style, {
+                position: 'absolute',
+                top: '0',
+                left: '0',
+                width: '100%',
+                height: '100%',
+                objectFit: 'fill',
+                pointerEvents: 'none',
+                userSelect: 'none',
+                zIndex: '0',
+                display: 'none'
+            });
+            container.insertBefore(bgImg, container.firstChild);
+
+            const lowerCanvas = container.querySelector('.lower-canvas') || canvasEl;
+            if (lowerCanvas) {
+                lowerCanvas.style.position = 'relative';
+                lowerCanvas.style.zIndex = '1';
+            }
+            const upperCanvas = container.querySelector('.upper-canvas');
+            if (upperCanvas) {
+                upperCanvas.style.zIndex = '2';
+            }
+        }
+        return bgImg;
+    };
+
+    const applyBackgroundToDOM = (bgUrl, shouldSave = true) => {
+        if (!canvas) {
+            pendingBackgroundUrl = bgUrl || null;
+            return;
+        }
+        const normalizedUrl = bgUrl || null;
+        canvas.customBackground = normalizedUrl;
+        if (canvas.backgroundImage) {
+            canvas.backgroundImage = null;
+        }
+
+        const bgImg = ensureBackgroundElement();
+        if (bgImg) {
+            if (normalizedUrl) {
+                bgImg.src = normalizedUrl;
+                bgImg.style.display = 'block';
+            } else {
+                bgImg.removeAttribute('src');
+                bgImg.style.display = 'none';
+            }
+        }
+
+        canvas.renderAll();
+        if (shouldSave) {
+            sendCanvasStateToServer();
+        }
+    };
+
+    const applyLoadedCanvasState = (payload) => {
+        if (!canvas) {
+            pendingLoadPayload = payload;
+            return;
+        }
+        try {
+            const parsed = typeof payload === 'string' ? JSON.parse(payload) : { ...payload };
+            const legacyBgSrc = parsed?.backgroundImage?.src || null;
+            const bgUrl = parsed?.customBackground || legacyBgSrc || null;
+            if (parsed && parsed.backgroundImage) {
+                delete parsed.backgroundImage;
+            }
+
+            canvas.loadFromJSON(parsed).then(() => {
+                fogLayer = canvas.getObjects().find(o => o.isFog && o.type === 'group') || null;
+                if (fogLayer) {
+                    // Defensively set properties to prevent interaction after reload
+                    fogLayer.set({
+                        selectable: false,
+                        evented: false,
+                    });
+                    const fogBase = fogLayer.getObjects('rect')[0];
+                    if (fogBase) fogBase.set('fill', isMJ ? 'rgba(0,0,0,0.5)' : 'black');
+                }
+                applyBackgroundToDOM(bgUrl, false);
+                canvas.renderAll();
+            });
+        } catch (err) {
+            console.error('[WHITEBOARD] Failed to load canvas state:', err);
+        }
+    };
+
+    window.addEventListener('fabric-load', (event) => {
+        applyLoadedCanvasState(event.detail.payload);
+    });
+
+    window.addEventListener('fabric-remote-set-background', (event) => {
+        applyBackgroundToDOM(event.detail.payload, false);
+    });
 
     const setActiveTool = (tool) => {
         // Cleanup previous tool's artifacts
@@ -212,9 +320,21 @@
         canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
         canvas.freeDrawingBrush.width = 5;
         canvas.freeDrawingBrush.color = '#ffffff';
+        ensureBackgroundElement();
         updateCanvasScaling();
 
         setActiveTool('select');
+
+        if (pendingLoadPayload) {
+            const payloadToLoad = pendingLoadPayload;
+            pendingLoadPayload = null;
+            applyLoadedCanvasState(payloadToLoad);
+        }
+        if (pendingBackgroundUrl !== undefined) {
+            const bgToApply = pendingBackgroundUrl;
+            pendingBackgroundUrl = undefined;
+            applyBackgroundToDOM(bgToApply, false);
+        }
 
         // --- MJ and FOG Status ---
         const fogToolbar = document.getElementById('fabric-fog-toolbar');
@@ -293,37 +413,38 @@
             }
         });
 
-        const setBackground = (dataUrl) => {
-            fabric.Image.fromURL(dataUrl).then((img) => {
-                // Fit background to virtual resolution maintaining aspect ratio of the virtual resolution
-                img.set({
-                    scaleX: VIRTUAL_WIDTH / img.width,
-                    scaleY: VIRTUAL_HEIGHT / img.height,
-                    originX: 'left',
-                    originY: 'top'
-                });
-                canvas.backgroundImage = img;
-                canvas.renderAll();
-                sendCanvasStateToServer();
-            });
-        };
-
-        document.getElementById('fabric-background-image-input').addEventListener('change', (event) => {
+        document.getElementById('fabric-background-image-input').addEventListener('change', async (event) => {
             if (!canvas || !event.target.files || event.target.files.length === 0) return;
             const file = event.target.files[0];
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const dataUrl = e.target.result;
-                if (window.socket && window.socket.readyState === WebSocket.OPEN) {
-                    window.socket.send(JSON.stringify({ type: 'fabric-set-background', payload: dataUrl }));
-                }
-                setBackground(dataUrl);
-            };
-            reader.readAsDataURL(file);
-        });
+            event.target.value = '';
 
-        window.addEventListener('fabric-remote-set-background', (event) => {
-            if (canvas) setBackground(event.detail.payload);
+            const broadcastAndSetBackground = (bgUrl) => {
+                if (window.socket && window.socket.readyState === WebSocket.OPEN) {
+                    window.socket.send(JSON.stringify({ type: 'fabric-set-background', payload: bgUrl }));
+                }
+                applyBackgroundToDOM(bgUrl, true);
+            };
+
+            try {
+                const formData = new FormData();
+                formData.append('backgroundFile', file);
+                const response = await fetch('/upload-background', {
+                    method: 'POST',
+                    body: formData
+                });
+                if (!response.ok) {
+                    throw new Error(`Upload failed with status ${response.status}`);
+                }
+                const result = await response.json();
+                broadcastAndSetBackground(result.url);
+            } catch (err) {
+                console.warn('[WHITEBOARD] Upload background failed, falling back to Data URL:', err);
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    broadcastAndSetBackground(e.target.result);
+                };
+                reader.readAsDataURL(file);
+            }
         });
 
         document.getElementById('fabric-image-input').addEventListener('change', (event) => {
@@ -757,22 +878,6 @@
             addFogEraserPath(path);
         }));
 
-        window.addEventListener('fabric-load', remoteActionHandler((payload) => {
-            canvas.loadFromJSON(payload).then(() => {
-                fogLayer = canvas.getObjects().find(o => o.isFog && o.type === 'group') || null;
-                if (fogLayer) {
-                    // Defensively set properties to prevent interaction after reload
-                    fogLayer.set({
-                        selectable: false,
-                        evented: false,
-                    });
-                    const fogBase = fogLayer.getObjects('rect')[0];
-                    if (fogBase) fogBase.set('fill', isMJ ? 'rgba(0,0,0,0.5)' : 'black');
-                }
-                canvas.renderAll();
-            });
-        }));
-
 
         window.addEventListener('pointer-move', (event) => {
             if (!canvas) return;
@@ -866,7 +971,11 @@
             if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
                 const target = mutation.target;
                 if (target.id === 'fabric-content' && target.style.display !== 'none') {
-                    initializeCanvas();
+                    if (!canvas) {
+                        initializeCanvas();
+                    } else {
+                        updateCanvasScaling();
+                    }
                 }
             }
         }

@@ -51,6 +51,57 @@ app.use('/music', express.static(musicDir, {
     }
 }));
 
+// --- Battlemap Background Upload Route (supports animated WebP, GIF, PNG, JPG, etc.) ---
+const backgroundsDir = path.join(__dirname, 'data/backgrounds');
+if (!fs.existsSync(backgroundsDir)) {
+    fs.mkdirSync(backgroundsDir, { recursive: true });
+}
+app.use('/backgrounds', express.static(backgroundsDir, {
+    maxAge: '1y',
+    setHeaders: (res) => {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    }
+}));
+
+const backgroundStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, backgroundsDir);
+    },
+    filename: function (req, file, cb) {
+        let sanitizedOriginalName = path.basename(file.originalname).replace(/[^a-zA-Z0-9.\-_]/g, '_');
+        let filename = sanitizedOriginalName;
+        let counter = 1;
+        while (fs.existsSync(path.join(backgroundsDir, filename))) {
+            const ext = path.extname(sanitizedOriginalName);
+            const base = path.basename(sanitizedOriginalName, ext);
+            filename = `${base}-${counter}${ext}`;
+            counter++;
+        }
+        cb(null, filename);
+    }
+});
+const uploadBackground = multer({
+    storage: backgroundStorage,
+    limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB limit
+    fileFilter: (req, file, cb) => {
+        const allowedMimeTypes = ['image/webp', 'image/png', 'image/jpeg', 'image/gif', 'image/svg+xml', 'image/avif'];
+        const ext = path.extname(file.originalname).toLowerCase();
+        const allowedExts = ['.webp', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.avif'];
+        if (allowedMimeTypes.includes(file.mimetype) || allowedExts.includes(ext)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Format d\'image non supporté.'));
+        }
+    }
+});
+
+app.post('/upload-background', uploadBackground.single('backgroundFile'), (req, res) => {
+    if (!req.file) {
+        return res.status(400).send('No file uploaded.');
+    }
+    res.json({ url: '/backgrounds/' + req.file.filename, filename: req.file.filename });
+});
+
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         cb(null, musicDir)
@@ -1072,7 +1123,7 @@ wss.on('connection', (ws) => {
                 break;
 
             case 'fabric-state-update':
-                if (data.payload && data.payload.length < 5 * 1024 * 1024) {
+                if (data.payload && data.payload.length < 50 * 1024 * 1024) {
                     whiteboardState = data.payload;
                     saveWhiteboardState(whiteboardState);
                 } else {
