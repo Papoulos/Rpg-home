@@ -1018,6 +1018,9 @@
                 case 'image-list-update':
                     window.dispatchEvent(new CustomEvent('image-list-update', { detail: { list: data.list } }));
                     break;
+                case 'tokens-list-update':
+                    window.dispatchEvent(new CustomEvent('tokens-list-update', { detail: { list: data.list } }));
+                    break;
                 case 'characters-list-update':
                     window.availableCharacters = data.list;
                     window.dispatchEvent(new CustomEvent('characters-list-update', { detail: { list: data.list } }));

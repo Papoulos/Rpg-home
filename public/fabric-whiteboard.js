@@ -801,7 +801,11 @@
         });
 
         document.getElementById('tokens-lib-add-btn')?.addEventListener('click', () => {
-            document.getElementById('add-token-modal').style.display = 'flex';
+            const addModal = document.getElementById('add-token-modal');
+            if (addModal) {
+                addModal.style.display = 'flex';
+                addModal.style.zIndex = '10010';
+            }
         });
 
         document.getElementById('add-token-modal-cancel')?.addEventListener('click', () => {

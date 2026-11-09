@@ -1,7 +1,7 @@
 // Service Worker pour Rpg-home
 // Cache les assets statiques pour un chargement rapide tout en garantissant la fraîcheur du code applicatif
 
-const CACHE_NAME = 'rpg-home-v4';
+const CACHE_NAME = 'rpg-home-v5';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -17,6 +17,8 @@ const ASSETS_TO_CACHE = [
   '/fabric-whiteboard.js',
   '/music.js',
   '/wiki.js',
+  '/default-tokens/player.svg',
+  '/default-tokens/item.svg',
   '/libs/fabric/fabric.min.js',
   '/libs/easymde/easymde.min.js',
   '/libs/easymde/easymde.min.css',
@@ -67,8 +69,8 @@ self.addEventListener('activate', (event) => {
 
 // Interception des requêtes
 self.addEventListener('fetch', (event) => {
-  // Ignorer les requêtes non-GET, les requêtes Range (streaming vidéo WebM/MP4) ou les fonds de battlemap
-  if (event.request.method !== 'GET' || !event.request.url.startsWith(self.location.origin) || event.request.headers.has('range') || event.request.url.includes('/backgrounds/')) {
+  // Ignorer les requêtes non-GET, les requêtes Range (streaming vidéo WebM/MP4) ou les uploads/fonds/tokens
+  if (event.request.method !== 'GET' || !event.request.url.startsWith(self.location.origin) || event.request.headers.has('range') || event.request.url.includes('/backgrounds/') || event.request.url.includes('/tokens/') || event.request.url.includes('/upload-token')) {
     return;
   }
 

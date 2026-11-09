@@ -105,6 +105,66 @@ app.post('/upload-background', uploadBackground.single('backgroundFile'), (req, 
     res.json({ url: '/backgrounds/' + req.file.filename, filename: req.file.filename });
 });
 
+// --- Battlemap Tokens Upload and Serving Routes ---
+const tokensDir = path.join(__dirname, 'data/tokens');
+const uploadTokenDir = path.join(__dirname, 'data/upload-token');
+if (!fs.existsSync(tokensDir)) {
+    fs.mkdirSync(tokensDir, { recursive: true });
+}
+if (!fs.existsSync(uploadTokenDir)) {
+    fs.mkdirSync(uploadTokenDir, { recursive: true });
+}
+app.use('/tokens', express.static(tokensDir, {
+    maxAge: '1y',
+    setHeaders: (res) => {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    }
+}));
+app.use('/tokens', express.static(uploadTokenDir));
+app.use('/upload-token', express.static(tokensDir));
+app.use('/upload-token', express.static(uploadTokenDir));
+
+const tokenStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, tokensDir);
+    },
+    filename: function (req, file, cb) {
+        let sanitizedOriginalName = path.basename(file.originalname).replace(/[^a-zA-Z0-9.\-_]/g, '_');
+        let filename = sanitizedOriginalName;
+        let counter = 1;
+        while (fs.existsSync(path.join(tokensDir, filename)) || fs.existsSync(path.join(uploadTokenDir, filename))) {
+            const ext = path.extname(sanitizedOriginalName);
+            const base = path.basename(sanitizedOriginalName, ext);
+            filename = `${base}-${counter}${ext}`;
+            counter++;
+        }
+        cb(null, filename);
+    }
+});
+const uploadToken = multer({
+    storage: tokenStorage,
+    limits: { fileSize: 25 * 1024 * 1024 }, // 25 MB limit
+    fileFilter: (req, file, cb) => {
+        const allowedMimeTypes = [
+            'image/webp', 'image/png', 'image/jpeg', 'image/gif', 'image/svg+xml', 'image/avif'
+        ];
+        const ext = path.extname(file.originalname).toLowerCase();
+        const allowedExts = ['.webp', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.avif'];
+        if (allowedMimeTypes.includes(file.mimetype) || allowedExts.includes(ext)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Format de fichier non supporté.'));
+        }
+    }
+});
+
+app.post('/upload-token', uploadToken.single('tokenImage'), (req, res) => {
+    if (!req.file) {
+        return res.status(400).send('No file uploaded.');
+    }
+    res.json({ url: '/tokens/' + req.file.filename, filename: req.file.filename });
+});
+
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         cb(null, musicDir)
@@ -216,12 +276,14 @@ async function startServer() {
 const PORT = process.env.PORT || 3000;
 const CHAT_LOG_FILE = path.join(__dirname, 'chat_history.log');
 const IMAGE_LIST_FILE = path.join(__dirname, 'images.json');
+const TOKENS_FILE = path.join(__dirname, 'tokens.json');
 const WHITEBOARD_STATE_FILE = path.join(__dirname, 'whiteboard.json');
 const WIKI_DIR = path.join(__dirname, 'wiki');
 
 
 let chatHistory = [];
 let imageList = [];
+let tokensList = [];
 let currentImageUrl = null; // Track the currently displayed image
 const clients = new Map();
 let whiteboardState = null; // Will store the JSON string of the fabric canvas
@@ -590,6 +652,34 @@ function broadcastImageList() {
     broadcast({ type: 'image-list-update', list: imageList });
 }
 
+// --- Tokens List Functions ---
+
+function loadTokensList() {
+    if (fs.existsSync(TOKENS_FILE)) {
+        const fileContent = fs.readFileSync(TOKENS_FILE, 'utf-8');
+        try {
+            tokensList = JSON.parse(fileContent);
+            console.log(`[TOKENS] Loaded ${tokensList.length} tokens.`);
+        } catch (error) {
+            console.error('[TOKENS] Failed to parse tokens.json:', error);
+            tokensList = [];
+        }
+    }
+}
+
+function saveTokensList() {
+    try {
+        tokensList.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        fs.writeFileSync(TOKENS_FILE, JSON.stringify(tokensList, null, 2));
+    } catch (error) {
+        console.error('[TOKENS] FAILED to save token list:', error);
+    }
+}
+
+function broadcastTokensList() {
+    broadcast({ type: 'tokens-list-update', list: tokensList });
+}
+
 // --- Whiteboard State Functions ---
 function saveWhiteboardState(state) {
     try {
@@ -838,6 +928,7 @@ wss.on('connection', (ws) => {
                 // Send initial state
                 ws.send(JSON.stringify({ type: 'history', messages: chatHistory }));
                 ws.send(JSON.stringify({ type: 'image-list-update', list: imageList }));
+                ws.send(JSON.stringify({ type: 'tokens-list-update', list: tokensList }));
                 ws.send(JSON.stringify({ type: 'show-image', url: currentImageUrl }));
                 if (whiteboardState) ws.send(JSON.stringify({ type: 'fabric-load', payload: whiteboardState }));
                 ws.send(JSON.stringify({ type: 'wiki-page-list', publicPages: publicWikiPages, mjPages: mjWikiPages }));
@@ -1028,6 +1119,52 @@ wss.on('connection', (ws) => {
                 } });
                 break;
 
+            case 'get-tokens':
+                ws.send(JSON.stringify({ type: 'tokens-list-update', list: tokensList }));
+                break;
+
+            case 'add-custom-token':
+                if (client && client.isMJ) {
+                    const tokenName = (data.name || '').trim();
+                    if (tokenName) {
+                        const newToken = {
+                            id: 'token_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+                            name: tokenName,
+                            category: data.category || 'Divers',
+                            size: data.size || '1x1',
+                            url: data.url
+                        };
+                        tokensList.push(newToken);
+                        saveTokensList();
+                        broadcastTokensList();
+                        console.log(`[TOKENS] Added token "${newToken.name}" (${newToken.category}) by MJ.`);
+                    }
+                }
+                break;
+
+            case 'delete-custom-token':
+                if (client && client.isMJ) {
+                    const tokenToDelete = tokensList.find(t => t.id === data.id);
+                    if (tokenToDelete) {
+                        if (tokenToDelete.url && tokenToDelete.url.startsWith('/tokens/')) {
+                            const filename = path.basename(tokenToDelete.url);
+                            const filePath = path.join(tokensDir, filename);
+                            if (fs.existsSync(filePath)) {
+                                try {
+                                    fs.unlinkSync(filePath);
+                                } catch (e) {
+                                    console.error('[TOKENS] Failed to delete token file:', filePath, e);
+                                }
+                            }
+                        }
+                        tokensList = tokensList.filter(t => t.id !== data.id);
+                        saveTokensList();
+                        broadcastTokensList();
+                        console.log(`[TOKENS] Deleted token ${data.id} by MJ.`);
+                    }
+                }
+                break;
+
             case 'add-image':
                 if (client && client.isMJ) {
                     if (isValidFileName(data.name)) {
@@ -1210,6 +1347,7 @@ wss.on('connection', (ws) => {
                         const backupData = {
                             chatHistory: chatHistory,
                             imageList: imageList,
+                            tokensList: tokensList,
                             whiteboardState: whiteboardState,
                             musicState: musicState, // Saves playlist, isLooping, volume, currentIndex
                             characters: {}
@@ -1272,6 +1410,13 @@ wss.on('connection', (ws) => {
                         if (backupData.imageList) {
                             imageList = backupData.imageList;
                             saveImageList();
+                        }
+
+                        // 3b. Restore Tokens
+                        if (backupData.tokensList) {
+                            tokensList = backupData.tokensList;
+                            saveTokensList();
+                            broadcastTokensList();
                         }
 
                         // 4. Restore Whiteboard
@@ -1430,6 +1575,7 @@ function broadcastWikiPageList() {
 
     loadChatHistory();
     loadImageList();
+    loadTokensList();
     loadWhiteboardState();
     loadPlaylist();
     loadWikiPages();

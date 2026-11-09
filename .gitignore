@@ -5,6 +5,9 @@ chat_history.log
 whiteboard.json
 playlist.json
 images.json
+tokens.json
 *.log
 data/music/
 data/backgrounds/
+data/tokens/
+data/upload-token/
