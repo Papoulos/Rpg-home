@@ -912,62 +912,73 @@
                 }
             }
 
-            const formData = new FormData();
-            for (let i = 0; i < fileInput.files.length; i++) {
-                formData.append('tokenImages', fileInput.files[i]);
-            }
+            const files = Array.from(fileInput.files);
+            const totalFiles = files.length;
+            const tokensPayload = [];
+            const failedFiles = [];
 
             if (confirmBtn) {
                 confirmBtn.disabled = true;
-                confirmBtn.textContent = 'Envoi...';
             }
 
-            try {
-                const response = await fetch('/upload-token', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (!response.ok) {
-                    throw new Error('Upload échoué.');
+            for (let i = 0; i < totalFiles; i++) {
+                const file = files[i];
+                if (confirmBtn) {
+                    confirmBtn.textContent = totalFiles > 1 ? `Envoi ${i + 1}/${totalFiles}...` : 'Envoi...';
                 }
 
-                const result = await response.json();
-                const uploadedFiles = result.files || [{ url: result.url, name: nameInput || fileInput.files[0].name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ').trim() }];
+                const singleFormData = new FormData();
+                singleFormData.append('tokenImage', file);
 
-                const tokensPayload = uploadedFiles.map((fileObj, idx) => {
-                    let finalName = '';
-                    if (!isMultiple && nameInput) {
-                        finalName = nameInput;
-                    } else {
-                        finalName = fileObj.name || (fileInput.files[idx] && fileInput.files[idx].name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ').trim()) || 'Token';
+                try {
+                    const response = await fetch('/upload-token', {
+                        method: 'POST',
+                        body: singleFormData
+                    });
+
+                    if (!response.ok) {
+                        if (response.status === 413) {
+                            throw new Error(`Taille trop grande (${(file.size / (1024 * 1024)).toFixed(1)} Mo)`);
+                        }
+                        throw new Error(`Erreur HTTP ${response.status}`);
                     }
-                    return {
+
+                    const result = await response.json();
+                    const fileObj = (result.files && result.files[0]) || result;
+                    const finalName = (!isMultiple && nameInput)
+                        ? nameInput
+                        : (fileObj.name || file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ').trim() || 'Token');
+
+                    tokensPayload.push({
                         name: finalName,
                         category: categorySelect,
                         size: sizeSelect,
-                        url: fileObj.url
-                    };
-                });
-
-                if (window.socket && window.socket.readyState === WebSocket.OPEN) {
-                    window.socket.send(JSON.stringify({
-                        type: 'add-custom-token',
-                        category: categorySelect,
-                        size: sizeSelect,
-                        tokens: tokensPayload
-                    }));
+                        url: fileObj.url || result.url
+                    });
+                } catch (err) {
+                    console.error(`Erreur upload pour ${file.name}:`, err);
+                    failedFiles.push(`${file.name} (${err.message || 'erreur'})`);
                 }
+            }
 
-                resetAddTokenModal();
+            if (tokensPayload.length > 0 && window.socket && window.socket.readyState === WebSocket.OPEN) {
+                window.socket.send(JSON.stringify({
+                    type: 'add-custom-token',
+                    category: categorySelect,
+                    size: sizeSelect,
+                    tokens: tokensPayload
+                }));
+            }
 
-            } catch (err) {
-                errorDiv.textContent = "Erreur lors de l'envoi des images.";
+            if (failedFiles.length > 0) {
+                errorDiv.textContent = `${tokensPayload.length}/${totalFiles} token(s) importé(s). Échecs : ${failedFiles.join(', ')}`;
                 errorDiv.style.display = 'block';
                 if (confirmBtn) {
                     confirmBtn.disabled = false;
-                    confirmBtn.textContent = isMultiple ? `Ajouter (${fileInput.files.length})` : 'Ajouter';
+                    confirmBtn.textContent = 'Réessayer';
                 }
+            } else {
+                resetAddTokenModal();
             }
         });
 

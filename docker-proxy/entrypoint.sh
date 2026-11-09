@@ -18,6 +18,9 @@ else
 fi
 
 # 2. CONFIGURATION DU REVERSE PROXY NGINX
+# Augmentation de la taille maximale des requêtes à 250M (battlemaps WebM/MP4, musiques, tokens)
+echo "client_max_body_size 250M;" > /etc/nginx/conf.d/00-upload-limit.conf
+
 NGINX_CONF="/etc/nginx/conf.d/rpg-home.conf"
 
 if [ ! -f "$NGINX_CONF" ]; then
@@ -26,6 +29,7 @@ if [ ! -f "$NGINX_CONF" ]; then
 server {
     listen 80;
     server_name $DOMAIN;
+    client_max_body_size 250M;
 
     # Redirection vers le conteneur Node.js (nommé 'app' dans docker-compose)
     location / {
@@ -35,6 +39,7 @@ server {
         proxy_set_header Connection 'upgrade';
         proxy_set_header Host \$host;
         proxy_cache_bypass \$http_upgrade;
+        client_max_body_size 250M;
     }
 }
 CONF
