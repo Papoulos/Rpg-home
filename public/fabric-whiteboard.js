@@ -703,10 +703,11 @@
                 if (idxB !== -1) return 1;
                 return a.localeCompare(b);
             }).forEach(category => {
+                const count = (groupedTokens[category] && groupedTokens[category].length) || 0;
                 const btn = document.createElement('button');
                 btn.className = 'tokens-category-btn' + (category === activeCategory ? ' active' : '');
                 btn.dataset.category = category;
-                btn.textContent = category;
+                btn.innerHTML = `<span>${category}</span><span class="tokens-category-count">${count}</span>`;
                 btn.addEventListener('click', () => {
                     document.querySelectorAll('.tokens-category-btn').forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
@@ -717,13 +718,27 @@
 
             const renderGrid = (tokens) => {
                 gridContainer.innerHTML = '';
+                if (!tokens || tokens.length === 0) {
+                    gridContainer.innerHTML = `
+                        <div class="tokens-empty-message">
+                            <span class="material-symbols-outlined">category</span>
+                            <div>Aucun token dans cette catégorie</div>
+                        </div>
+                    `;
+                    return;
+                }
                 tokens.forEach(token => {
                     const card = document.createElement('div');
                     card.className = 'token-card';
+                    card.title = `${token.name} (${token.size})`;
                     card.innerHTML = `
-                        <img src="${token.url}" alt="${token.name}" onerror="this.src='/default-tokens/item.svg'">
-                        <div class="token-name">${token.name}</div>
-                        <div class="token-size">${token.size}</div>
+                        <div class="token-thumb-container">
+                            <img class="token-thumb-img" src="${token.url}" alt="${token.name}" onerror="this.src='/default-tokens/item.svg'" loading="lazy">
+                        </div>
+                        <div class="token-info">
+                            <div class="token-name" title="${token.name}">${token.name}</div>
+                            <div class="token-size-badge">${token.size}</div>
+                        </div>
                     `;
 
                     if (isMJ && !token.isDefault) {
@@ -739,7 +754,7 @@
                                 }
                             }
                         });
-                        card.appendChild(deleteBtn);
+                        card.querySelector('.token-thumb-container').appendChild(deleteBtn);
                     }
 
                     card.addEventListener('click', () => {

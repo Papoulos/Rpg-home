@@ -1,7 +1,7 @@
 // Service Worker pour Rpg-home
 // Cache les assets statiques pour un chargement rapide tout en garantissant la fraîcheur du code applicatif
 
-const CACHE_NAME = 'rpg-home-v5';
+const CACHE_NAME = 'rpg-home-v6';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
