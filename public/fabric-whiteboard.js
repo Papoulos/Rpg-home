@@ -39,10 +39,28 @@
         }, 500); // Debounce for 500ms
     };
 
-    const ensureBackgroundElement = () => {
+    const isVideoBackgroundUrl = (url) => {
+        if (!url || typeof url !== 'string') return false;
+        return /\.(webm|mp4|ogv)(\?.*)?(#.*)?$/i.test(url) || url.startsWith('data:video/');
+    };
+
+    const ensureBackgroundElements = () => {
         const canvasEl = document.getElementById('fabric-canvas');
         const container = canvasEl?.parentElement;
-        if (!container) return null;
+        if (!container) return { bgImg: null, bgVideo: null };
+
+        const sharedStyles = {
+            position: 'absolute',
+            top: '0',
+            left: '0',
+            width: '100%',
+            height: '100%',
+            objectFit: 'fill',
+            pointerEvents: 'none',
+            userSelect: 'none',
+            zIndex: '0',
+            display: 'none'
+        };
 
         let bgImg = container.querySelector('#fabric-background-layer');
         if (!bgImg) {
@@ -50,31 +68,38 @@
             bgImg.id = 'fabric-background-layer';
             bgImg.alt = '';
             bgImg.draggable = false;
-            Object.assign(bgImg.style, {
-                position: 'absolute',
-                top: '0',
-                left: '0',
-                width: '100%',
-                height: '100%',
-                objectFit: 'fill',
-                pointerEvents: 'none',
-                userSelect: 'none',
-                zIndex: '0',
-                display: 'none'
-            });
+            Object.assign(bgImg.style, sharedStyles);
             container.insertBefore(bgImg, container.firstChild);
-
-            const lowerCanvas = container.querySelector('.lower-canvas') || canvasEl;
-            if (lowerCanvas) {
-                lowerCanvas.style.position = 'relative';
-                lowerCanvas.style.zIndex = '1';
-            }
-            const upperCanvas = container.querySelector('.upper-canvas');
-            if (upperCanvas) {
-                upperCanvas.style.zIndex = '2';
-            }
         }
-        return bgImg;
+
+        let bgVideo = container.querySelector('#fabric-background-video');
+        if (!bgVideo) {
+            bgVideo = document.createElement('video');
+            bgVideo.id = 'fabric-background-video';
+            bgVideo.autoplay = true;
+            bgVideo.loop = true;
+            bgVideo.muted = true;
+            bgVideo. defaultMuted = true;
+            bgVideo.playsInline = true;
+            bgVideo.setAttribute('autoplay', '');
+            bgVideo.setAttribute('loop', '');
+            bgVideo.setAttribute('muted', '');
+            bgVideo.setAttribute('playsinline', '');
+            Object.assign(bgVideo.style, sharedStyles);
+            container.insertBefore(bgVideo, container.firstChild);
+        }
+
+        const lowerCanvas = container.querySelector('.lower-canvas') || canvasEl;
+        if (lowerCanvas) {
+            lowerCanvas.style.position = 'relative';
+            lowerCanvas.style.zIndex = '1';
+        }
+        const upperCanvas = container.querySelector('.upper-canvas');
+        if (upperCanvas) {
+            upperCanvas.style.zIndex = '2';
+        }
+
+        return { bgImg, bgVideo };
     };
 
     const applyBackgroundToDOM = (bgUrl, shouldSave = true) => {
@@ -88,12 +113,38 @@
             canvas.backgroundImage = null;
         }
 
-        const bgImg = ensureBackgroundElement();
-        if (bgImg) {
-            if (normalizedUrl) {
+        const { bgImg, bgVideo } = ensureBackgroundElements();
+        if (normalizedUrl && isVideoBackgroundUrl(normalizedUrl)) {
+            if (bgImg) {
+                bgImg.removeAttribute('src');
+                bgImg.style.display = 'none';
+            }
+            if (bgVideo) {
+                bgVideo.muted = true;
+                bgVideo.loop = true;
+                bgVideo.src = normalizedUrl;
+                bgVideo.style.display = 'block';
+                bgVideo.play().catch(err => console.warn('[WHITEBOARD] Background video play deferred:', err));
+            }
+        } else if (normalizedUrl) {
+            if (bgVideo) {
+                bgVideo.pause();
+                bgVideo.removeAttribute('src');
+                bgVideo.load();
+                bgVideo.style.display = 'none';
+            }
+            if (bgImg) {
                 bgImg.src = normalizedUrl;
                 bgImg.style.display = 'block';
-            } else {
+            }
+        } else {
+            if (bgVideo) {
+                bgVideo.pause();
+                bgVideo.removeAttribute('src');
+                bgVideo.load();
+                bgVideo.style.display = 'none';
+            }
+            if (bgImg) {
                 bgImg.removeAttribute('src');
                 bgImg.style.display = 'none';
             }
@@ -320,7 +371,7 @@
         canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
         canvas.freeDrawingBrush.width = 5;
         canvas.freeDrawingBrush.color = '#ffffff';
-        ensureBackgroundElement();
+        ensureBackgroundElements();
         updateCanvasScaling();
 
         setActiveTool('select');

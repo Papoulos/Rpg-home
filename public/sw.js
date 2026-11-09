@@ -67,13 +67,13 @@ self.addEventListener('activate', (event) => {
 
 // Interception des requêtes
 self.addEventListener('fetch', (event) => {
-  // Ignorer les requêtes non-GET ou externes (ex: images Pinterest, YouTube, etc.)
-  if (event.request.method !== 'GET' || !event.request.url.startsWith(self.location.origin)) {
+  // Ignorer les requêtes non-GET, les requêtes Range (streaming vidéo WebM/MP4) ou les fonds de battlemap
+  if (event.request.method !== 'GET' || !event.request.url.startsWith(self.location.origin) || event.request.headers.has('range') || event.request.url.includes('/backgrounds/')) {
     return;
   }
 
   const requestUrl = event.request.url;
-  const isImmutableLib = requestUrl.includes('/libs/') || requestUrl.includes('/music/') || requestUrl.includes('/backgrounds/');
+  const isImmutableLib = requestUrl.includes('/libs/') || requestUrl.includes('/music/');
 
   if (isImmutableLib) {
     // Stratégie Cache First uniquement pour les librairies tierces immuables

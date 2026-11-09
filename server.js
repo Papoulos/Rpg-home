@@ -51,7 +51,7 @@ app.use('/music', express.static(musicDir, {
     }
 }));
 
-// --- Battlemap Background Upload Route (supports animated WebP, GIF, PNG, JPG, etc.) ---
+// --- Battlemap Background Upload Route (supports WebM, MP4, animated WebP, GIF, PNG, JPG, etc.) ---
 const backgroundsDir = path.join(__dirname, 'data/backgrounds');
 if (!fs.existsSync(backgroundsDir)) {
     fs.mkdirSync(backgroundsDir, { recursive: true });
@@ -82,15 +82,18 @@ const backgroundStorage = multer.diskStorage({
 });
 const uploadBackground = multer({
     storage: backgroundStorage,
-    limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB limit
+    limits: { fileSize: 150 * 1024 * 1024 }, // 150 MB limit for animated WebM/WebP battlemaps
     fileFilter: (req, file, cb) => {
-        const allowedMimeTypes = ['image/webp', 'image/png', 'image/jpeg', 'image/gif', 'image/svg+xml', 'image/avif'];
+        const allowedMimeTypes = [
+            'video/webm', 'video/mp4', 'video/ogg',
+            'image/webp', 'image/png', 'image/jpeg', 'image/gif', 'image/svg+xml', 'image/avif'
+        ];
         const ext = path.extname(file.originalname).toLowerCase();
-        const allowedExts = ['.webp', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.avif'];
+        const allowedExts = ['.webm', '.mp4', '.ogv', '.webp', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.avif'];
         if (allowedMimeTypes.includes(file.mimetype) || allowedExts.includes(ext)) {
             cb(null, true);
         } else {
-            cb(new Error('Format d\'image non supporté.'));
+            cb(new Error('Format de fichier non supporté.'));
         }
     }
 });

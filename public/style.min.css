@@ -314,7 +314,8 @@ body, html {
     position: relative;
 }
 
-#fabric-background-layer {
+#fabric-background-layer,
+#fabric-background-video {
     position: absolute;
     top: 0;
     left: 0;
