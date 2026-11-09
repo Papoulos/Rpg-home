@@ -823,11 +823,68 @@
             }
         });
 
+        const resetAddTokenModal = () => {
+            const addModal = document.getElementById('add-token-modal');
+            if (addModal) addModal.style.display = 'none';
+            const errorDiv = document.getElementById('add-token-error');
+            if (errorDiv) errorDiv.style.display = 'none';
+            const nameInput = document.getElementById('add-token-name');
+            if (nameInput) {
+                nameInput.value = '';
+                nameInput.placeholder = 'Laisser vide pour utiliser le nom du fichier';
+            }
+            const fileInput = document.getElementById('add-token-file');
+            if (fileInput) fileInput.value = '';
+            const nameContainer = document.getElementById('add-token-name-container');
+            if (nameContainer) nameContainer.style.display = 'block';
+            const filesInfo = document.getElementById('add-token-files-info');
+            if (filesInfo) {
+                filesInfo.textContent = '';
+                filesInfo.style.display = 'none';
+            }
+            const confirmBtn = document.getElementById('add-token-modal-confirm');
+            if (confirmBtn) {
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = 'Ajouter';
+            }
+        };
+
+        document.getElementById('add-token-file')?.addEventListener('change', (e) => {
+            const files = e.target.files;
+            const nameContainer = document.getElementById('add-token-name-container');
+            const filesInfo = document.getElementById('add-token-files-info');
+            const nameInput = document.getElementById('add-token-name');
+            const confirmBtn = document.getElementById('add-token-modal-confirm');
+            const errorDiv = document.getElementById('add-token-error');
+            if (errorDiv) errorDiv.style.display = 'none';
+
+            if (!files || files.length === 0) {
+                if (nameContainer) nameContainer.style.display = 'block';
+                if (filesInfo) filesInfo.style.display = 'none';
+                if (confirmBtn) confirmBtn.textContent = 'Ajouter';
+                return;
+            }
+
+            if (files.length > 1) {
+                if (nameContainer) nameContainer.style.display = 'none';
+                if (filesInfo) {
+                    filesInfo.textContent = `${files.length} images sélectionnées. Chaque token prendra automatiquement le nom de son fichier.`;
+                    filesInfo.style.display = 'block';
+                }
+                if (confirmBtn) confirmBtn.textContent = `Ajouter (${files.length})`;
+            } else {
+                if (nameContainer) nameContainer.style.display = 'block';
+                if (filesInfo) filesInfo.style.display = 'none';
+                const fileBaseName = files[0].name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ').trim();
+                if (nameInput && !nameInput.value) {
+                    nameInput.placeholder = fileBaseName;
+                }
+                if (confirmBtn) confirmBtn.textContent = 'Ajouter';
+            }
+        });
+
         document.getElementById('add-token-modal-cancel')?.addEventListener('click', () => {
-            document.getElementById('add-token-modal').style.display = 'none';
-            document.getElementById('add-token-error').style.display = 'none';
-            document.getElementById('add-token-name').value = '';
-            document.getElementById('add-token-file').value = '';
+            resetAddTokenModal();
         });
 
         document.getElementById('add-token-modal-confirm')?.addEventListener('click', async () => {
@@ -836,22 +893,34 @@
             const sizeSelect = document.getElementById('add-token-size').value;
             const fileInput = document.getElementById('add-token-file');
             const errorDiv = document.getElementById('add-token-error');
+            const confirmBtn = document.getElementById('add-token-modal-confirm');
 
-            if (!nameInput) {
-                errorDiv.textContent = "Veuillez entrer un nom.";
+            if (!fileInput.files || fileInput.files.length === 0) {
+                errorDiv.textContent = "Veuillez sélectionner au moins une image.";
                 errorDiv.style.display = 'block';
                 return;
             }
 
-            if (fileInput.files.length === 0) {
-                errorDiv.textContent = "Veuillez sélectionner une image.";
-                errorDiv.style.display = 'block';
-                return;
+            const isMultiple = fileInput.files.length > 1;
+
+            if (!isMultiple && !nameInput) {
+                const autoName = fileInput.files[0].name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ').trim();
+                if (!autoName) {
+                    errorDiv.textContent = "Veuillez entrer un nom.";
+                    errorDiv.style.display = 'block';
+                    return;
+                }
             }
 
-            const file = fileInput.files[0];
             const formData = new FormData();
-            formData.append('tokenImage', file);
+            for (let i = 0; i < fileInput.files.length; i++) {
+                formData.append('tokenImages', fileInput.files[i]);
+            }
+
+            if (confirmBtn) {
+                confirmBtn.disabled = true;
+                confirmBtn.textContent = 'Envoi...';
+            }
 
             try {
                 const response = await fetch('/upload-token', {
@@ -864,25 +933,41 @@
                 }
 
                 const result = await response.json();
+                const uploadedFiles = result.files || [{ url: result.url, name: nameInput || fileInput.files[0].name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ').trim() }];
+
+                const tokensPayload = uploadedFiles.map((fileObj, idx) => {
+                    let finalName = '';
+                    if (!isMultiple && nameInput) {
+                        finalName = nameInput;
+                    } else {
+                        finalName = fileObj.name || (fileInput.files[idx] && fileInput.files[idx].name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ').trim()) || 'Token';
+                    }
+                    return {
+                        name: finalName,
+                        category: categorySelect,
+                        size: sizeSelect,
+                        url: fileObj.url
+                    };
+                });
 
                 if (window.socket && window.socket.readyState === WebSocket.OPEN) {
                     window.socket.send(JSON.stringify({
                         type: 'add-custom-token',
-                        name: nameInput,
                         category: categorySelect,
                         size: sizeSelect,
-                        url: result.url
+                        tokens: tokensPayload
                     }));
                 }
 
-                document.getElementById('add-token-modal').style.display = 'none';
-                document.getElementById('add-token-error').style.display = 'none';
-                document.getElementById('add-token-name').value = '';
-                document.getElementById('add-token-file').value = '';
+                resetAddTokenModal();
 
             } catch (err) {
-                errorDiv.textContent = "Erreur lors de l'envoi de l'image.";
+                errorDiv.textContent = "Erreur lors de l'envoi des images.";
                 errorDiv.style.display = 'block';
+                if (confirmBtn) {
+                    confirmBtn.disabled = false;
+                    confirmBtn.textContent = isMultiple ? `Ajouter (${fileInput.files.length})` : 'Ajouter';
+                }
             }
         });
 

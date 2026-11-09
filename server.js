@@ -158,11 +158,26 @@ const uploadToken = multer({
     }
 });
 
-app.post('/upload-token', uploadToken.single('tokenImage'), (req, res) => {
-    if (!req.file) {
-        return res.status(400).send('No file uploaded.');
+app.post('/upload-token', uploadToken.any(), (req, res) => {
+    const uploadedFiles = req.files || (req.file ? [req.file] : []);
+    if (!uploadedFiles || uploadedFiles.length === 0) {
+        return res.status(400).send('No files uploaded.');
     }
-    res.json({ url: '/tokens/' + req.file.filename, filename: req.file.filename });
+    const results = uploadedFiles.map(file => {
+        const rawName = path.parse(file.originalname).name;
+        const cleanName = rawName.replace(/[-_]/g, ' ').replace(/\s+/g, ' ').trim();
+        return {
+            url: '/tokens/' + file.filename,
+            filename: file.filename,
+            name: cleanName || rawName
+        };
+    });
+
+    res.json({
+        url: results[0].url,
+        filename: results[0].filename,
+        files: results
+    });
 });
 
 const storage = multer.diskStorage({
@@ -1125,19 +1140,26 @@ wss.on('connection', (ws) => {
 
             case 'add-custom-token':
                 if (client && client.isMJ) {
-                    const tokenName = (data.name || '').trim();
-                    if (tokenName) {
-                        const newToken = {
-                            id: 'token_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
-                            name: tokenName,
-                            category: data.category || 'Divers',
-                            size: data.size || '1x1',
-                            url: data.url
-                        };
-                        tokensList.push(newToken);
+                    const tokensToAdd = Array.isArray(data.tokens) ? data.tokens : [data];
+                    let addedCount = 0;
+                    tokensToAdd.forEach((item, index) => {
+                        const tokenName = (item.name || '').trim();
+                        if (tokenName && item.url) {
+                            const newToken = {
+                                id: 'token_' + Date.now() + '_' + index + '_' + Math.random().toString(36).substring(2, 6),
+                                name: tokenName,
+                                category: item.category || data.category || 'Divers',
+                                size: item.size || data.size || '1x1',
+                                url: item.url
+                            };
+                            tokensList.push(newToken);
+                            addedCount++;
+                        }
+                    });
+                    if (addedCount > 0) {
                         saveTokensList();
                         broadcastTokensList();
-                        console.log(`[TOKENS] Added token "${newToken.name}" (${newToken.category}) by MJ.`);
+                        console.log(`[TOKENS] Added ${addedCount} token(s) (${data.category || 'Divers'}) by MJ.`);
                     }
                 }
                 break;
