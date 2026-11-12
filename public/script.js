@@ -63,6 +63,15 @@
         // Feature detect declarative Invoker Commands on HTMLButtonElement.prototype
         if (!('commandForElement' in HTMLButtonElement.prototype)) {
             import('https://cdn.jsdelivr.net/npm/invokers-polyfill@0.5.2/invoker.min.js').catch(() => {});
+            document.addEventListener('click', (e) => {
+                const btn = e.target.closest('button[command][commandfor]');
+                if (!btn || btn.disabled) return;
+                const target = document.getElementById(btn.getAttribute('commandfor'));
+                if (!target) return;
+                const cmd = btn.getAttribute('command');
+                if (cmd === 'show-modal') window.openModal(target);
+                else if (cmd === 'close') window.closeModal(target);
+            });
         }
 
         // Fallback for closedby="any" light-dismiss using pointerdown + pointerup coordinates
@@ -147,10 +156,8 @@
 
     function initLogin() {
         const loginOverlay = document.getElementById('login-overlay');
-        const loginMjBtn = document.getElementById('login-mj-btn');
         const mjConfirmModal = document.getElementById('mj-confirm-modal');
         const mjConfirmAccept = document.getElementById('mj-confirm-accept');
-        const mjConfirmCancel = document.getElementById('mj-confirm-cancel');
         const charactersList = document.getElementById('login-characters-list');
 
         if (loginOverlay) {
@@ -163,17 +170,7 @@
             });
         }
 
-        // Show MJ confirm modal
-        loginMjBtn.addEventListener('click', () => {
-            window.openModal(mjConfirmModal);
-        });
-
-        // Cancel MJ confirm
-        mjConfirmCancel.addEventListener('click', () => {
-            window.closeModal(mjConfirmModal);
-        });
-
-        // Accept MJ confirm
+        // Accept MJ confirm (opening & cancel are handled declaratively via command="show-modal" / command="close")
         mjConfirmAccept.addEventListener('click', async () => {
             window.closeModal(mjConfirmModal);
             setUsername('MJ');
@@ -1351,27 +1348,48 @@
         };
 
         try {
-            try {
-                localStream = await navigator.mediaDevices.getUserMedia({
-                    video: preferredVideoConstraints,
-                    audio: true
-                });
-            } catch (firstErr) {
-                console.warn('Could not get preferred video+audio constraints, trying basic video+audio...', firstErr);
+            const devices = (navigator.mediaDevices && typeof navigator.mediaDevices.enumerateDevices === 'function')
+                ? await navigator.mediaDevices.enumerateDevices().catch(() => [])
+                : [];
+            const hasVideoDevice = devices.length === 0 || devices.some(d => d.kind === 'videoinput');
+            const hasAudioDevice = devices.length === 0 || devices.some(d => d.kind === 'audioinput');
+
+            if (!hasVideoDevice && !hasAudioDevice) {
+                localStream = new MediaStream();
+                if (toggleVideoBtn) toggleVideoBtn.style.display = 'none';
+                if (muteMicBtn) muteMicBtn.style.display = 'none';
+                addVideoStream(localStream, getUsername());
+                return;
+            } else if (!hasVideoDevice && hasAudioDevice) {
+                localStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+                if (toggleVideoBtn) toggleVideoBtn.style.display = 'none';
+            } else if (hasVideoDevice && !hasAudioDevice) {
+                localStream = await navigator.mediaDevices.getUserMedia({ video: preferredVideoConstraints, audio: false })
+                    .catch(() => navigator.mediaDevices.getUserMedia({ video: true, audio: false }));
+                if (muteMicBtn) muteMicBtn.style.display = 'none';
+            } else {
                 try {
-                    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                } catch (err) {
-                    console.warn('Could not get both video and audio, trying audio only...', err);
+                    localStream = await navigator.mediaDevices.getUserMedia({
+                        video: preferredVideoConstraints,
+                        audio: true
+                    });
+                } catch (firstErr) {
+                    console.warn('Could not get preferred video+audio constraints, trying basic video+audio...', firstErr);
                     try {
-                        localStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
-                        if (toggleVideoBtn) toggleVideoBtn.style.display = 'none';
-                    } catch (audioErr) {
-                        console.warn('Could not get audio only, trying video only...', audioErr);
+                        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                    } catch (err) {
+                        console.warn('Could not get both video and audio, trying audio only...', err);
                         try {
-                            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-                            if (muteMicBtn) muteMicBtn.style.display = 'none';
-                        } catch (videoErr) {
-                            throw err; // Re-throw original error to trigger main catch block
+                            localStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+                            if (toggleVideoBtn) toggleVideoBtn.style.display = 'none';
+                        } catch (audioErr) {
+                            console.warn('Could not get audio only, trying video only...', audioErr);
+                            try {
+                                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                                if (muteMicBtn) muteMicBtn.style.display = 'none';
+                            } catch (videoErr) {
+                                throw err; // Re-throw original error to trigger main catch block
+                            }
                         }
                     }
                 }
@@ -1481,23 +1499,9 @@
         const muteMicBtn = document.getElementById('mute-mic-btn');
         const toggleVideoBtn = document.getElementById('toggle-video-btn');
 
-        // Clear Chat controls
-        const clearChatBtn = document.getElementById('clear-chat-btn');
+        // Clear Chat controls (opening & cancel are handled declaratively via command="show-modal" / command="close")
         const chatClearConfirmModal = document.getElementById('chat-clear-confirm-modal');
         const chatClearConfirmAccept = document.getElementById('chat-clear-confirm-accept');
-        const chatClearConfirmCancel = document.getElementById('chat-clear-confirm-cancel');
-
-        if (clearChatBtn) {
-            clearChatBtn.addEventListener('click', () => {
-                window.openModal(chatClearConfirmModal);
-            });
-        }
-
-        if (chatClearConfirmCancel) {
-            chatClearConfirmCancel.addEventListener('click', () => {
-                window.closeModal(chatClearConfirmModal);
-            });
-        }
 
         if (chatClearConfirmAccept) {
             chatClearConfirmAccept.addEventListener('click', () => {
@@ -1664,14 +1668,6 @@ if(mjBackupBtn) {
             mjBackupBtn.style.display = 'flex';
             mjBackupBtn.classList.remove('hidden');
         }
-    });
-
-    mjBackupBtn.addEventListener('click', () => {
-        window.openModal(backupModal);
-    });
-
-    backupModalClose.addEventListener('click', () => {
-        window.closeModal(backupModal);
     });
 
     backupModal.addEventListener('close', () => {

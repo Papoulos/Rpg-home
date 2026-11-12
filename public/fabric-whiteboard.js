@@ -853,7 +853,7 @@
             }
         });
 
-        // Add this to properly hook the Toolbar logic for tokens
+        // Add this to properly hook the Toolbar logic for tokens (opening/closing is handled declaratively via command="show-modal" / command="close")
         document.getElementById('fabric-tokens-lib-btn')?.addEventListener('click', () => {
             if(window.socket && window.socket.readyState === WebSocket.OPEN) {
                 console.log("Requesting tokens via get-tokens...");
@@ -861,7 +861,6 @@
             }
             const modal = document.getElementById('tokens-lib-modal');
             if (modal) {
-                window.openModal(modal);
                 modal.classList.remove('hidden');
             }
             setTimeout(() => {
@@ -869,20 +868,7 @@
             }, 500); // Give it time to request and open
         });
 
-        document.getElementById('tokens-lib-modal-close')?.addEventListener('click', () => {
-            window.closeModal(document.getElementById('tokens-lib-modal'));
-        });
-
-        document.getElementById('tokens-lib-add-btn')?.addEventListener('click', () => {
-            const addModal = document.getElementById('add-token-modal');
-            if (addModal) {
-                window.openModal(addModal);
-            }
-        });
-
-        const resetAddTokenModal = () => {
-            const addModal = document.getElementById('add-token-modal');
-            if (addModal) window.closeModal(addModal);
+        const resetAddTokenModalFields = () => {
             const errorDiv = document.getElementById('add-token-error');
             if (errorDiv) errorDiv.style.display = 'none';
             const nameInput = document.getElementById('add-token-name');
@@ -904,6 +890,14 @@
                 confirmBtn.disabled = false;
                 confirmBtn.textContent = 'Ajouter';
             }
+        };
+
+        document.getElementById('add-token-modal')?.addEventListener('close', resetAddTokenModalFields);
+
+        const resetAddTokenModal = () => {
+            const addModal = document.getElementById('add-token-modal');
+            if (addModal) window.closeModal(addModal);
+            resetAddTokenModalFields();
         };
 
         document.getElementById('add-token-file')?.addEventListener('change', (e) => {
@@ -938,10 +932,6 @@
                 }
                 if (confirmBtn) confirmBtn.textContent = 'Ajouter';
             }
-        });
-
-        document.getElementById('add-token-modal-cancel')?.addEventListener('click', () => {
-            resetAddTokenModal();
         });
 
         document.getElementById('add-token-modal-confirm')?.addEventListener('click', async () => {

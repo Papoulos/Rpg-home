@@ -933,10 +933,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    document.getElementById('cs-delete-confirm-cancel').addEventListener('click', () => {
-        window.closeModal(deleteConfirmModal);
-    });
-
     document.getElementById('cs-delete-confirm-accept').addEventListener('click', () => {
         window.closeModal(deleteConfirmModal);
         const charIdToDelete = window.activeCharacterId || (characterData.identity && characterData.identity.name);
@@ -1000,24 +996,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Identity Edit Modal
+    // Identity Edit Modal (opening & cancel are handled declaratively via command="show-modal" / command="close")
     const identityModal = document.getElementById('cs-identity-modal');
-    const btnEditIdentity = document.getElementById('cs-btn-edit-identity');
-    const identityBtnCancel = document.getElementById('cs-identity-modal-cancel');
     const identityBtnConfirm = document.getElementById('cs-identity-modal-confirm');
 
     function closeIdentityModal() {
         window.closeModal(identityModal);
-    }
-
-    if(btnEditIdentity) {
-        btnEditIdentity.addEventListener('click', () => {
-            window.openModal(identityModal);
-        });
-    }
-
-    if(identityBtnCancel) {
-        identityBtnCancel.addEventListener('click', closeIdentityModal);
     }
 
     if(identityBtnConfirm) {
@@ -1046,19 +1030,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const descModal = document.getElementById('cs-desc-modal');
     const descModalTitle = document.getElementById('cs-desc-modal-title');
     const descModalText = document.getElementById('cs-desc-modal-text');
-    const descBtnCancel = document.getElementById('cs-desc-modal-cancel');
     const descBtnConfirm = document.getElementById('cs-desc-modal-confirm');
     let currentDescIndex = -1;
     let currentDescType = '';
 
     function closeDescModal() {
         window.closeModal(descModal);
+    }
+
+    descModal.addEventListener('close', () => {
         descModalText.value = '';
         currentDescIndex = -1;
         currentDescType = '';
-    }
-
-    descBtnCancel.addEventListener('click', closeDescModal);
+    });
 
     descBtnConfirm.addEventListener('click', () => {
         if (currentDescIndex >= 0) {
@@ -1094,7 +1078,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const rollModalTitle = document.getElementById('cs-roll-modal-title');
     const rollModalDiff = document.getElementById('cs-roll-modal-diff');
     const rollModalEffort = document.getElementById('cs-roll-modal-effort');
-    const btnCancel = document.getElementById('cs-roll-modal-cancel');
     const btnConfirm = document.getElementById('cs-roll-modal-confirm');
     let currentRollName = "";
     let currentRollSkillBonus = 0;
@@ -1103,11 +1086,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function closeRollModal() {
         window.closeModal(rollModal);
-        rollModalDiff.value = 0;
-        rollModalEffort.value = 0;
     }
 
-    btnCancel.addEventListener('click', closeRollModal);
+    rollModal.addEventListener('close', () => {
+        rollModalDiff.value = 0;
+        rollModalEffort.value = 0;
+    });
 
     function submitRoll() {
         if (!rollModal.open && rollModal.style.display === 'none') return;

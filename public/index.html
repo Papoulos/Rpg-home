@@ -231,13 +231,13 @@
                                 <span class="material-symbols-outlined" aria-hidden="true">upload</span>
                             </label>
                             <input type="file" id="cs-btn-import" accept=".json" style="display: none;">
-                            <button id="cs-btn-delete" type="button" command="show-modal" commandfor="cs-delete-confirm-modal" title="Supprimer le personnage" aria-label="Supprimer le personnage" style="display: none; background-color: #8b0000; border-color: #5a0000;">
+                            <button id="cs-btn-delete" type="button" title="Supprimer le personnage" aria-label="Supprimer le personnage" style="display: none; background-color: #8b0000; border-color: #5a0000;">
                                 <span class="material-symbols-outlined" aria-hidden="true">delete</span>
                             </button>
                         </div>
 
                         <div class="cs-header-combined">
-                            <button id="cs-btn-edit-identity" class="cs-edit-btn" title="Modifier l'Identité" aria-label="Modifier l'Identité" type="button">
+                            <button id="cs-btn-edit-identity" class="cs-edit-btn" command="show-modal" commandfor="cs-identity-modal" title="Modifier l'Identité" aria-label="Modifier l'Identité" type="button">
                                 <span class="material-symbols-outlined" aria-hidden="true">edit</span>
                             </button>
 
@@ -581,7 +581,7 @@
                 </button>
             </div>
             <div style="display: flex; flex-grow: 1; overflow: hidden; gap: 15px;">
-                <div class="tokens-categories" role="tablist" focusgroup="tablist vertical nomemory" aria-label="Catégories de tokens">
+                <div class="tokens-categories" role="tablist" focusgroup="tablist block nomemory" aria-label="Catégories de tokens">
                     <!-- Les catégories seront injectées ici -->
                 </div>
                 <div class="tokens-grid-container">
