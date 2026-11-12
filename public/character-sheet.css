@@ -11,12 +11,17 @@
 }
 
 .cs-tabs-container {
+    --scrollbar-thumb: #6b6b6b;
+    --scrollbar-track: #1a1a1a;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+    scrollbar-width: auto;
     display: flex;
     gap: 10px;
     margin-bottom: 20px;
     padding: 10px 10px 15px 10px;
     border-bottom: 1px solid #444;
     overflow-x: auto;
+    scroll-snap-type: inline proximity;
     max-width: 900px;
     margin-left: auto;
     margin-right: auto;
@@ -27,6 +32,7 @@
 }
 
 .cs-tab {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -34,40 +40,55 @@
     background-color: #2a2a2a;
     border: 1px solid #444;
     border-radius: 6px;
+    color: #f0f0f0;
+    font: inherit;
     cursor: pointer;
-    transition: all 0.2s ease;
-    opacity: 0.7;
-    flex-shrink: 0;
+    transition: background-color 0.2s ease, opacity 0.2s ease, border-color 0.2s ease;
+    opacity: 0.75;
+    flex: none;
+    scroll-snap-align: start;
     pointer-events: auto;
     white-space: nowrap;
 }
 
-/* Custom scrollbar for tabs */
-.cs-tabs-container::-webkit-scrollbar {
-    height: 8px;
-}
-.cs-tabs-container::-webkit-scrollbar-track {
-    background: #1a1a1a;
-    border-radius: 4px;
-}
-.cs-tabs-container::-webkit-scrollbar-thumb {
-    background: #444;
-    border-radius: 4px;
-}
-.cs-tabs-container::-webkit-scrollbar-thumb:hover {
-    background: #666;
+/* Legacy fallback for WebKit/Blink browsers without standard scrollbar-color */
+@supports not (scrollbar-color: auto) {
+    .cs-tabs-container::-webkit-scrollbar {
+        height: 8px;
+    }
+    .cs-tabs-container::-webkit-scrollbar-track {
+        background: var(--scrollbar-track);
+        border-radius: 4px;
+    }
+    .cs-tabs-container::-webkit-scrollbar-thumb {
+        background: var(--scrollbar-thumb);
+        border-radius: 4px;
+    }
+    .cs-tabs-container::-webkit-scrollbar-thumb:hover {
+        background: #888;
+    }
 }
 
 .cs-tab:hover {
     background-color: #333;
-    opacity: 0.9;
+    opacity: 0.95;
 }
 
-.cs-tab.active {
-    background-color: #4CAF50;
+.cs-tab.active,
+.cs-tab[aria-selected="true"] {
+    background-color: #2e7d32;
     border-color: #4CAF50;
     color: white;
     opacity: 1;
+}
+
+.cs-tab.active::after,
+.cs-tab[aria-selected="true"]::after {
+    content: "";
+    position: absolute;
+    inset: auto 4px 2px;
+    border-block-end: 3px solid #ffffff;
+    border-radius: 2px;
 }
 
 .cs-tab img {
@@ -138,6 +159,8 @@
     border: 1px solid #333;
     border-radius: 8px;
     padding: 15px;
+    content-visibility: auto;
+    contain-intrinsic-size: auto none auto 220px;
 }
 
 .cs-section h2 {
@@ -161,7 +184,7 @@
     margin-bottom: 20px;
 }
 
-@media (min-width: 800px) {
+@media (min-width: 50em) {
     .cs-header-combined {
         display: grid;
         grid-template-columns: 220px 1fr;
@@ -184,7 +207,7 @@
     overflow: hidden;
 }
 
-@media (min-width: 800px) {
+@media (min-width: 50em) {
     .cs-portrait-container {
         height: 100%;
         max-height: none;
@@ -211,7 +234,7 @@
 
 .cs-name-desc h1 {
     margin: 0 0 5px 0;
-    font-size: 28px;
+    font-size: 1.75rem;
     color: #e6e6e6;
 }
 
@@ -229,6 +252,12 @@
     border: none;
     color: #9b9b9b;
     cursor: pointer;
+    min-inline-size: 24px;
+    min-block-size: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
 }
 
 .cs-edit-btn:hover {
@@ -250,7 +279,7 @@
 }
 
 .cs-grid-header {
-    font-size: 16px;
+    font-size: 1rem;
     font-weight: bold;
     letter-spacing: 1px;
     display: flex;
@@ -264,19 +293,39 @@
 .cs-grid-header.speed { border-bottom: 2px solid #f0ad4e; }
 .cs-grid-header.intel { border-bottom: 2px solid #5bc0de; }
 
-.cs-roll-icon {
+.cs-roll-icon,
+.cs-desc-icon {
+    background: transparent;
+    border: none;
+    padding: 2px;
+    min-inline-size: 24px;
+    min-block-size: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
     cursor: pointer;
     color: #aaa;
-    transition: color 0.2s;
+    transition: color 0.2s, background-color 0.2s;
     user-select: none;
-    font-size: 18px; /* Slightly adjusted to fit material icon nicely */
+    font-size: 1.125rem;
 }
 
-.cs-roll-icon:hover { color: #fff; }
+.cs-roll-icon .material-symbols-outlined,
+.cs-desc-icon .material-symbols-outlined {
+    font-size: 1.125rem;
+    pointer-events: none;
+}
+
+.cs-roll-icon:hover,
+.cs-desc-icon:hover {
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.08);
+}
 
 .cs-grid-label {
     color: #aaa;
-    font-size: 13px;
+    font-size: 0.8125rem;
     text-transform: uppercase;
     font-weight: bold;
 }
@@ -304,7 +353,7 @@
 
 .cs-grid-cell.pool input {
     width: 50px;
-    font-size: 16px;
+    font-size: 1rem;
     background-color: #111;
     border-color: #666;
 }
@@ -320,6 +369,8 @@
     background: #333;
     border: 1px solid #555;
     color: #fff;
+    min-inline-size: 24px;
+    min-block-size: 24px;
     width: 24px;
     height: 24px;
     border-radius: 4px;
@@ -332,7 +383,7 @@
 
 .cs-pool-btn:hover { background: #555; }
 
-@media (max-width: 540px) {
+@media (max-width: 33.75em) {
     .cs-stats-grid {
         grid-template-columns: 40px repeat(3, 1fr);
         gap: 10px 5px;
@@ -340,17 +391,17 @@
     }
     .cs-grid-cell.pool input {
         width: 35px;
-        font-size: 14px;
+        font-size: 0.875rem;
     }
     .cs-grid-cell input {
         width: 35px;
     }
     .cs-grid-header {
-        font-size: 14px;
+        font-size: 0.875rem;
         gap: 4px;
     }
     .cs-grid-label {
-        font-size: 11px;
+        font-size: 0.6875rem;
     }
 }
 
@@ -368,7 +419,7 @@
 }
 
 .cs-meta-bottom-row label {
-    font-size: 12px;
+    font-size: 0.75rem;
     color: #aaa;
     text-transform: uppercase;
     font-weight: bold;
@@ -474,7 +525,7 @@
     gap: 20px;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 56.25em) {
     .cs-skills-abilities-section {
         grid-template-columns: 1fr;
     }
@@ -521,6 +572,8 @@
     padding: 4px;
     border-radius: 4px;
     font-size: 0.9rem;
+    field-sizing: content;
+    max-inline-size: 100%;
 }
 
 .cs-delete-btn {
@@ -529,13 +582,16 @@
     color: #fff;
     cursor: pointer;
     padding: 2px 4px;
+    min-inline-size: 24px;
+    min-block-size: 24px;
     border-radius: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 .cs-delete-btn .material-symbols-outlined {
-    font-size: 16px;
+    font-size: 1rem;
+    pointer-events: none;
 }
 .cs-delete-btn:hover { background: #7a3a3a; }
 
@@ -552,6 +608,7 @@
     color: #fff;
     cursor: pointer;
     padding: 8px;
+    min-block-size: 24px;
     border-radius: 4px;
     display: inline-flex;
     align-items: center;
@@ -562,8 +619,30 @@
 }
 .cs-add-btn:hover { background: #3a7a3a; }
 
-/* Modal de lancer de dé */
-.cs-modal-overlay {
+/* Native <dialog> and Modal styles */
+dialog:modal {
+    overscroll-behavior: contain;
+}
+
+dialog::backdrop {
+    overflow: hidden;
+    overscroll-behavior: contain;
+    background-color: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(2px);
+}
+
+dialog.cs-modal-overlay {
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: #f0f0f0;
+    margin: auto;
+    max-width: 95vw;
+    max-height: 95dvh;
+    overflow: visible;
+}
+
+div.cs-modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
@@ -582,10 +661,12 @@
     border-radius: 8px;
     padding: 20px;
     width: 250px;
+    box-sizing: border-box;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
     color: #f0f0f0;
 }
 
+.cs-modal-content h2,
 .cs-modal-content h3 {
     margin-top: 0;
     margin-bottom: 15px;
@@ -593,6 +674,15 @@
     padding-bottom: 10px;
     color: #e0e0e0;
     font-size: 1.1rem;
+}
+
+#cs-desc-modal-text {
+    field-sizing: content;
+    width: 100%;
+    height: auto;
+    min-block-size: 6lh;
+    max-block-size: 16lh;
+    box-sizing: border-box;
 }
 
 .cs-modal-row {
@@ -638,6 +728,7 @@
     border: 1px solid #555;
     color: #fff;
     padding: 8px 15px;
+    min-block-size: 24px;
     border-radius: 4px;
     cursor: pointer;
     transition: background 0.2s;
@@ -652,6 +743,7 @@
     border: 1px solid #3a7a3a;
     color: #fff;
     padding: 8px 15px;
+    min-block-size: 24px;
     border-radius: 4px;
     cursor: pointer;
     transition: background 0.2s;
@@ -661,7 +753,7 @@
     background: #3a7a3a;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 48em) {
     .cs-health-grid {
         grid-template-columns: 1fr;
     }

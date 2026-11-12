@@ -13,7 +13,83 @@
     const restartCounts = {};
     const restartTimers = {};
     const activeAudioMonitors = {};
+    const pausedAudioMonitors = new Set();
     let signalingChain = Promise.resolve();
+
+    function isAudioMonitoringPaused() {
+        const rp = document.querySelector('.right-panel');
+        return document.hidden || Boolean(rp && rp.classList.contains('video-hidden'));
+    }
+
+    function resumePausedAudioMonitors() {
+        if (isAudioMonitoringPaused()) return;
+        const callbacks = [...pausedAudioMonitors];
+        pausedAudioMonitors.clear();
+        callbacks.forEach(fn => fn());
+    }
+
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            resumePausedAudioMonitors();
+        }
+    });
+
+    // --- Native <dialog> & Invoker Commands Helpers ---
+    window.openModal = function(dialog) {
+        if (!dialog) return;
+        if (typeof dialog.showModal === 'function') {
+            if (!dialog.open) {
+                dialog.showModal();
+            }
+        } else {
+            dialog.setAttribute('open', '');
+            dialog.style.display = 'flex';
+        }
+    };
+
+    window.closeModal = function(dialog) {
+        if (!dialog) return;
+        if (typeof dialog.close === 'function') {
+            if (dialog.open) {
+                dialog.close();
+            }
+        } else {
+            dialog.removeAttribute('open');
+            dialog.style.display = 'none';
+        }
+    };
+
+    function setupDialogsAndInvokers() {
+        // Feature detect declarative Invoker Commands on HTMLButtonElement.prototype
+        if (!('commandForElement' in HTMLButtonElement.prototype)) {
+            import('https://cdn.jsdelivr.net/npm/invokers-polyfill@0.5.2/invoker.min.js').catch(() => {});
+        }
+
+        // Fallback for closedby="any" light-dismiss using pointerdown + pointerup coordinates
+        if (!('closedBy' in HTMLDialogElement.prototype)) {
+            document.querySelectorAll('dialog[closedby="any"]').forEach(dialog => {
+                let downOutside = false;
+                const isOutside = (e) => {
+                    const rect = dialog.getBoundingClientRect();
+                    return (
+                        e.clientX < rect.left ||
+                        e.clientX > rect.right ||
+                        e.clientY < rect.top ||
+                        e.clientY > rect.bottom
+                    );
+                };
+                dialog.addEventListener('pointerdown', (e) => {
+                    downOutside = isOutside(e);
+                });
+                dialog.addEventListener('pointerup', (e) => {
+                    if (downOutside && isOutside(e)) {
+                        dialog.close();
+                    }
+                    downOutside = false;
+                });
+            });
+        }
+    }
 
     function enqueueSignaling(task) {
         signalingChain = signalingChain.then(task).catch(err => {
@@ -77,38 +153,53 @@
         const mjConfirmCancel = document.getElementById('mj-confirm-cancel');
         const charactersList = document.getElementById('login-characters-list');
 
+        if (loginOverlay) {
+            window.openModal(loginOverlay);
+            // Prevent Escape from closing the mandatory login modal in browsers without closedby="none"
+            loginOverlay.addEventListener('cancel', (e) => {
+                if (!isLoggedIn) {
+                    e.preventDefault();
+                }
+            });
+        }
 
         // Show MJ confirm modal
         loginMjBtn.addEventListener('click', () => {
-            mjConfirmModal.style.display = 'flex';
+            window.openModal(mjConfirmModal);
         });
 
         // Cancel MJ confirm
         mjConfirmCancel.addEventListener('click', () => {
-            mjConfirmModal.style.display = 'none';
+            window.closeModal(mjConfirmModal);
         });
 
         // Accept MJ confirm
         mjConfirmAccept.addEventListener('click', async () => {
-            mjConfirmModal.style.display = 'none';
+            window.closeModal(mjConfirmModal);
             setUsername('MJ');
             window.userPortraitUrl = 'mj_icon';
             await finishLogin();
         });
 
-
-
-        // Function to render character cards
+        // Function to render character cards safely without innerHTML
         window.renderLoginCharacters = function(characters) {
-            charactersList.innerHTML = '';
+            charactersList.replaceChildren();
             const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23444"/><text x="50" y="50" font-family="Arial" font-size="40" fill="white" dominant-baseline="middle" text-anchor="middle">?</text></svg>';
             characters.forEach(char => {
-                const card = document.createElement('div');
+                const card = document.createElement('button');
+                card.type = 'button';
                 card.className = 'character-card';
-                card.innerHTML = `
-                    <img src="${char.portraitUrl || defaultAvatar}" class="character-portrait" alt="${char.name}">
-                    <div class="character-name">${char.name}</div>
-                `;
+
+                const img = document.createElement('img');
+                img.src = char.portraitUrl || defaultAvatar;
+                img.className = 'character-portrait';
+                img.alt = char.name || 'Personnage';
+
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'character-name';
+                nameDiv.textContent = char.name || '';
+
+                card.append(img, nameDiv);
                 card.addEventListener('click', async () => {
                     setUsername(char.name);
                     window.userPortraitUrl = char.portraitUrl || defaultAvatar;
@@ -148,7 +239,7 @@
     }
 
     async function finishLogin() {
-        document.getElementById('login-overlay').style.display = 'none';
+        window.closeModal(document.getElementById('login-overlay'));
 
         await setupLocalMedia();
         isLoggedIn = true;
@@ -564,6 +655,13 @@
 
             function updateVolume() {
                 if (!document.body.contains(videoContainer) || activeAudioMonitors[monitorKey] !== audioTrack.id) {
+                    pausedAudioMonitors.delete(updateVolume);
+                    return;
+                }
+
+                if (isAudioMonitoringPaused()) {
+                    videoContainer.classList.remove('speaking');
+                    pausedAudioMonitors.add(updateVolume);
                     return;
                 }
 
@@ -1021,10 +1119,11 @@
                 case 'tokens-list-update':
                     window.dispatchEvent(new CustomEvent('tokens-list-update', { detail: { list: data.list } }));
                     break;
-                case 'characters-list-update':
+                case 'characters-list-update': {
                     window.availableCharacters = data.list;
                     window.dispatchEvent(new CustomEvent('characters-list-update', { detail: { list: data.list } }));
-                    if (document.getElementById('login-overlay').style.display !== 'none' && window.renderLoginCharacters) {
+                    const loginOverlayEl = document.getElementById('login-overlay');
+                    if (loginOverlayEl && (loginOverlayEl.open || loginOverlayEl.style.display !== 'none') && window.renderLoginCharacters) {
                         window.renderLoginCharacters(data.list);
                     }
                     if (window.renderCharacterTabs) {
@@ -1033,6 +1132,7 @@
                     updateAllAvatars();
                     updateAllVideoPools();
                     break;
+                }
                 case 'character-loaded':
                     if (window.availableCharacters && data.data && data.data.stats) {
                         const loadedChar = window.availableCharacters.find(
@@ -1350,6 +1450,9 @@
                         // Re-apply the inline style to position the button next to the restored panel
                         const panelWidthVar = getComputedStyle(item.panel).getPropertyValue(`--${item.side}-panel-width`);
                         item.btn.style[item.side] = `calc(${panelWidthVar} - ${item.btn.offsetWidth}px)`;
+                        if (item.side === 'right') {
+                            resumePausedAudioMonitors();
+                        }
                     }
                 });
 
@@ -1365,7 +1468,13 @@
 
     function setupEventListeners() {
         sendButton.addEventListener('click', handleSendMessage);
-        chatInput.addEventListener('keydown', e => e.key === 'Enter' && handleSendMessage());
+        chatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (e.isComposing || e.keyCode === 229) return;
+                handleSendMessage();
+            }
+        });
         diceButtons.forEach(button => button.addEventListener('click', () => rollDice(parseInt(button.dataset.die, 10))));
 
         // Global media controls
@@ -1380,29 +1489,20 @@
 
         if (clearChatBtn) {
             clearChatBtn.addEventListener('click', () => {
-                chatClearConfirmModal.style.display = 'flex';
+                window.openModal(chatClearConfirmModal);
             });
         }
 
         if (chatClearConfirmCancel) {
             chatClearConfirmCancel.addEventListener('click', () => {
-                chatClearConfirmModal.style.display = 'none';
+                window.closeModal(chatClearConfirmModal);
             });
         }
 
         if (chatClearConfirmAccept) {
             chatClearConfirmAccept.addEventListener('click', () => {
-                chatClearConfirmModal.style.display = 'none';
+                window.closeModal(chatClearConfirmModal);
                 sendMessage({ type: 'clear-chat' });
-            });
-        }
-
-        // Close clear chat modal on backdrop click
-        if (chatClearConfirmModal) {
-            chatClearConfirmModal.addEventListener('click', (e) => {
-                if (e.target === chatClearConfirmModal) {
-                    chatClearConfirmModal.style.display = 'none';
-                }
             });
         }
 
@@ -1476,6 +1576,7 @@
         imageDisplayArea = document.getElementById('image-display-area');
 
 
+        setupDialogsAndInvokers();
         initLogin();
         // Do not askForUsername() anymore, login handles it
 
@@ -1566,21 +1667,16 @@ if(mjBackupBtn) {
     });
 
     mjBackupBtn.addEventListener('click', () => {
-        backupModal.style.display = 'flex';
+        window.openModal(backupModal);
     });
 
     backupModalClose.addEventListener('click', () => {
-        backupModal.style.display = 'none';
-        backupUploadInput.value = '';
-        backupRestoreBtn.disabled = true;
+        window.closeModal(backupModal);
     });
 
-    backupModal.addEventListener('click', (event) => {
-        if (event.target === backupModal) {
-            backupModal.style.display = 'none';
-            backupUploadInput.value = '';
-            backupRestoreBtn.disabled = true;
-        }
+    backupModal.addEventListener('close', () => {
+        backupUploadInput.value = '';
+        backupRestoreBtn.disabled = true;
     });
 
     backupDownloadBtn.addEventListener('click', () => {
@@ -1612,7 +1708,7 @@ if(mjBackupBtn) {
                         } else {
                             alert("Déconnecté du serveur.");
                         }
-                        backupModal.style.display = 'none';
+                        window.closeModal(backupModal);
                     }
                 } catch (err) {
                     alert("Fichier de sauvegarde invalide (JSON mal formé).");

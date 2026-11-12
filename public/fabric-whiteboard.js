@@ -256,10 +256,18 @@
         const toolButtons = document.querySelectorAll('#fabric-toolbar .control-btn');
         toolButtons.forEach(btn => {
             btn.classList.remove('active');
+            if (btn.hasAttribute('aria-pressed')) {
+                btn.setAttribute('aria-pressed', 'false');
+            }
+            btn.removeAttribute('focusgroupstart');
         });
         const activeBtn = document.getElementById(`fabric-${tool}-tool`);
         if (activeBtn) {
             activeBtn.classList.add('active');
+            if (activeBtn.hasAttribute('aria-pressed')) {
+                activeBtn.setAttribute('aria-pressed', 'true');
+            }
+            activeBtn.setAttribute('focusgroupstart', '');
         }
     };
 
@@ -689,7 +697,7 @@
                 if (!groupedTokens[cat]) groupedTokens[cat] = [];
             });
 
-            categoriesContainer.innerHTML = '';
+            categoriesContainer.replaceChildren();
 
             let activeCategory = document.querySelector('.tokens-category-btn.active')?.dataset.category || 'Personnages joueurs (PJ)';
             if (!groupedTokens[activeCategory]) activeCategory = Object.keys(groupedTokens)[0];
@@ -704,48 +712,95 @@
                 return a.localeCompare(b);
             }).forEach(category => {
                 const count = (groupedTokens[category] && groupedTokens[category].length) || 0;
+                const isSelected = category === activeCategory;
                 const btn = document.createElement('button');
-                btn.className = 'tokens-category-btn' + (category === activeCategory ? ' active' : '');
+                btn.type = 'button';
+                btn.setAttribute('role', 'tab');
+                btn.setAttribute('aria-selected', String(isSelected));
+                btn.toggleAttribute('focusgroupstart', isSelected);
+                btn.className = 'tokens-category-btn' + (isSelected ? ' active' : '');
                 btn.dataset.category = category;
-                btn.innerHTML = `<span>${category}</span><span class="tokens-category-count">${count}</span>`;
+
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = category;
+                const countSpan = document.createElement('span');
+                countSpan.className = 'tokens-category-count';
+                countSpan.textContent = String(count);
+                btn.append(nameSpan, countSpan);
+
                 btn.addEventListener('click', () => {
-                    document.querySelectorAll('.tokens-category-btn').forEach(b => b.classList.remove('active'));
+                    document.querySelectorAll('.tokens-category-btn').forEach(b => {
+                        b.classList.remove('active');
+                        b.setAttribute('aria-selected', 'false');
+                        b.removeAttribute('focusgroupstart');
+                    });
                     btn.classList.add('active');
+                    btn.setAttribute('aria-selected', 'true');
+                    btn.setAttribute('focusgroupstart', '');
                     renderGrid(groupedTokens[category]);
                 });
                 categoriesContainer.appendChild(btn);
             });
 
             const renderGrid = (tokens) => {
-                gridContainer.innerHTML = '';
+                gridContainer.replaceChildren();
                 if (!tokens || tokens.length === 0) {
-                    gridContainer.innerHTML = `
-                        <div class="tokens-empty-message">
-                            <span class="material-symbols-outlined">category</span>
-                            <div>Aucun token dans cette catégorie</div>
-                        </div>
-                    `;
+                    const emptyDiv = document.createElement('div');
+                    emptyDiv.className = 'tokens-empty-message';
+                    const emptyIcon = document.createElement('span');
+                    emptyIcon.className = 'material-symbols-outlined';
+                    emptyIcon.setAttribute('aria-hidden', 'true');
+                    emptyIcon.textContent = 'category';
+                    const emptyText = document.createElement('div');
+                    emptyText.textContent = 'Aucun token dans cette catégorie';
+                    emptyDiv.append(emptyIcon, emptyText);
+                    gridContainer.appendChild(emptyDiv);
                     return;
                 }
                 tokens.forEach(token => {
                     const card = document.createElement('div');
                     card.className = 'token-card';
+                    card.tabIndex = 0;
+                    card.setAttribute('role', 'button');
+                    card.setAttribute('aria-label', `${token.name} (${token.size})`);
                     card.title = `${token.name} (${token.size})`;
-                    card.innerHTML = `
-                        <div class="token-thumb-container">
-                            <img class="token-thumb-img" src="${token.url}" alt="${token.name}" onerror="this.src='/default-tokens/item.svg'" loading="lazy">
-                        </div>
-                        <div class="token-info">
-                            <div class="token-name" title="${token.name}">${token.name}</div>
-                            <div class="token-size-badge">${token.size}</div>
-                        </div>
-                    `;
+
+                    const thumbContainer = document.createElement('div');
+                    thumbContainer.className = 'token-thumb-container';
+                    const thumbImg = document.createElement('img');
+                    thumbImg.className = 'token-thumb-img';
+                    thumbImg.src = token.url;
+                    thumbImg.alt = token.name || '';
+                    thumbImg.loading = 'lazy';
+                    thumbImg.addEventListener('error', () => {
+                        thumbImg.src = '/default-tokens/item.svg';
+                    });
+                    thumbContainer.appendChild(thumbImg);
+
+                    const infoDiv = document.createElement('div');
+                    infoDiv.className = 'token-info';
+                    const nameDiv = document.createElement('div');
+                    nameDiv.className = 'token-name';
+                    nameDiv.title = token.name || '';
+                    nameDiv.textContent = token.name || '';
+                    const sizeBadge = document.createElement('div');
+                    sizeBadge.className = 'token-size-badge';
+                    sizeBadge.textContent = token.size || '';
+                    infoDiv.append(nameDiv, sizeBadge);
+
+                    card.append(thumbContainer, infoDiv);
 
                     if (isMJ && !token.isDefault) {
                         const deleteBtn = document.createElement('button');
+                        deleteBtn.type = 'button';
                         deleteBtn.className = 'token-delete-btn';
-                        deleteBtn.innerHTML = '<span class="material-symbols-outlined">delete</span>';
+                        const delIcon = document.createElement('span');
+                        delIcon.className = 'material-symbols-outlined';
+                        delIcon.setAttribute('aria-hidden', 'true');
+                        delIcon.textContent = 'delete';
+                        deleteBtn.appendChild(delIcon);
                         deleteBtn.title = 'Supprimer ce token';
+                        deleteBtn.setAttribute('aria-label', `Supprimer le token ${token.name}`);
                         deleteBtn.addEventListener('click', (e) => {
                             e.stopPropagation();
                             if (confirm(`Supprimer le token "${token.name}" ? (Les instances déjà placées sur la carte resteront)`)) {
@@ -754,13 +809,21 @@
                                 }
                             }
                         });
-                        card.querySelector('.token-thumb-container').appendChild(deleteBtn);
+                        thumbContainer.appendChild(deleteBtn);
                     }
 
-                    card.addEventListener('click', () => {
+                    const selectToken = () => {
                         selectedTokenForPlacement = token;
-                        document.getElementById('tokens-lib-modal').style.display = 'none';
+                        window.closeModal(document.getElementById('tokens-lib-modal'));
                         setActiveTool('place-token');
+                    };
+
+                    card.addEventListener('click', selectToken);
+                    card.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            selectToken();
+                        }
                     });
 
                     gridContainer.appendChild(card);
@@ -776,14 +839,16 @@
         window.addEventListener('tokens-list-update', (event) => {
             window.tokensList = event.detail.list;
             console.log("Tokens list updated: ", window.tokensList);
-            if (document.getElementById('tokens-lib-modal')?.style.display !== 'none') {
+            const libModal = document.getElementById('tokens-lib-modal');
+            if (libModal && (libModal.open || libModal.style.display === 'flex')) {
                 window.renderTokensLibrary();
             }
         });
 
         // Also update when characters change
         window.addEventListener('characters-list-update', () => {
-             if (document.getElementById('tokens-lib-modal')?.style.display === 'flex') {
+            const libModal = document.getElementById('tokens-lib-modal');
+            if (libModal && (libModal.open || libModal.style.display === 'flex')) {
                 window.renderTokensLibrary();
             }
         });
@@ -796,15 +861,8 @@
             }
             const modal = document.getElementById('tokens-lib-modal');
             if (modal) {
-                modal.style.display = 'flex';
+                window.openModal(modal);
                 modal.classList.remove('hidden');
-                modal.style.setProperty('display', 'flex', 'important');
-                modal.style.opacity = '1';
-                modal.style.visibility = 'visible';
-                modal.style.zIndex = '10005';
-                console.log("Tokens modal opened!");
-            } else {
-                console.log("Tokens modal not found!");
             }
             setTimeout(() => {
                 window.renderTokensLibrary();
@@ -812,20 +870,19 @@
         });
 
         document.getElementById('tokens-lib-modal-close')?.addEventListener('click', () => {
-            document.getElementById('tokens-lib-modal').style.display = 'none';
+            window.closeModal(document.getElementById('tokens-lib-modal'));
         });
 
         document.getElementById('tokens-lib-add-btn')?.addEventListener('click', () => {
             const addModal = document.getElementById('add-token-modal');
             if (addModal) {
-                addModal.style.display = 'flex';
-                addModal.style.zIndex = '10010';
+                window.openModal(addModal);
             }
         });
 
         const resetAddTokenModal = () => {
             const addModal = document.getElementById('add-token-modal');
-            if (addModal) addModal.style.display = 'none';
+            if (addModal) window.closeModal(addModal);
             const errorDiv = document.getElementById('add-token-error');
             if (errorDiv) errorDiv.style.display = 'none';
             const nameInput = document.getElementById('add-token-name');
@@ -1073,13 +1130,45 @@
         document.getElementById('fabric-rect-tool').addEventListener('click', () => setActiveTool('rect'));
         document.getElementById('fabric-circle-tool').addEventListener('click', () => setActiveTool('circle'));
         document.getElementById('fabric-pointer-tool').addEventListener('click', () => setActiveTool('pointer'));
-        document.getElementById('fabric-fog-tool').addEventListener('click', () => {
+        document.getElementById('fabric-fog-tool').addEventListener('click', (e) => {
             const isNowActive = toggleFog();
+            e.currentTarget.setAttribute('aria-pressed', String(isNowActive));
             if (window.socket?.readyState === WebSocket.OPEN) {
                 window.socket.send(JSON.stringify({ type: 'fabric-fog-toggle', payload: { active: isNowActive } }));
             }
         });
         document.getElementById('fabric-fog-eraser-tool').addEventListener('click', () => setActiveTool('fog-eraser'));
+
+        // Roving tabindex fallback for #fabric-toolbar when native focusgroup is unavailable
+        const toolbarEl = document.getElementById('fabric-toolbar');
+        if (toolbarEl && !('focusGroup' in HTMLElement.prototype)) {
+            const getToolbarItems = () => [...toolbarEl.querySelectorAll('button:not(:disabled), input:not([type="file"]):not(:disabled), label.control-btn')].filter(el => el.offsetParent !== null);
+            const initRoving = () => {
+                const items = getToolbarItems();
+                items.forEach((el, i) => {
+                    el.tabIndex = i === 0 ? 0 : -1;
+                });
+            };
+            initRoving();
+            toolbarEl.addEventListener('keydown', (e) => {
+                const items = getToolbarItems();
+                const idx = items.indexOf(document.activeElement);
+                if (idx === -1) return;
+                if (document.activeElement.type === 'range' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+                    return; // Let range input use left/right arrows natively
+                }
+                let next = idx;
+                if (e.key === 'ArrowRight') next = (idx + 1) % items.length;
+                else if (e.key === 'ArrowLeft') next = (idx - 1 + items.length) % items.length;
+                else if (e.key === 'Home') next = 0;
+                else if (e.key === 'End') next = items.length - 1;
+                else return;
+                e.preventDefault();
+                items[idx].tabIndex = -1;
+                items[next].tabIndex = 0;
+                items[next].focus();
+            });
+        }
 
         const brushSizeSlider = document.getElementById('fabric-fog-brush-size');
         brushSizeSlider.addEventListener('input', (e) => {
@@ -1134,9 +1223,9 @@
 
     const observer = new MutationObserver((mutations) => {
         for (const mutation of mutations) {
-            if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+            if (mutation.type === 'attributes' && (mutation.attributeName === 'style' || mutation.attributeName === 'hidden')) {
                 const target = mutation.target;
-                if (target.id === 'fabric-content' && target.style.display !== 'none') {
+                if (target.id === 'fabric-content' && !target.hasAttribute('hidden') && target.style.display !== 'none') {
                     if (!canvas) {
                         initializeCanvas();
                     } else {
@@ -1150,8 +1239,8 @@
     document.addEventListener('DOMContentLoaded', () => {
         const fabricContent = document.getElementById('fabric-content');
         if (fabricContent) {
-            observer.observe(fabricContent, { attributes: true });
-            if (fabricContent.style.display !== 'none') initializeCanvas();
+            observer.observe(fabricContent, { attributes: true, attributeFilter: ['style', 'hidden'] });
+            if (!fabricContent.hasAttribute('hidden') && fabricContent.style.display !== 'none') initializeCanvas();
         }
 
         let resizeTimeout;

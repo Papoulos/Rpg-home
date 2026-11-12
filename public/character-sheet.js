@@ -115,21 +115,32 @@ window.renderCharacterTabs = function() {
     // We get the character list from the global context, which should be updated by socket messages
     const characters = window.availableCharacters || [];
 
-    tabsContainer.innerHTML = '';
+    tabsContainer.replaceChildren();
     const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23444"/><text x="50" y="50" font-family="Arial" font-size="40" fill="white" dominant-baseline="middle" text-anchor="middle">?</text></svg>';
-    characters.forEach(char => {
-        const tab = document.createElement('div');
+    characters.forEach((char, idx) => {
+        const tab = document.createElement('button');
+        tab.type = 'button';
+        tab.setAttribute('role', 'tab');
         tab.className = 'cs-tab';
 
-        // Mark active if this is the currently loaded character
+        const isSelected = window.activeCharacterId === char.id || (!window.activeCharacterId && idx === 0);
         if (window.activeCharacterId === char.id) {
             tab.classList.add('active');
         }
+        tab.setAttribute('aria-selected', String(window.activeCharacterId === char.id));
+        tab.toggleAttribute('focusgroupstart', isSelected);
+        if (!('focusGroup' in HTMLElement.prototype)) {
+            tab.tabIndex = isSelected ? 0 : -1;
+        }
 
-        tab.innerHTML = `
-            <img src="${char.portraitUrl || defaultAvatar}" alt="${char.name}">
-            <span>${char.name}</span>
-        `;
+        const img = document.createElement('img');
+        img.src = char.portraitUrl || defaultAvatar;
+        img.alt = '';
+
+        const span = document.createElement('span');
+        span.textContent = char.name || '';
+
+        tab.append(img, span);
 
         tab.addEventListener('click', () => {
             if (window.socket && window.socket.readyState === WebSocket.OPEN) {
@@ -141,13 +152,26 @@ window.renderCharacterTabs = function() {
     });
 
     if (window.isMJ) {
-        const newTab = document.createElement('div');
+        const newTab = document.createElement('button');
+        newTab.type = 'button';
+        newTab.setAttribute('role', 'tab');
+        newTab.setAttribute('aria-selected', 'false');
         newTab.className = 'cs-tab';
         newTab.style.backgroundColor = '#1a3a1a';
-        newTab.innerHTML = `
-            <span class="material-symbols-outlined" style="font-size: 18px;">add</span>
-            <span>Nouveau</span>
-        `;
+        if (!('focusGroup' in HTMLElement.prototype)) {
+            newTab.tabIndex = characters.length === 0 ? 0 : -1;
+        }
+
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'material-symbols-outlined';
+        iconSpan.setAttribute('aria-hidden', 'true');
+        iconSpan.style.fontSize = '1.125rem';
+        iconSpan.textContent = 'add';
+
+        const labelSpan = document.createElement('span');
+        labelSpan.textContent = 'Nouveau';
+
+        newTab.append(iconSpan, labelSpan);
         newTab.addEventListener('click', () => {
             const name = prompt("Entrez le nom du nouveau personnage :");
             if (name && name.trim() !== '') {
@@ -415,21 +439,22 @@ function renderSkills() {
     ];
 
     allSkills.forEach((skill, index) => {
+        const skillLabel = escapeHtml(skill.name || 'Compétence');
         const item = createListItem(`
             <div class="cs-compact-col-wrap">
-                <span class="material-symbols-outlined cs-roll-icon" data-stat="${escapeHtml(skill.stat)}" data-skill="${escapeHtml(skill.name)}" data-skill-level="${escapeHtml(skill.level)}" title="Lancer pour ${escapeHtml(skill.name)}">casino</span>
-                <input type="text" class="skill-name" value="${escapeHtml(skill.name)}" placeholder="Nom">
-                <select class="skill-stat">
+                <button type="button" class="cs-roll-icon" data-stat="${escapeHtml(skill.stat)}" data-skill="${escapeHtml(skill.name)}" data-skill-level="${escapeHtml(skill.level)}" title="Lancer pour ${skillLabel}" aria-label="Lancer pour ${skillLabel}"><span class="material-symbols-outlined" aria-hidden="true">casino</span></button>
+                <input type="text" class="skill-name" value="${escapeHtml(skill.name)}" placeholder="Nom" aria-label="Nom de la compétence">
+                <select class="skill-stat" aria-label="Statistique de la compétence">
                     <option value="might" ${skill.stat === 'might' ? 'selected' : ''}>Might</option>
                     <option value="speed" ${skill.stat === 'speed' ? 'selected' : ''}>Speed</option>
                     <option value="intel" ${skill.stat === 'intel' ? 'selected' : ''}>Intel</option>
                 </select>
-                <select class="skill-level" style="width: 45px;">
+                <select class="skill-level" style="width: 45px;" aria-label="Niveau de la compétence">
                     <option value="trained" ${skill.level === 'trained' ? 'selected' : ''}>T</option>
                     <option value="specialized" ${skill.level === 'specialized' ? 'selected' : ''}>S</option>
                     <option value="inability" ${skill.level === 'inability' ? 'selected' : ''}>H</option>
                 </select>
-                <button class="cs-delete-btn" data-type="skill" data-index="${index}"><span class="material-symbols-outlined">close</span></button>
+                <button type="button" class="cs-delete-btn" data-type="skill" data-index="${index}" aria-label="Supprimer la compétence ${skillLabel}"><span class="material-symbols-outlined" aria-hidden="true">close</span></button>
             </div>
         `);
         // Add listeners to update data
@@ -472,19 +497,20 @@ function renderAbilities() {
     container.innerHTML = '';
 
     characterData.abilities.forEach((ability, index) => {
+        const abilityLabel = escapeHtml(ability.name || 'Capacité');
         const item = createListItem(`
             <div class="cs-compact-col-wrap">
-                <input type="text" class="ab-name" value="${escapeHtml(ability.name)}" placeholder="Nom de capacité" style="flex-grow:1;">
-                <input type="number" class="ab-cost" value="${ability.cost ? ability.cost.amount : 0}" style="width: 40px;" title="Coût">
-                <select class="ab-pool" style="width: 50px;" title="Pool">
+                <input type="text" class="ab-name" value="${escapeHtml(ability.name)}" placeholder="Nom de capacité" aria-label="Nom de la capacité" style="flex-grow:1;">
+                <input type="number" class="ab-cost" value="${ability.cost ? ability.cost.amount : 0}" style="width: 40px;" title="Coût" aria-label="Coût de la capacité">
+                <select class="ab-pool" style="width: 50px;" title="Pool" aria-label="Pool de la capacité">
                     <option value="none" ${ability.cost && ability.cost.pool === 'none' ? 'selected' : ''}>-</option>
                     <option value="might" ${ability.cost && ability.cost.pool === 'might' ? 'selected' : ''}>M</option>
                     <option value="speed" ${ability.cost && ability.cost.pool === 'speed' ? 'selected' : ''}>S</option>
                     <option value="intel" ${ability.cost && ability.cost.pool === 'intel' ? 'selected' : ''}>I</option>
                 </select>
                 <label style="display:flex; align-items:center; gap:2px; font-size:0.8rem; cursor:pointer;" title="Enabler"><input type="checkbox" class="ab-enabler" ${ability.enabler ? 'checked' : ''}> E</label>
-                <span class="material-symbols-outlined cs-desc-icon" data-index="${index}" title="${escapeHtml(ability.description || 'Description')}" style="cursor:pointer; color:#aaa; font-size: 1.2rem;">help</span>
-                <button class="cs-delete-btn" data-type="ability" data-index="${index}"><span class="material-symbols-outlined">close</span></button>
+                <button type="button" class="cs-desc-icon" data-type="ability" data-index="${index}" title="${escapeHtml(ability.description || 'Description')}" aria-label="Description de ${abilityLabel}"><span class="material-symbols-outlined" aria-hidden="true">help</span></button>
+                <button type="button" class="cs-delete-btn" data-type="ability" data-index="${index}" aria-label="Supprimer ${abilityLabel}"><span class="material-symbols-outlined" aria-hidden="true">close</span></button>
             </div>
         `);
 
@@ -509,17 +535,18 @@ function renderWeapons() {
     container.innerHTML = '';
 
     characterData.equipment.weapons.forEach((wpn, index) => {
+        const wpnLabel = escapeHtml(wpn.name || 'Arme');
         const item = createListItem(`
             <div style="display:flex; gap:10px; width:100%; align-items:center;">
-                <input type="text" class="wpn-name" value="${escapeHtml(wpn.name)}" placeholder="Arme" style="flex-grow:1;">
-                <select class="wpn-type" style="width:90px;">
+                <input type="text" class="wpn-name" value="${escapeHtml(wpn.name)}" placeholder="Arme" aria-label="Nom de l'arme" style="flex-grow:1;">
+                <select class="wpn-type" style="width:90px;" aria-label="Type d'arme">
                     <option value="light" ${wpn.type === 'light' ? 'selected' : ''}>Light</option>
                     <option value="medium" ${wpn.type === 'medium' ? 'selected' : ''}>Medium</option>
                     <option value="heavy" ${wpn.type === 'heavy' ? 'selected' : ''}>Heavy</option>
                 </select>
-                <input type="number" class="wpn-damage" value="${wpn.damage || 0}" style="width:40px;" title="Dégâts">
-                <span class="material-symbols-outlined cs-desc-icon" data-type="weapon" data-index="${index}" title="${escapeHtml(wpn.notes || 'Notes')}" style="cursor:pointer; color:#aaa; font-size: 1.2rem;">help</span>
-                <button class="cs-delete-btn" data-type="weapon" data-index="${index}"><span class="material-symbols-outlined">close</span></button>
+                <input type="number" class="wpn-damage" value="${wpn.damage || 0}" style="width:40px;" title="Dégâts" aria-label="Dégâts de l'arme">
+                <button type="button" class="cs-desc-icon" data-type="weapon" data-index="${index}" title="${escapeHtml(wpn.notes || 'Notes')}" aria-label="Notes pour ${wpnLabel}"><span class="material-symbols-outlined" aria-hidden="true">help</span></button>
+                <button type="button" class="cs-delete-btn" data-type="weapon" data-index="${index}" aria-label="Supprimer ${wpnLabel}"><span class="material-symbols-outlined" aria-hidden="true">close</span></button>
             </div>
         `);
         item.querySelectorAll('input:not(.wpn-notes), select').forEach(el => {
@@ -540,11 +567,12 @@ function renderImplants() {
 
     if (characterData.equipment.implants) {
         characterData.equipment.implants.forEach((implant, index) => {
+            const impLabel = escapeHtml(implant.name || 'Implant');
             const item = createListItem(`
                 <div style="display:flex; gap:10px; width:100%; align-items:center;">
-                    <input type="text" class="imp-name" value="${escapeHtml(implant.name || '')}" placeholder="Nom de l'implant" style="flex-grow:1;">
-                    <span class="material-symbols-outlined cs-desc-icon" data-type="implant" data-index="${index}" title="${escapeHtml(implant.description || 'Description')}" style="cursor:pointer; color:#aaa; font-size: 1.2rem;">help</span>
-                    <button class="cs-delete-btn" data-type="implant" data-index="${index}"><span class="material-symbols-outlined">close</span></button>
+                    <input type="text" class="imp-name" value="${escapeHtml(implant.name || '')}" placeholder="Nom de l'implant" aria-label="Nom de l'implant" style="flex-grow:1;">
+                    <button type="button" class="cs-desc-icon" data-type="implant" data-index="${index}" title="${escapeHtml(implant.description || 'Description')}" aria-label="Description de ${impLabel}"><span class="material-symbols-outlined" aria-hidden="true">help</span></button>
+                    <button type="button" class="cs-delete-btn" data-type="implant" data-index="${index}" aria-label="Supprimer ${impLabel}"><span class="material-symbols-outlined" aria-hidden="true">close</span></button>
                 </div>
             `);
             item.querySelectorAll('input').forEach(el => {
@@ -564,12 +592,13 @@ function renderGeneralItems() {
 
     if (characterData.equipment.generalItems) {
         characterData.equipment.generalItems.forEach((itemObj, index) => {
+            const giLabel = escapeHtml(itemObj.name || 'Objet');
             const item = createListItem(`
                 <div style="display:flex; gap:10px; width:100%; align-items:center;">
-                    <input type="text" class="gi-name" value="${escapeHtml(itemObj.name || '')}" placeholder="Nom de l'objet" style="flex-grow:1;">
-                    <input type="text" class="gi-level" value="${escapeHtml(itemObj.level || '1')}" style="width:50px;" title="Niveau">
-                    <span class="material-symbols-outlined cs-desc-icon" data-type="generalItem" data-index="${index}" title="${escapeHtml(itemObj.description || 'Description')}" style="cursor:pointer; color:#aaa; font-size: 1.2rem;">help</span>
-                    <button class="cs-delete-btn" data-type="generalItem" data-index="${index}"><span class="material-symbols-outlined">close</span></button>
+                    <input type="text" class="gi-name" value="${escapeHtml(itemObj.name || '')}" placeholder="Nom de l'objet" aria-label="Nom de l'objet" style="flex-grow:1;">
+                    <input type="text" class="gi-level" value="${escapeHtml(itemObj.level || '1')}" style="width:50px;" title="Niveau" aria-label="Niveau de l'objet">
+                    <button type="button" class="cs-desc-icon" data-type="generalItem" data-index="${index}" title="${escapeHtml(itemObj.description || 'Description')}" aria-label="Description de ${giLabel}"><span class="material-symbols-outlined" aria-hidden="true">help</span></button>
+                    <button type="button" class="cs-delete-btn" data-type="generalItem" data-index="${index}" aria-label="Supprimer ${giLabel}"><span class="material-symbols-outlined" aria-hidden="true">close</span></button>
                 </div>
             `);
             item.querySelectorAll('input').forEach(el => {
@@ -592,13 +621,14 @@ function renderCyphers() {
 
     if (characterData.cyphers && characterData.cyphers.carried) {
         characterData.cyphers.carried.forEach((cypher, index) => {
+            const cyLabel = escapeHtml(cypher.name || 'Cypher');
             const item = createListItem(`
                 <div style="display:flex; gap:10px; width:100%; align-items:center;">
-                    <input type="text" class="cy-name" value="${escapeHtml(cypher.name || '')}" placeholder="Nom du cypher" style="flex-grow:1;">
-                    <input type="text" class="cy-level" value="${escapeHtml(cypher.level || '1')}" style="width:50px;" title="Niveau">
+                    <input type="text" class="cy-name" value="${escapeHtml(cypher.name || '')}" placeholder="Nom du cypher" aria-label="Nom du cypher" style="flex-grow:1;">
+                    <input type="text" class="cy-level" value="${escapeHtml(cypher.level || '1')}" style="width:50px;" title="Niveau" aria-label="Niveau du cypher">
                     <label style="display:flex; align-items:center; gap:5px; font-size:0.8rem; cursor:pointer;"><input type="checkbox" class="cy-identified" ${cypher.identified ? 'checked' : ''}> Id.</label>
-                    <span class="material-symbols-outlined cs-desc-icon" data-type="cypher" data-index="${index}" title="${escapeHtml(cypher.effect || 'Effet')}" style="cursor:pointer; color:#aaa; font-size: 1.2rem;">help</span>
-                    <button class="cs-delete-btn" data-type="cypher" data-index="${index}"><span class="material-symbols-outlined">close</span></button>
+                    <button type="button" class="cs-desc-icon" data-type="cypher" data-index="${index}" title="${escapeHtml(cypher.effect || 'Effet')}" aria-label="Effet de ${cyLabel}"><span class="material-symbols-outlined" aria-hidden="true">help</span></button>
+                    <button type="button" class="cs-delete-btn" data-type="cypher" data-index="${index}" aria-label="Supprimer ${cyLabel}"><span class="material-symbols-outlined" aria-hidden="true">close</span></button>
                 </div>
             `);
             item.querySelectorAll('input:not(.cy-effect)').forEach(el => {
@@ -619,13 +649,14 @@ function renderArtifacts() {
     container.innerHTML = '';
 
     characterData.artifactsAndOddities.artifacts.forEach((artifact, index) => {
+        const artLabel = escapeHtml(artifact.name || 'Artéfact');
         const item = createListItem(`
             <div style="display:flex; gap:10px; width:100%; align-items:center;">
-                <input type="text" class="art-name" value="${escapeHtml(artifact.name || '')}" placeholder="Nom de l'artéfact" style="flex-grow:1;">
-                <input type="text" class="art-level" value="${escapeHtml(artifact.level || '1')}" style="width:40px;" title="Niveau">
-                <input type="text" class="art-depletion" value="${escapeHtml(artifact.depletion || '1 in 1d6')}" style="width:60px;" title="Depletion">
-                <span class="material-symbols-outlined cs-desc-icon" data-type="artifact" data-index="${index}" title="${escapeHtml(artifact.effect || 'Effet')}" style="cursor:pointer; color:#aaa; font-size: 1.2rem;">help</span>
-                <button class="cs-delete-btn" data-type="artifact" data-index="${index}"><span class="material-symbols-outlined">close</span></button>
+                <input type="text" class="art-name" value="${escapeHtml(artifact.name || '')}" placeholder="Nom de l'artéfact" aria-label="Nom de l'artéfact" style="flex-grow:1;">
+                <input type="text" class="art-level" value="${escapeHtml(artifact.level || '1')}" style="width:40px;" title="Niveau" aria-label="Niveau de l'artéfact">
+                <input type="text" class="art-depletion" value="${escapeHtml(artifact.depletion || '1 in 1d6')}" style="width:60px;" title="Depletion" aria-label="Déplétion de l'artéfact">
+                <button type="button" class="cs-desc-icon" data-type="artifact" data-index="${index}" title="${escapeHtml(artifact.effect || 'Effet')}" aria-label="Effet de ${artLabel}"><span class="material-symbols-outlined" aria-hidden="true">help</span></button>
+                <button type="button" class="cs-delete-btn" data-type="artifact" data-index="${index}" aria-label="Supprimer ${artLabel}"><span class="material-symbols-outlined" aria-hidden="true">close</span></button>
             </div>
         `);
         item.querySelectorAll('input:not(.art-effect)').forEach(el => {
@@ -645,11 +676,12 @@ function renderOddities() {
     container.innerHTML = '';
 
     characterData.artifactsAndOddities.oddities.forEach((oddity, index) => {
+        const oddLabel = escapeHtml(oddity.name || 'Oddity');
         const item = createListItem(`
             <div style="display:flex; gap:10px; width:100%; align-items:center;">
-                <input type="text" class="odd-name" value="${escapeHtml(oddity.name || '')}" placeholder="Nom de l'oddity" style="flex-grow:1;">
-                <span class="material-symbols-outlined cs-desc-icon" data-type="oddity" data-index="${index}" title="${escapeHtml(oddity.description || 'Description')}" style="cursor:pointer; color:#aaa; font-size: 1.2rem;">help</span>
-                <button class="cs-delete-btn" data-type="oddity" data-index="${index}"><span class="material-symbols-outlined">close</span></button>
+                <input type="text" class="odd-name" value="${escapeHtml(oddity.name || '')}" placeholder="Nom de l'oddity" aria-label="Nom de l'oddity" style="flex-grow:1;">
+                <button type="button" class="cs-desc-icon" data-type="oddity" data-index="${index}" title="${escapeHtml(oddity.description || 'Description')}" aria-label="Description de ${oddLabel}"><span class="material-symbols-outlined" aria-hidden="true">help</span></button>
+                <button type="button" class="cs-delete-btn" data-type="oddity" data-index="${index}" aria-label="Supprimer ${oddLabel}"><span class="material-symbols-outlined" aria-hidden="true">close</span></button>
             </div>
         `);
         item.querySelectorAll('input').forEach(el => {
@@ -863,11 +895,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // Bouton de Sauvegarde manuel
     document.getElementById('cs-btn-save').addEventListener('click', () => {
         updateCharacterDataFromInputs();
-        // Optionnel: feedback visuel
+        // Optionnel: feedback visuel et annonce lecteur d'écran (role="status")
         const btn = document.getElementById('cs-btn-save');
         const oldColor = btn.style.color;
         btn.style.color = '#4caf50'; // Vert pour confirmer
-        setTimeout(() => btn.style.color = oldColor, 1000);
+        const statusRegion = document.getElementById('cs-status-region');
+        if (statusRegion) {
+            statusRegion.textContent = 'Fiche de personnage sauvegardée.';
+        }
+        setTimeout(() => {
+            btn.style.color = oldColor;
+            if (statusRegion) statusRegion.textContent = '';
+        }, 1500);
     });
 
     // Exportation (Télécharger le JSON)
@@ -890,22 +929,16 @@ document.addEventListener('DOMContentLoaded', () => {
         // Fallback to identity name if activeCharacterId is somehow lost
         const charIdToDelete = window.activeCharacterId || (characterData.identity && characterData.identity.name);
         if (window.isMJ && charIdToDelete) {
-            deleteConfirmModal.style.display = 'flex';
+            window.openModal(deleteConfirmModal);
         }
     });
 
     document.getElementById('cs-delete-confirm-cancel').addEventListener('click', () => {
-        deleteConfirmModal.style.display = 'none';
-    });
-
-    deleteConfirmModal.addEventListener('click', (e) => {
-        if (e.target === deleteConfirmModal) {
-            deleteConfirmModal.style.display = 'none';
-        }
+        window.closeModal(deleteConfirmModal);
     });
 
     document.getElementById('cs-delete-confirm-accept').addEventListener('click', () => {
-        deleteConfirmModal.style.display = 'none';
+        window.closeModal(deleteConfirmModal);
         const charIdToDelete = window.activeCharacterId || (characterData.identity && characterData.identity.name);
         if (window.socket && window.socket.readyState === WebSocket.OPEN && charIdToDelete) {
             window.socket.send(JSON.stringify({
@@ -974,12 +1007,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const identityBtnConfirm = document.getElementById('cs-identity-modal-confirm');
 
     function closeIdentityModal() {
-        identityModal.style.display = 'none';
+        window.closeModal(identityModal);
     }
 
     if(btnEditIdentity) {
         btnEditIdentity.addEventListener('click', () => {
-            identityModal.style.display = 'flex';
+            window.openModal(identityModal);
         });
     }
 
@@ -995,18 +1028,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if(identityModal) {
-        identityModal.addEventListener('click', (e) => {
-            if (e.target === identityModal) {
-                closeIdentityModal();
-            }
-        });
-
-        // Handle Enter key for fast save in identity modal
+        // Handle Enter key for fast save in identity modal (IME-safe)
         const identityInputs = document.querySelectorAll('#cs-identity-modal input');
         identityInputs.forEach(input => {
             input.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
+                    if (e.isComposing || e.keyCode === 229) return;
                     updateCharacterDataFromInputs();
                     closeIdentityModal();
                 }
@@ -1024,7 +1052,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentDescType = '';
 
     function closeDescModal() {
-        descModal.style.display = 'none';
+        window.closeModal(descModal);
         descModalText.value = '';
         currentDescIndex = -1;
         currentDescType = '';
@@ -1061,12 +1089,6 @@ document.addEventListener('DOMContentLoaded', () => {
         closeDescModal();
     });
 
-    descModal.addEventListener('click', (e) => {
-        if (e.target === descModal) {
-            closeDescModal();
-        }
-    });
-
     // Modal de lancer de dé
     const rollModal = document.getElementById('cs-roll-modal');
     const rollModalTitle = document.getElementById('cs-roll-modal-title');
@@ -1080,21 +1102,15 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentDamageTrack = "";
 
     function closeRollModal() {
-        rollModal.style.display = 'none';
+        window.closeModal(rollModal);
         rollModalDiff.value = 0;
         rollModalEffort.value = 0;
     }
 
     btnCancel.addEventListener('click', closeRollModal);
 
-    rollModal.addEventListener('click', (e) => {
-        if (e.target === rollModal) {
-            closeRollModal();
-        }
-    });
-
     function submitRoll() {
-        if (rollModal.style.display === 'none') return;
+        if (!rollModal.open && rollModal.style.display === 'none') return;
 
         const diff = parseInt(rollModalDiff.value, 10) || 0;
         const effort = parseInt(rollModalEffort.value, 10) || 0;
@@ -1159,20 +1175,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     btnConfirm.addEventListener('click', submitRoll);
 
-    // Pressing enter in inputs submits
+    // Pressing enter in inputs submits (IME-safe)
     rollModalDiff.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') submitRoll();
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (e.isComposing || e.keyCode === 229) return;
+            submitRoll();
+        }
     });
     rollModalEffort.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') submitRoll();
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (e.isComposing || e.keyCode === 229) return;
+            submitRoll();
+        }
     });
 
     // Lancer de dé depuis la fiche
     document.querySelector('.cs-container').addEventListener('click', (e) => {
         // Clic sur l'icône de description
-        if (e.target.classList.contains('cs-desc-icon')) {
-            const index = parseInt(e.target.getAttribute('data-index'));
-            let type = e.target.getAttribute('data-type');
+        const descIcon = e.target.closest('.cs-desc-icon');
+        if (descIcon) {
+            const index = parseInt(descIcon.getAttribute('data-index'));
+            let type = descIcon.getAttribute('data-type');
             if (!type) {
                 // Backward compatibility for abilities which didn't have data-type before
                 type = 'ability';
@@ -1210,18 +1235,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 descModalTitle.textContent = title;
                 descModalText.value = text;
-                descModal.style.display = 'flex';
+                window.openModal(descModal);
                 descModalText.focus();
             }
             return;
         }
 
         // Clic sur l'icône de dé (stats & skills)
-        if (e.target.classList.contains('cs-roll-icon')) {
+        const rollIcon = e.target.closest('.cs-roll-icon');
+        if (rollIcon) {
 
             // Check if it's a recovery roll
-            if (e.target.classList.contains('cs-rec-roll')) {
-                const recType = e.target.getAttribute('data-rec');
+            if (rollIcon.classList.contains('cs-rec-roll')) {
+                const recType = rollIcon.getAttribute('data-rec');
                 const checkbox = document.getElementById(`cs-rec-${recType}`);
 
                 if (checkbox.checked) {
@@ -1251,9 +1277,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 return; // Stop further execution for recovery roll
             }
 
-            const stat = e.target.getAttribute('data-stat');
-            const skill = e.target.getAttribute('data-skill'); // S'il y a une compétence liée
-            const skillLevel = e.target.getAttribute('data-skill-level');
+            const stat = rollIcon.getAttribute('data-stat');
+            const skill = rollIcon.getAttribute('data-skill'); // S'il y a une compétence liée
+            const skillLevel = rollIcon.getAttribute('data-skill-level');
 
             let rollName = "";
             let skillBonus = 0;
@@ -1296,7 +1322,7 @@ document.addEventListener('DOMContentLoaded', () => {
             rollModalEffort.setAttribute('max', maxEffort);
 
             rollModalTitle.textContent = `Lancer : ${rollName}`;
-            rollModal.style.display = 'flex';
+            window.openModal(rollModal);
 
             // Focus on effort first
             rollModalEffort.focus();

@@ -14,9 +14,12 @@
     color: #e0e0e0;
     border: 1px solid #555;
     border-radius: 5px;
-    padding: 4px 8px;
-    font-size: 14px;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
     flex-grow: 1;
+    field-sizing: content;
+    min-inline-size: 10rem;
+    max-inline-size: 100%;
 }
 
 .wiki-controls select:hover {

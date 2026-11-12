@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="text-scale" content="scale">
     <title>Jeu de Rôle en Ligne</title>
     
     <!-- Preconnect to external domains -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://www.youtube.com">
-    
-
     
     <!-- Stylesheets -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
@@ -21,66 +21,67 @@
     <link rel="icon" href="/favicon.ico" type="image/x-icon">
 </head>
 <body>
-    <div id="login-overlay" class="login-overlay">
+    <dialog id="login-overlay" class="login-overlay" closedby="none" aria-labelledby="login-overlay-title">
         <div class="login-content">
-            <h1>Sélection du Personnage</h1>
+            <h1 id="login-overlay-title">Sélection du Personnage</h1>
             <div id="login-characters-list" class="login-characters-list">
                 <!-- Character cards will be injected here -->
             </div>
 
-
             <div class="login-actions">
-                <button id="login-mj-btn" class="cs-btn-confirm" style="background-color: #8b0000; border-color: #5a0000;">Se connecter en tant que MJ</button>
+                <button id="login-mj-btn" type="button" command="show-modal" commandfor="mj-confirm-modal" class="cs-btn-confirm" style="background-color: #8b0000; border-color: #5a0000;">Se connecter en tant que MJ</button>
             </div>
         </div>
-    </div>
+    </dialog>
 
     <!-- Modale de confirmation MJ -->
-    <div id="mj-confirm-modal" class="cs-modal-overlay" style="display: none; z-index: 10001;">
+    <dialog id="mj-confirm-modal" class="cs-modal-overlay" closedby="any" aria-labelledby="mj-confirm-title">
         <div class="cs-modal-content">
-            <h3 style="color: #ff4444;">Avertissement</h3>
+            <h3 id="mj-confirm-title" style="color: #ff4444;">Avertissement</h3>
             <p>Confirmez-vous en votre âme et conscience être le Maître du Jeu, avec tous les pouvoirs (et les responsabilités) que cela implique, et promettez-vous de ne pas tricher ?</p>
             <div class="cs-modal-actions">
-                <button id="mj-confirm-cancel" class="cs-btn-cancel">Annuler</button>
-                <button id="mj-confirm-accept" class="cs-btn-confirm" style="background-color: #8b0000;">Je le jure</button>
+                <button id="mj-confirm-cancel" type="button" command="close" commandfor="mj-confirm-modal" class="cs-btn-cancel" autofocus>Annuler</button>
+                <button id="mj-confirm-accept" type="button" class="cs-btn-confirm" style="background-color: #8b0000;">Je le jure</button>
             </div>
         </div>
-    </div>
+    </dialog>
 
     <div class="container">
         <aside class="panel left-panel">
             <h2>Chat</h2>
-            <div class="chat-messages" id="chat-messages">
+            <div class="chat-messages" id="chat-messages" role="log" aria-live="polite" aria-label="Historique du chat">
                 <!-- Les messages du chat apparaîtront ici -->
             </div>
             <div class="chat-input-area">
+                <label for="chat-input" class="visually-hidden">Message du chat</label>
                 <input type="text" id="chat-input" placeholder="Écrivez votre message...">
-                <button id="send-button">Envoyer</button>
+                <button id="send-button" type="button">Envoyer</button>
             </div>
             <div style="font-size: 0.8em; color: #888; text-align: center; margin-bottom: 5px;">Tapez /help pour les commandes</div>
             <div class="dice-roller">
                 <h3>Lancer de dés</h3>
-                <button class="dice-button" data-die="4">4</button>
-                <button class="dice-button" data-die="6">6</button>
-                <button class="dice-button" data-die="10">10</button>
-                <button class="dice-button" data-die="20">20</button>
-                <button class="dice-button" data-die="100">100</button>
+                <button type="button" class="dice-button" data-die="4" aria-label="Lancer un dé à 4 faces">4</button>
+                <button type="button" class="dice-button" data-die="6" aria-label="Lancer un dé à 6 faces">6</button>
+                <button type="button" class="dice-button" data-die="10" aria-label="Lancer un dé à 10 faces">10</button>
+                <button type="button" class="dice-button" data-die="20" aria-label="Lancer un dé à 20 faces">20</button>
+                <button type="button" class="dice-button" data-die="100" aria-label="Lancer un dé à 100 faces">100</button>
             </div>
             <div id="mj-chat-controls" style="display: none; margin-top: 10px; text-align: right;">
-                <button id="clear-chat-btn" class="cs-btn-confirm" style="background-color: #8b0000; border-color: #5a0000; padding: 3px 8px; font-size: 0.75em; width: auto;">Vider le chat</button>
+                <button id="clear-chat-btn" type="button" command="show-modal" commandfor="chat-clear-confirm-modal" class="cs-btn-confirm" style="background-color: #8b0000; border-color: #5a0000; padding: 3px 8px; font-size: 0.75em; width: auto;">Vider le chat</button>
             </div>
         </aside>
         <div class="resizer" id="resizer-left"></div>
         <main class="main-content">
             <div class="main-display">
-                <div id="carte-content" class="tab-content">
+                <div id="carte-content" class="tab-content" role="tabpanel" aria-labelledby="nav-tab-carte">
                     <!-- Contrôles pour le MJ, cachés par défaut -->
                     <div class="image-controls hidden">
+                        <label for="image-select" class="visually-hidden">Choisir une image</label>
                         <select id="image-select">
                             <option value="">Choisir une image</option>
                         </select>
-                        <button id="add-image-btn" class="control-btn btn-add" title="Ajouter une image"><span class="material-symbols-outlined">add</span></button>
-                        <button id="delete-image-btn" class="control-btn btn-delete" title="Supprimer l'image"><span class="material-symbols-outlined">remove</span></button>
+                        <button id="add-image-btn" type="button" class="control-btn btn-add" title="Ajouter une image" aria-label="Ajouter une image"><span class="material-symbols-outlined" aria-hidden="true">add</span></button>
+                        <button id="delete-image-btn" type="button" class="control-btn btn-delete" title="Supprimer l'image" aria-label="Supprimer l'image"><span class="material-symbols-outlined" aria-hidden="true">remove</span></button>
                     </div>
 
                     <!-- Zone d'affichage de l'image, visible par tous -->
@@ -88,37 +89,39 @@
                         <p>Aucune image sélectionnée.</p>
                     </div>
                 </div>
-                <div id="fabric-content" class="tab-content">
+                <div id="fabric-content" class="tab-content" role="tabpanel" aria-labelledby="nav-tab-fabric" hidden="until-found">
                     <div class="whiteboard-controls">
-                        <div id="fabric-toolbar">
-                            <button id="fabric-select-tool" class="control-btn" title="Select"><span class="material-symbols-outlined">pan_tool</span></button>
-                            <button id="fabric-pointer-tool" class="control-btn" title="Pointer"><span class="material-symbols-outlined">ads_click</span></button>
-                            <button id="fabric-pencil-tool" class="control-btn" title="Pencil"><span class="material-symbols-outlined">edit</span></button>
-                            <button id="fabric-line-tool" class="control-btn" title="Line"><span class="material-symbols-outlined">horizontal_rule</span></button>
-                            <button id="fabric-rect-tool" class="control-btn" title="Rectangle"><span class="material-symbols-outlined">rectangle</span></button>
-                            <button id="fabric-circle-tool" class="control-btn" title="Circle"><span class="material-symbols-outlined">circle</span></button>
-                            <button id="fabric-tokens-lib-btn" class="control-btn" title="Bibliothèque de Tokens"><span class="material-symbols-outlined">category</span></button>
+                        <div id="fabric-toolbar" role="toolbar" focusgroup="toolbar wrap" aria-label="Outils du tableau blanc" aria-controls="fabric-canvas">
+                            <button id="fabric-select-tool" type="button" class="control-btn" title="Sélectionner" aria-label="Outil de sélection" aria-pressed="true"><span class="material-symbols-outlined" aria-hidden="true">pan_tool</span></button>
+                            <button id="fabric-pointer-tool" type="button" class="control-btn" title="Pointeur" aria-label="Pointeur" aria-pressed="false"><span class="material-symbols-outlined" aria-hidden="true">ads_click</span></button>
+                            <button id="fabric-pencil-tool" type="button" class="control-btn" title="Crayon" aria-label="Crayon" aria-pressed="false"><span class="material-symbols-outlined" aria-hidden="true">edit</span></button>
+                            <button id="fabric-line-tool" type="button" class="control-btn" title="Ligne" aria-label="Ligne" aria-pressed="false"><span class="material-symbols-outlined" aria-hidden="true">horizontal_rule</span></button>
+                            <button id="fabric-rect-tool" type="button" class="control-btn" title="Rectangle" aria-label="Rectangle" aria-pressed="false"><span class="material-symbols-outlined" aria-hidden="true">rectangle</span></button>
+                            <button id="fabric-circle-tool" type="button" class="control-btn" title="Cercle" aria-label="Cercle" aria-pressed="false"><span class="material-symbols-outlined" aria-hidden="true">circle</span></button>
+                            <button id="fabric-tokens-lib-btn" type="button" command="show-modal" commandfor="tokens-lib-modal" class="control-btn" title="Bibliothèque de Tokens" aria-label="Bibliothèque de Tokens"><span class="material-symbols-outlined" aria-hidden="true">category</span></button>
                             <input type="file" id="fabric-image-input" style="display: none;" accept="image/*,.webp,image/webp" />
-                            <label for="fabric-image-input" class="control-btn" title="Add Image"><span class="material-symbols-outlined">add_photo_alternate</span></label>
+                            <label for="fabric-image-input" class="control-btn" title="Ajouter une image" aria-label="Ajouter une image sur le tableau"><span class="material-symbols-outlined" aria-hidden="true">add_photo_alternate</span></label>
                             <input type="file" id="fabric-background-image-input" style="display: none;" accept="image/*,video/webm,video/mp4,.webp,.webm,.mp4" />
-                            <label for="fabric-background-image-input" class="control-btn" title="Set Background Image"><span class="material-symbols-outlined">image</span></label>
-                            <input type="color" id="fabric-color-picker" class="control-btn" title="Color Picker" />
-                            <button id="fabric-delete-tool" class="control-btn btn-delete" title="Delete"><span class="material-symbols-outlined">delete</span></button>
+                            <label for="fabric-background-image-input" class="control-btn" title="Définir l'image de fond" aria-label="Définir l'image de fond"><span class="material-symbols-outlined" aria-hidden="true">image</span></label>
+                            <label for="fabric-color-picker" class="visually-hidden">Couleur du tracé</label>
+                            <input type="color" id="fabric-color-picker" class="control-btn" title="Sélecteur de couleur" aria-label="Sélecteur de couleur" />
+                            <button id="fabric-delete-tool" type="button" class="control-btn btn-delete" title="Supprimer la sélection" aria-label="Supprimer la sélection"><span class="material-symbols-outlined" aria-hidden="true">delete</span></button>
 
                             <!-- FOG OF WAR CONTROLS (MJ-only) -->
                             <div id="fabric-fog-toolbar" class="control-group hidden">
-                                <span class="toolbar-divider"></span>
-                                <button id="fabric-fog-tool" class="control-btn" title="Activer/Désactiver le brouillard"><span class="material-symbols-outlined">cloud</span></button>
-                                <button id="fabric-fog-eraser-tool" class="control-btn" title="Gomme pour brouillard"><span class="material-symbols-outlined">ink_eraser</span></button>
+                                <span class="toolbar-divider" role="separator" aria-orientation="vertical"></span>
+                                <button id="fabric-fog-tool" type="button" class="control-btn" title="Activer/Désactiver le brouillard" aria-label="Activer ou désactiver le brouillard" aria-pressed="false"><span class="material-symbols-outlined" aria-hidden="true">cloud</span></button>
+                                <button id="fabric-fog-eraser-tool" type="button" class="control-btn" title="Gomme pour brouillard" aria-label="Gomme pour brouillard" aria-pressed="false"><span class="material-symbols-outlined" aria-hidden="true">ink_eraser</span></button>
                                 <div class="brush-size-container">
-                                    <input type="range" id="fabric-fog-brush-size" min="10" max="200" value="50" title="Taille de la gomme">
+                                    <label for="fabric-fog-brush-size" class="visually-hidden">Taille de la gomme</label>
+                                    <input type="range" id="fabric-fog-brush-size" min="10" max="200" value="50" title="Taille de la gomme" aria-label="Taille de la gomme">
                                 </div>
                             </div>
                         </div>
                     </div>
                     <canvas id="fabric-canvas"></canvas>
                 </div>
-                <div id="music-content" class="tab-content">
+                <div id="music-content" class="tab-content" role="tabpanel" aria-labelledby="music-nav-item" hidden>
                     <div class="music-container hidden">
                         <!-- Theme Controls (MJ only) -->
                         <div id="music-theme-controls" class="music-controls hidden" style="justify-content: flex-start; margin-bottom: 10px; border-radius: 8px;">
@@ -126,9 +129,9 @@
                             <select id="music-theme-select" style="background-color: #3e3e3e; color: #e0e0e0; border: 1px solid #555; border-radius: 5px; padding: 4px 8px; flex-grow: 1;">
                                 <option value="default">Défaut</option>
                             </select>
-                            <button id="music-theme-create-btn" class="control-btn btn-add" title="Nouveau thème" style="padding: 4px; width: 28px; height: 28px;"><span class="material-symbols-outlined" style="font-size: 18px;">add</span></button>
-                            <button id="music-theme-rename-btn" class="control-btn btn-show" title="Renommer le thème" style="padding: 4px; width: 28px; height: 28px;"><span class="material-symbols-outlined" style="font-size: 18px;">edit</span></button>
-                            <button id="music-theme-delete-btn" class="control-btn btn-delete" title="Supprimer le thème" style="padding: 4px; width: 28px; height: 28px;"><span class="material-symbols-outlined" style="font-size: 18px;">delete</span></button>
+                            <button id="music-theme-create-btn" type="button" class="control-btn btn-add" title="Nouveau thème" aria-label="Nouveau thème" style="padding: 4px; width: 28px; height: 28px;"><span class="material-symbols-outlined" aria-hidden="true" style="font-size: 18px;">add</span></button>
+                            <button id="music-theme-rename-btn" type="button" class="control-btn btn-show" title="Renommer le thème" aria-label="Renommer le thème" style="padding: 4px; width: 28px; height: 28px;"><span class="material-symbols-outlined" aria-hidden="true" style="font-size: 18px;">edit</span></button>
+                            <button id="music-theme-delete-btn" type="button" class="control-btn btn-delete" title="Supprimer le thème" aria-label="Supprimer le thème" style="padding: 4px; width: 28px; height: 28px;"><span class="material-symbols-outlined" aria-hidden="true" style="font-size: 18px;">delete</span></button>
                         </div>
 
                         <!-- Main Player Controls -->
@@ -138,25 +141,27 @@
                                 <span id="music-current-title">Aucune musique sélectionnée</span>
                             </div>
                             <div class="main-buttons">
-                                <button id="music-play-pause-btn" class="control-btn btn-play" title="Lecture">
-                                    <span class="material-symbols-outlined">play_arrow</span>
+                                <button id="music-play-pause-btn" type="button" class="control-btn btn-play" title="Lecture" aria-label="Lecture / Pause">
+                                    <span class="material-symbols-outlined" aria-hidden="true">play_arrow</span>
                                 </button>
                             </div>
                             <div class="volume-control">
-                                <span class="material-symbols-outlined">volume_up</span>
-                                <input type="range" id="music-volume-slider" min="0" max="100" value="100" title="Volume">
+                                <span class="material-symbols-outlined" aria-hidden="true">volume_up</span>
+                                <label for="music-volume-slider" class="visually-hidden">Volume</label>
+                                <input type="range" id="music-volume-slider" min="0" max="100" value="100" title="Volume" aria-label="Volume">
                             </div>
                         </div>
 
                         <!-- Add Song Section -->
                         <div id="music-add-section">
+                            <label for="youtube-url-input" class="visually-hidden">URL YouTube ou MP3</label>
                             <input type="text" id="youtube-url-input" placeholder="Coller une URL YouTube ou MP3...">
-                            <button id="music-add-btn" class="control-btn btn-add" title="Ajouter à la playlist">
-                                <span class="material-symbols-outlined">playlist_add</span>
+                            <button id="music-add-btn" type="button" class="control-btn btn-add" title="Ajouter à la playlist" aria-label="Ajouter à la playlist">
+                                <span class="material-symbols-outlined" aria-hidden="true">playlist_add</span>
                             </button>
                             <input type="file" id="music-upload-input" accept="audio/mpeg, audio/mp3" style="display:none">
-                            <button id="music-upload-btn" class="control-btn btn-upload" title="Uploader un fichier MP3 local">
-                                <span class="material-symbols-outlined">upload_file</span>
+                            <button id="music-upload-btn" type="button" class="control-btn btn-upload" title="Uploader un fichier MP3 local" aria-label="Uploader un fichier MP3 local">
+                                <span class="material-symbols-outlined" aria-hidden="true">upload_file</span>
                             </button>
                             <audio id="local-audio-player" style="display:none"></audio>
                         </div>
@@ -165,7 +170,7 @@
                         <div id="music-playlist-options">
                             <label class="loop-control">
                                 <input type="checkbox" id="music-loop-toggle">
-                                <span class="material-symbols-outlined">loop</span>
+                                <span class="material-symbols-outlined" aria-hidden="true">loop</span>
                                 <span>Boucle</span>
                             </label>
                         </div>
@@ -179,16 +184,17 @@
                     <!-- The invisible YouTube player -->
                     <div id="youtube-player"></div>
                 </div>
-                <div id="wiki-content" class="tab-content">
+                <div id="wiki-content" class="tab-content" role="tabpanel" aria-labelledby="nav-tab-wiki" hidden="until-found">
                     <div class="wiki-controls">
+                        <label for="wiki-page-select" class="visually-hidden">Choisir une page du Wiki</label>
                         <select id="wiki-page-select">
                             <option value="">Choisir une page</option>
                         </select>
-                        <button id="wiki-add-page-btn" class="control-btn btn-add" title="Ajouter une page publique">
-                            <span class="material-symbols-outlined">add</span>
+                        <button id="wiki-add-page-btn" type="button" class="control-btn btn-add" title="Ajouter une page publique" aria-label="Ajouter une page publique">
+                            <span class="material-symbols-outlined" aria-hidden="true">add</span>
                         </button>
-                        <button id="wiki-add-mj-page-btn" class="control-btn btn-delete hidden" title="Ajouter une page MJ">
-                            <span class="material-symbols-outlined">add</span>
+                        <button id="wiki-add-mj-page-btn" type="button" class="control-btn btn-delete hidden" title="Ajouter une page MJ" aria-label="Ajouter une page MJ">
+                            <span class="material-symbols-outlined" aria-hidden="true">add</span>
                         </button>
                     </div>
                     <div class="wiki-main">
@@ -197,39 +203,42 @@
                             <div id="wiki-body"></div>
                         </div>
                         <div id="wiki-editor" style="display: none;">
+                            <label for="wiki-editor-title" class="visually-hidden">Titre de la page</label>
                             <input type="text" id="wiki-editor-title" placeholder="Titre de la page" />
+                            <label for="wiki-textarea" class="visually-hidden">Contenu de la page</label>
                             <textarea id="wiki-textarea"></textarea>
-                            <button id="wiki-save-btn">Sauvegarder</button>
-                            <button id="wiki-delete-btn" class="cs-btn-cancel" style="background-color: #8b0000; display: none;">Supprimer</button>
-                            <button id="wiki-cancel-btn">Annuler</button>
+                            <button id="wiki-save-btn" type="button">Sauvegarder</button>
+                            <button id="wiki-delete-btn" type="button" class="cs-btn-cancel" style="background-color: #8b0000; display: none;">Supprimer</button>
+                            <button id="wiki-cancel-btn" type="button">Annuler</button>
                         </div>
-                         <button id="wiki-edit-btn">Modifier</button>
+                        <button id="wiki-edit-btn" type="button">Modifier</button>
                     </div>
                 </div>
-                <div id="character-sheet-content" class="tab-content" style="display: none;">
-                    <div id="cs-tabs-container" class="cs-tabs-container">
+                <div id="character-sheet-content" class="tab-content" role="tabpanel" aria-labelledby="nav-tab-character-sheet" hidden="until-found">
+                    <p id="cs-status-region" role="status" class="visually-hidden"></p>
+                    <div id="cs-tabs-container" class="cs-tabs-container" role="tablist" focusgroup="tablist nomemory" aria-label="Personnages">
                         <!-- Character tabs injected via JS -->
                     </div>
                     <div class="cs-container">
                         <div class="cs-header-controls">
-                            <button id="cs-btn-save" title="Sauvegarder" style="margin-left: auto;">
-                                <span class="material-symbols-outlined">save</span>
+                            <button id="cs-btn-save" type="button" title="Sauvegarder" aria-label="Sauvegarder la fiche" style="margin-left: auto;">
+                                <span class="material-symbols-outlined" aria-hidden="true">save</span>
                             </button>
-                            <button id="cs-btn-export" title="Exporter en JSON">
-                                <span class="material-symbols-outlined">download</span>
+                            <button id="cs-btn-export" type="button" title="Exporter en JSON" aria-label="Exporter la fiche en JSON">
+                                <span class="material-symbols-outlined" aria-hidden="true">download</span>
                             </button>
-                            <label for="cs-btn-import" class="cs-header-controls-label" style="cursor: pointer; display: none; align-items: center; justify-content: center; background: #333; border: 1px solid #444; color: #f0f0f0; padding: 4px 8px; border-radius: 4px; gap: 5px;" title="Importer un JSON (MJ uniquement)">
-                                <span class="material-symbols-outlined">upload</span>
+                            <label for="cs-btn-import" class="cs-header-controls-label" style="cursor: pointer; display: none; align-items: center; justify-content: center; background: #333; border: 1px solid #444; color: #f0f0f0; padding: 4px 8px; border-radius: 4px; gap: 5px;" title="Importer un JSON (MJ uniquement)" aria-label="Importer un fichier JSON">
+                                <span class="material-symbols-outlined" aria-hidden="true">upload</span>
                             </label>
                             <input type="file" id="cs-btn-import" accept=".json" style="display: none;">
-                            <button id="cs-btn-delete" title="Supprimer le personnage" style="display: none; background-color: #8b0000; border-color: #5a0000;">
-                                <span class="material-symbols-outlined">delete</span>
+                            <button id="cs-btn-delete" type="button" command="show-modal" commandfor="cs-delete-confirm-modal" title="Supprimer le personnage" aria-label="Supprimer le personnage" style="display: none; background-color: #8b0000; border-color: #5a0000;">
+                                <span class="material-symbols-outlined" aria-hidden="true">delete</span>
                             </button>
                         </div>
 
                         <div class="cs-header-combined">
-                            <button id="cs-btn-edit-identity" class="cs-edit-btn" title="Modifier l'Identité" type="button">
-                                <span class="material-symbols-outlined">edit</span>
+                            <button id="cs-btn-edit-identity" class="cs-edit-btn" title="Modifier l'Identité" aria-label="Modifier l'Identité" type="button">
+                                <span class="material-symbols-outlined" aria-hidden="true">edit</span>
                             </button>
 
                             <div id="cs-display-portrait-container" class="cs-portrait-container">
@@ -247,27 +256,27 @@
                                 <div class="cs-stats-grid">
                                     <!-- Ligne 1 : En-têtes -->
                                     <div></div> <!-- Cellule vide en haut à gauche -->
-                                    <div class="cs-grid-header might">MIGHT <span class="material-symbols-outlined cs-roll-icon" data-stat="might" title="Lancer Might">casino</span></div>
-                                    <div class="cs-grid-header speed">SPEED <span class="material-symbols-outlined cs-roll-icon" data-stat="speed" title="Lancer Speed">casino</span></div>
-                                    <div class="cs-grid-header intel">INTEL <span class="material-symbols-outlined cs-roll-icon" data-stat="intel" title="Lancer Intel">casino</span></div>
+                                    <div class="cs-grid-header might">MIGHT <button type="button" class="cs-roll-icon" data-stat="might" title="Lancer Might" aria-label="Lancer Might"><span class="material-symbols-outlined" aria-hidden="true">casino</span></button></div>
+                                    <div class="cs-grid-header speed">SPEED <button type="button" class="cs-roll-icon" data-stat="speed" title="Lancer Speed" aria-label="Lancer Speed"><span class="material-symbols-outlined" aria-hidden="true">casino</span></button></div>
+                                    <div class="cs-grid-header intel">INTEL <button type="button" class="cs-roll-icon" data-stat="intel" title="Lancer Intel" aria-label="Lancer Intel"><span class="material-symbols-outlined" aria-hidden="true">casino</span></button></div>
 
                                     <!-- Ligne 2 : Pool -->
                                     <div class="cs-grid-label">Pool</div>
-                                    <div class="cs-grid-cell pool"><div class="cs-pool-controls"><button class="cs-pool-btn" data-stat="might" data-action="minus">-</button><input type="number" id="cs-stat-might-pool" readonly><button class="cs-pool-btn" data-stat="might" data-action="plus">+</button></div></div>
-                                    <div class="cs-grid-cell pool"><div class="cs-pool-controls"><button class="cs-pool-btn" data-stat="speed" data-action="minus">-</button><input type="number" id="cs-stat-speed-pool" readonly><button class="cs-pool-btn" data-stat="speed" data-action="plus">+</button></div></div>
-                                    <div class="cs-grid-cell pool"><div class="cs-pool-controls"><button class="cs-pool-btn" data-stat="intel" data-action="minus">-</button><input type="number" id="cs-stat-intel-pool" readonly><button class="cs-pool-btn" data-stat="intel" data-action="plus">+</button></div></div>
+                                    <div class="cs-grid-cell pool"><div class="cs-pool-controls"><button type="button" class="cs-pool-btn" data-stat="might" data-action="minus" aria-label="Diminuer Pool Might">-</button><input type="number" id="cs-stat-might-pool" aria-label="Pool Might" readonly><button type="button" class="cs-pool-btn" data-stat="might" data-action="plus" aria-label="Augmenter Pool Might">+</button></div></div>
+                                    <div class="cs-grid-cell pool"><div class="cs-pool-controls"><button type="button" class="cs-pool-btn" data-stat="speed" data-action="minus" aria-label="Diminuer Pool Speed">-</button><input type="number" id="cs-stat-speed-pool" aria-label="Pool Speed" readonly><button type="button" class="cs-pool-btn" data-stat="speed" data-action="plus" aria-label="Augmenter Pool Speed">+</button></div></div>
+                                    <div class="cs-grid-cell pool"><div class="cs-pool-controls"><button type="button" class="cs-pool-btn" data-stat="intel" data-action="minus" aria-label="Diminuer Pool Intel">-</button><input type="number" id="cs-stat-intel-pool" aria-label="Pool Intel" readonly><button type="button" class="cs-pool-btn" data-stat="intel" data-action="plus" aria-label="Augmenter Pool Intel">+</button></div></div>
 
                                     <!-- Ligne 3 : Max -->
                                     <div class="cs-grid-label">Max</div>
-                                    <div class="cs-grid-cell"><input type="number" id="cs-stat-might-max"></div>
-                                    <div class="cs-grid-cell"><input type="number" id="cs-stat-speed-max"></div>
-                                    <div class="cs-grid-cell"><input type="number" id="cs-stat-intel-max"></div>
+                                    <div class="cs-grid-cell"><input type="number" id="cs-stat-might-max" aria-label="Max Might"></div>
+                                    <div class="cs-grid-cell"><input type="number" id="cs-stat-speed-max" aria-label="Max Speed"></div>
+                                    <div class="cs-grid-cell"><input type="number" id="cs-stat-intel-max" aria-label="Max Intel"></div>
 
                                     <!-- Ligne 4 : Edge -->
                                     <div class="cs-grid-label">Edge</div>
-                                    <div class="cs-grid-cell"><input type="number" id="cs-stat-might-edge"></div>
-                                    <div class="cs-grid-cell"><input type="number" id="cs-stat-speed-edge"></div>
-                                    <div class="cs-grid-cell"><input type="number" id="cs-stat-intel-edge"></div>
+                                    <div class="cs-grid-cell"><input type="number" id="cs-stat-might-edge" aria-label="Edge Might"></div>
+                                    <div class="cs-grid-cell"><input type="number" id="cs-stat-speed-edge" aria-label="Edge Speed"></div>
+                                    <div class="cs-grid-cell"><input type="number" id="cs-stat-intel-edge" aria-label="Edge Intel"></div>
                                 </div>
 
                                 <!-- Ligne Tier, Effort, XP -->
@@ -293,28 +302,28 @@
                             <div class="cs-section">
                                 <h2>Recovery</h2>
                                 <div class="cs-stat-sub" style="margin-bottom: 10px;">
-                                    <label>Bonus au jet (1d6 + )</label>
+                                    <label for="cs-recovery-bonus">Bonus au jet (1d6 + )</label>
                                     <input type="number" id="cs-recovery-bonus">
                                 </div>
                                 <div class="cs-recovery-grid">
                                     <div class="cs-checkbox-group">
                                         <div class="cs-recovery-item">
                                             <label class="cs-checkbox-label"><input type="checkbox" id="cs-rec-action"> 1 Action</label>
-                                            <span class="material-symbols-outlined cs-roll-icon cs-rec-roll" data-rec="action" title="Lancer 1 Action">casino</span>
+                                            <button type="button" class="cs-roll-icon cs-rec-roll" data-rec="action" title="Lancer 1 Action" aria-label="Lancer récupération 1 Action"><span class="material-symbols-outlined" aria-hidden="true">casino</span></button>
                                         </div>
                                         <div class="cs-recovery-item">
                                             <label class="cs-checkbox-label"><input type="checkbox" id="cs-rec-tenMinutes"> 10 Minutes</label>
-                                            <span class="material-symbols-outlined cs-roll-icon cs-rec-roll" data-rec="tenMinutes" title="Lancer 10 Minutes">casino</span>
+                                            <button type="button" class="cs-roll-icon cs-rec-roll" data-rec="tenMinutes" title="Lancer 10 Minutes" aria-label="Lancer récupération 10 Minutes"><span class="material-symbols-outlined" aria-hidden="true">casino</span></button>
                                         </div>
                                     </div>
                                     <div class="cs-checkbox-group">
                                         <div class="cs-recovery-item">
                                             <label class="cs-checkbox-label"><input type="checkbox" id="cs-rec-oneHour"> 1 Heure</label>
-                                            <span class="material-symbols-outlined cs-roll-icon cs-rec-roll" data-rec="oneHour" title="Lancer 1 Heure">casino</span>
+                                            <button type="button" class="cs-roll-icon cs-rec-roll" data-rec="oneHour" title="Lancer 1 Heure" aria-label="Lancer récupération 1 Heure"><span class="material-symbols-outlined" aria-hidden="true">casino</span></button>
                                         </div>
                                         <div class="cs-recovery-item">
                                             <label class="cs-checkbox-label"><input type="checkbox" id="cs-rec-tenHours"> 10 Heures</label>
-                                            <span class="material-symbols-outlined cs-roll-icon cs-rec-roll" data-rec="tenHours" title="Lancer 10 Heures">casino</span>
+                                            <button type="button" class="cs-roll-icon cs-rec-roll" data-rec="tenHours" title="Lancer 10 Heures" aria-label="Lancer récupération 10 Heures"><span class="material-symbols-outlined" aria-hidden="true">casino</span></button>
                                         </div>
                                     </div>
                                 </div>
@@ -327,14 +336,14 @@
                                 <div id="cs-skills-list" class="cs-list-container">
                                     <!-- Skills injected via JS -->
                                 </div>
-                                <button class="cs-add-btn" id="cs-add-skill"><span class="material-symbols-outlined">add</span> Ajouter une compétence</button>
+                                <button type="button" class="cs-add-btn" id="cs-add-skill"><span class="material-symbols-outlined" aria-hidden="true">add</span> Ajouter une compétence</button>
                             </div>
                             <div class="cs-abilities-col">
                                 <h2>Capacités (Abilities)</h2>
                                 <div id="cs-abilities-list" class="cs-list-container">
                                     <!-- Abilities injected via JS -->
                                 </div>
-                                <button class="cs-add-btn" id="cs-add-ability"><span class="material-symbols-outlined">add</span> Ajouter une capacité</button>
+                                <button type="button" class="cs-add-btn" id="cs-add-ability"><span class="material-symbols-outlined" aria-hidden="true">add</span> Ajouter une capacité</button>
                             </div>
                         </div>
 
@@ -343,23 +352,23 @@
                             <div id="cs-weapons-list" class="cs-list-container">
                                 <!-- Weapons injected via JS -->
                             </div>
-                            <button class="cs-add-btn" id="cs-add-weapon"><span class="material-symbols-outlined">add</span> Ajouter une arme</button>
+                            <button type="button" class="cs-add-btn" id="cs-add-weapon"><span class="material-symbols-outlined" aria-hidden="true">add</span> Ajouter une arme</button>
 
                             <div style="margin-top:20px; display:flex; flex-wrap:wrap; gap:20px;">
                                 <div class="cs-field">
-                                    <label>Armure (Valeur)</label>
+                                    <label for="cs-armor-value">Armure (Valeur)</label>
                                     <input type="number" id="cs-armor-value">
                                 </div>
                                 <div class="cs-field">
-                                    <label>Coût Effort Speed (Armure)</label>
+                                    <label for="cs-armor-cost">Coût Effort Speed (Armure)</label>
                                     <input type="number" id="cs-armor-cost">
                                 </div>
                                 <div class="cs-field" style="flex-grow:1;">
-                                    <label>Description (Armure)</label>
+                                    <label for="cs-armor-desc">Description (Armure)</label>
                                     <input type="text" id="cs-armor-desc">
                                 </div>
                                 <div class="cs-field">
-                                    <label>Shins</label>
+                                    <label for="cs-shins">Shins</label>
                                     <input type="number" id="cs-shins">
                                 </div>
                             </div>
@@ -368,25 +377,25 @@
                             <div id="cs-implants-list" class="cs-list-container">
                                 <!-- Implants injected via JS -->
                             </div>
-                            <button class="cs-add-btn" id="cs-add-implant"><span class="material-symbols-outlined">add</span> Ajouter un implant</button>
+                            <button type="button" class="cs-add-btn" id="cs-add-implant"><span class="material-symbols-outlined" aria-hidden="true">add</span> Ajouter un implant</button>
 
                             <h3 style="margin-top:20px; color:#ccc;">Équipement Général</h3>
                             <div id="cs-general-items-list" class="cs-list-container">
                                 <!-- General items injected via JS -->
                             </div>
-                            <button class="cs-add-btn" id="cs-add-general-item"><span class="material-symbols-outlined">add</span> Ajouter un objet</button>
+                            <button type="button" class="cs-add-btn" id="cs-add-general-item"><span class="material-symbols-outlined" aria-hidden="true">add</span> Ajouter un objet</button>
                         </div>
 
                         <div class="cs-section">
                             <h2>Cyphers</h2>
                             <div class="cs-stat-sub" style="justify-content: flex-start; gap:10px; margin-bottom: 10px;">
-                                <label>Limite :</label>
+                                <label for="cs-cyphers-limit">Limite :</label>
                                 <input type="number" id="cs-cyphers-limit" style="width: 60px;">
                             </div>
                             <div id="cs-cyphers-list" class="cs-list-container">
                                 <!-- Cyphers injected via JS -->
                             </div>
-                            <button class="cs-add-btn" id="cs-add-cypher"><span class="material-symbols-outlined">add</span> Ajouter un cypher</button>
+                            <button type="button" class="cs-add-btn" id="cs-add-cypher"><span class="material-symbols-outlined" aria-hidden="true">add</span> Ajouter un cypher</button>
                         </div>
 
                         <div class="cs-section">
@@ -395,19 +404,19 @@
                             <div id="cs-artifacts-list" class="cs-list-container">
                                 <!-- Artifacts injected via JS -->
                             </div>
-                            <button class="cs-add-btn" id="cs-add-artifact"><span class="material-symbols-outlined">add</span> Ajouter un artéfact</button>
+                            <button type="button" class="cs-add-btn" id="cs-add-artifact"><span class="material-symbols-outlined" aria-hidden="true">add</span> Ajouter un artéfact</button>
 
                             <h3 style="color:#ccc; margin-top:20px;">Oddities</h3>
                             <div id="cs-oddities-list" class="cs-list-container">
                                 <!-- Oddities injected via JS -->
                             </div>
-                            <button class="cs-add-btn" id="cs-add-oddity"><span class="material-symbols-outlined">add</span> Ajouter une oddity</button>
+                            <button type="button" class="cs-add-btn" id="cs-add-oddity"><span class="material-symbols-outlined" aria-hidden="true">add</span> Ajouter une oddity</button>
                         </div>
 
                         <div class="cs-section">
                             <h2>Avancement (Advancement)</h2>
                             <div class="cs-field" style="margin-bottom:15px; width: 150px;">
-                                <label>XP Disponible</label>
+                                <label for="cs-adv-xp-available">XP Disponible</label>
                                 <input type="number" id="cs-adv-xp-available">
                             </div>
                             <div class="cs-checkbox-group">
@@ -421,12 +430,12 @@
                     </div>
                 </div>
             </div>
-            <nav class="main-menu">
-                <a href="#carte" class="menu-item" data-target="carte-content" title="Carte"><span class="material-symbols-outlined">map</span></a>
-                <a href="#character-sheet" class="menu-item" data-target="character-sheet-content" title="Fiche de Personnage"><span class="material-symbols-outlined">person_book</span></a>
-                <a href="#fabric" class="menu-item" data-target="fabric-content" title="Tableau Blanc"><span class="material-symbols-outlined">draw</span></a>
-                <a href="#wiki" class="menu-item" data-target="wiki-content" title="Wiki"><span class="material-symbols-outlined">library_books</span></a>
-                <a href="#music" class="menu-item hidden" data-target="music-content" id="music-nav-item" title="Musique"><span class="material-symbols-outlined">music_note</span></a>
+            <nav class="main-menu" role="tablist" focusgroup="tablist nomemory" aria-label="Navigation principale">
+                <a href="#carte" id="nav-tab-carte" role="tab" aria-selected="true" aria-controls="carte-content" focusgroupstart class="menu-item active" data-target="carte-content" title="Carte" aria-label="Carte"><span class="material-symbols-outlined" aria-hidden="true">map</span></a>
+                <a href="#character-sheet" id="nav-tab-character-sheet" role="tab" aria-selected="false" aria-controls="character-sheet-content" class="menu-item" data-target="character-sheet-content" title="Fiche de Personnage" aria-label="Fiche de Personnage"><span class="material-symbols-outlined" aria-hidden="true">person_book</span></a>
+                <a href="#fabric" id="nav-tab-fabric" role="tab" aria-selected="false" aria-controls="fabric-content" class="menu-item" data-target="fabric-content" title="Tableau Blanc" aria-label="Tableau Blanc"><span class="material-symbols-outlined" aria-hidden="true">draw</span></a>
+                <a href="#wiki" id="nav-tab-wiki" role="tab" aria-selected="false" aria-controls="wiki-content" class="menu-item" data-target="wiki-content" title="Wiki" aria-label="Wiki"><span class="material-symbols-outlined" aria-hidden="true">library_books</span></a>
+                <a href="#music" id="music-nav-item" role="tab" aria-selected="false" aria-controls="music-content" class="menu-item hidden" data-target="music-content" title="Musique" aria-label="Musique"><span class="material-symbols-outlined" aria-hidden="true">music_note</span></a>
             </nav>
         </main>
         <div class="resizer" id="resizer-right"></div>
@@ -434,8 +443,8 @@
             <div class="panel-header">
                 <h2>Vidéo</h2>
                 <div id="global-controls">
-                    <button id="mute-mic-btn" class="muted" title="Activer le micro"><span class="material-symbols-outlined">mic_off</span></button>
-                    <button id="toggle-video-btn" class="muted" title="Activer la caméra"><span class="material-symbols-outlined">videocam_off</span></button>
+                    <button id="mute-mic-btn" type="button" class="muted" title="Activer le micro" aria-label="Activer ou couper le micro"><span class="material-symbols-outlined" aria-hidden="true">mic_off</span></button>
+                    <button id="toggle-video-btn" type="button" class="muted" title="Activer la caméra" aria-label="Activer ou couper la caméra"><span class="material-symbols-outlined" aria-hidden="true">videocam_off</span></button>
                 </div>
             </div>
             <div id="video-grid">
@@ -444,29 +453,29 @@
         </aside>
 
         <!-- Panel Toggles -->
-        <button id="toggle-chat-btn" title="Cacher le panneau de chat">
-            <span class="material-symbols-outlined">chevron_left</span>
+        <button id="toggle-chat-btn" type="button" title="Cacher le panneau de chat" aria-label="Afficher ou cacher le panneau de chat">
+            <span class="material-symbols-outlined" aria-hidden="true">chevron_left</span>
         </button>
-        <button id="toggle-video-panel-btn" title="Cacher le panneau de vidéo">
-            <span class="material-symbols-outlined">chevron_right</span>
+        <button id="toggle-video-panel-btn" type="button" title="Cacher le panneau de vidéo" aria-label="Afficher ou cacher le panneau de vidéo">
+            <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
         </button>
     </div>
 
 
     <!-- Backup / Restore Button (MJ only) -->
-    <button id="mj-backup-btn" title="Gérer la sauvegarde" class="hidden" style="position: fixed; bottom: 10px; left: 10px; z-index: 9999; background: #333; color: white; border: 1px solid #444; border-radius: 50%; width: 40px; height: 40px; display: none; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.5);">
-        <span class="material-symbols-outlined">save</span>
+    <button id="mj-backup-btn" type="button" command="show-modal" commandfor="backup-modal" title="Gérer la sauvegarde" aria-label="Gérer la sauvegarde" class="hidden" style="position: fixed; bottom: 10px; left: 10px; z-index: 9999; background: #333; color: white; border: 1px solid #444; border-radius: 50%; width: 40px; height: 40px; display: none; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.5);">
+        <span class="material-symbols-outlined" aria-hidden="true">save</span>
     </button>
 
     <!-- Backup Modal -->
-    <div id="backup-modal" class="cs-modal-overlay" style="display: none; z-index: 10003;">
+    <dialog id="backup-modal" class="cs-modal-overlay" closedby="any" aria-labelledby="backup-modal-title">
         <div class="cs-modal-content" style="width: 400px; max-width: 90vw;">
-            <h3 style="margin-top:0;">Sauvegarde et Restauration</h3>
+            <h3 id="backup-modal-title" style="margin-top:0;">Sauvegarde et Restauration</h3>
             <p>Gérez l'état complet de la partie (Fiches, Chat, Carte, Images, Playlist).</p>
 
             <div style="margin-top: 20px; display: flex; flex-direction: column; gap: 15px;">
-                <button id="backup-download-btn" class="cs-btn-confirm" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;">
-                    <span class="material-symbols-outlined">download</span> Télécharger la sauvegarde
+                <button id="backup-download-btn" type="button" class="cs-btn-confirm" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                    <span class="material-symbols-outlined" aria-hidden="true">download</span> Télécharger la sauvegarde
                 </button>
 
                 <hr style="border: 1px solid #444; width: 100%;">
@@ -475,19 +484,19 @@
                     <label for="backup-upload-input" style="display: block; margin-bottom: 5px; color: #ccc;">Restaurer une sauvegarde (.json)</label>
                     <input type="file" id="backup-upload-input" accept=".json" style="width: 100%; background: #222; color: #fff; padding: 5px; border: 1px solid #444; border-radius: 4px;">
                 </div>
-                <button id="backup-restore-btn" class="cs-btn-cancel" style="width: 100%; background-color: #8b0000; display: flex; align-items: center; justify-content: center; gap: 10px;" disabled>
-                    <span class="material-symbols-outlined">upload</span> Restaurer (Attention: écrase tout)
+                <button id="backup-restore-btn" type="button" class="cs-btn-cancel" style="width: 100%; background-color: #8b0000; display: flex; align-items: center; justify-content: center; gap: 10px;" disabled>
+                    <span class="material-symbols-outlined" aria-hidden="true">upload</span> Restaurer (Attention: écrase tout)
                 </button>
             </div>
 
             <div class="cs-modal-actions" style="margin-top: 20px;">
-                <button id="backup-modal-close" class="cs-btn-cancel" style="margin-left: auto;">Fermer</button>
+                <button id="backup-modal-close" type="button" command="close" commandfor="backup-modal" class="cs-btn-cancel" style="margin-left: auto;">Fermer</button>
             </div>
         </div>
-    </div>
+    </dialog>
 
     <!-- Modale de lancer de dés pour la fiche -->
-    <div id="cs-roll-modal" class="cs-modal-overlay" style="display: none;">
+    <dialog id="cs-roll-modal" class="cs-modal-overlay" closedby="any" aria-labelledby="cs-roll-modal-title">
         <div class="cs-modal-content">
             <h3 id="cs-roll-modal-title">Lancer le dé</h3>
 
@@ -504,76 +513,75 @@
             <div class="cs-modal-hint">* = 0 si inconnue</div>
 
             <div class="cs-modal-actions">
-                <button id="cs-roll-modal-cancel" class="cs-btn-cancel">Annuler</button>
-                <button id="cs-roll-modal-confirm" class="cs-btn-confirm">Lancer</button>
+                <button id="cs-roll-modal-cancel" type="button" command="close" commandfor="cs-roll-modal" class="cs-btn-cancel">Annuler</button>
+                <button id="cs-roll-modal-confirm" type="button" class="cs-btn-confirm">Lancer</button>
             </div>
         </div>
-    </div>
+    </dialog>
 
     <!-- Identity Edit Modal -->
-    <div id="cs-identity-modal" class="cs-modal-overlay" style="display: none;">
+    <dialog id="cs-identity-modal" class="cs-modal-overlay" closedby="any" aria-labelledby="cs-identity-modal-title">
         <div class="cs-modal-content" style="width: 400px; max-width: 90vw;">
-            <h3 style="margin-top:0;">Editer l'Identité</h3>
+            <h3 id="cs-identity-modal-title" style="margin-top:0;">Editer l'Identité</h3>
             <div class="cs-identity-grid" style="margin-top: 15px; display: grid; gap: 10px;">
                 <div class="cs-field">
-                    <label>Nom</label>
+                    <label for="cs-id-name">Nom</label>
                     <input type="text" id="cs-id-name" style="width: 100%;">
                 </div>
                 <div class="cs-field">
-                    <label>Joueur</label>
+                    <label for="cs-id-playerName">Joueur</label>
                     <input type="text" id="cs-id-playerName" style="width: 100%;">
                 </div>
                 <div class="cs-field">
-                    <label>Descripteur</label>
+                    <label for="cs-id-descriptor">Descripteur</label>
                     <input type="text" id="cs-id-descriptor" style="width: 100%;">
                 </div>
                 <div class="cs-field">
-                    <label>Type</label>
+                    <label for="cs-id-type">Type</label>
                     <input type="text" id="cs-id-type" style="width: 100%;">
                 </div>
                 <div class="cs-field" style="grid-column: 1 / -1;">
-                    <label>Focus</label>
+                    <label for="cs-id-focus">Focus</label>
                     <input type="text" id="cs-id-focus" style="width: 100%;">
                 </div>
                 <div class="cs-field" style="grid-column: 1 / -1;">
-                    <label>Portrait (URL)</label>
+                    <label for="cs-id-portraitUrl">Portrait (URL)</label>
                     <input type="text" id="cs-id-portraitUrl" style="width: 100%;">
                 </div>
             </div>
             <div class="cs-modal-actions" style="margin-top: 15px;">
-                <button id="cs-identity-modal-cancel" class="cs-btn-cancel">Annuler</button>
-                <button id="cs-identity-modal-confirm" class="cs-btn-confirm">Valider</button>
+                <button id="cs-identity-modal-cancel" type="button" command="close" commandfor="cs-identity-modal" class="cs-btn-cancel">Annuler</button>
+                <button id="cs-identity-modal-confirm" type="button" class="cs-btn-confirm">Valider</button>
             </div>
         </div>
-    </div>
-
-
+    </dialog>
 
     <!-- Modale de description pour les capacités -->
-    <div id="cs-desc-modal" class="cs-modal-overlay" style="display: none;">
+    <dialog id="cs-desc-modal" class="cs-modal-overlay" closedby="any" aria-labelledby="cs-desc-modal-title">
         <div class="cs-modal-content" style="width: 400px; max-width: 90vw;">
             <h3 id="cs-desc-modal-title">Description</h3>
+            <label for="cs-desc-modal-text" class="visually-hidden">Description</label>
             <textarea id="cs-desc-modal-text" rows="8" style="width: 100%; background:#1a1a1a; color:#fff; border:1px solid #444; border-radius:4px; padding:8px; margin-bottom: 15px; resize: vertical;"></textarea>
             <div class="cs-modal-actions">
-                <button id="cs-desc-modal-cancel" class="cs-btn-cancel">Annuler</button>
-                <button id="cs-desc-modal-confirm" class="cs-btn-confirm">Enregistrer</button>
+                <button id="cs-desc-modal-cancel" type="button" command="close" commandfor="cs-desc-modal" class="cs-btn-cancel">Annuler</button>
+                <button id="cs-desc-modal-confirm" type="button" class="cs-btn-confirm">Enregistrer</button>
             </div>
         </div>
-    </div>
+    </dialog>
 
     <!-- Modale de la bibliothèque de Tokens -->
-    <div id="tokens-lib-modal" class="cs-modal-overlay" style="display: none; z-index: 10005;">
-        <div class="cs-modal-content tokens-lib-content" style="width: 820px; max-width: 92vw; height: 80vh; display: flex; flex-direction: column;">
+    <dialog id="tokens-lib-modal" class="cs-modal-overlay" closedby="any" aria-labelledby="tokens-lib-modal-title">
+        <div class="cs-modal-content tokens-lib-content" style="width: 820px; max-width: 92vw; display: flex; flex-direction: column;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;">
-                    <span class="material-symbols-outlined" style="color: #4CAF50;">category</span> Bibliothèque de Tokens
+                <h3 id="tokens-lib-modal-title" style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <span class="material-symbols-outlined" aria-hidden="true" style="color: #4CAF50;">category</span> Bibliothèque de Tokens
                 </h3>
-                <button id="tokens-lib-add-btn" class="cs-btn-confirm hidden" style="background-color: #4CAF50; border-color: #388E3C; padding: 4px 10px; font-size: 13px;">
-                    <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; margin-right: 4px;">add</span> Ajouter
+                <button id="tokens-lib-add-btn" type="button" command="show-modal" commandfor="add-token-modal" class="cs-btn-confirm hidden" style="background-color: #4CAF50; border-color: #388E3C; padding: 4px 10px; font-size: 13px;">
+                    <span class="material-symbols-outlined" aria-hidden="true" style="font-size: 16px; vertical-align: middle; margin-right: 4px;">add</span> Ajouter
                 </button>
             </div>
             <div style="display: flex; flex-grow: 1; overflow: hidden; gap: 15px;">
-                <div class="tokens-categories">
+                <div class="tokens-categories" role="tablist" focusgroup="tablist vertical nomemory" aria-label="Catégories de tokens">
                     <!-- Les catégories seront injectées ici -->
                 </div>
                 <div class="tokens-grid-container">
@@ -583,29 +591,29 @@
                 </div>
             </div>
             <div class="cs-modal-actions" style="margin-top: 15px;">
-                <button id="tokens-lib-modal-close" class="cs-btn-cancel" style="margin-left: auto;">Fermer</button>
+                <button id="tokens-lib-modal-close" type="button" command="close" commandfor="tokens-lib-modal" class="cs-btn-cancel" style="margin-left: auto;">Fermer</button>
             </div>
         </div>
-    </div>
+    </dialog>
 
     <!-- Modale d'ajout de Token (MJ uniquement) -->
-    <div id="add-token-modal" class="cs-modal-overlay" style="display: none; z-index: 10010;">
+    <dialog id="add-token-modal" class="cs-modal-overlay" closedby="any" aria-labelledby="add-token-modal-title">
         <div class="cs-modal-content" style="width: 440px; max-width: 90vw;">
-            <h3 style="margin-top:0; display: flex; align-items: center; gap: 8px;">
-                <span class="material-symbols-outlined" style="color: #4CAF50;">add_photo_alternate</span> Ajouter des Tokens
+            <h3 id="add-token-modal-title" style="margin-top:0; display: flex; align-items: center; gap: 8px;">
+                <span class="material-symbols-outlined" aria-hidden="true" style="color: #4CAF50;">add_photo_alternate</span> Ajouter des Tokens
             </h3>
             <div style="margin-top: 15px; display: flex; flex-direction: column; gap: 12px;">
                 <div class="cs-field">
-                    <label>Images des Tokens (sélection multiple possible)</label>
+                    <label for="add-token-file">Images des Tokens (sélection multiple possible)</label>
                     <input type="file" id="add-token-file" multiple accept="image/jpeg, image/png, image/gif, image/webp, image/svg+xml" style="width: 100%; background: #222; color: #fff; padding: 6px; border: 1px solid #444; border-radius: 4px;">
                     <div id="add-token-files-info" style="color: #4CAF50; font-size: 0.85em; margin-top: 5px; display: none;"></div>
                 </div>
                 <div id="add-token-name-container" class="cs-field">
-                    <label>Nom du Token (si image unique)</label>
+                    <label for="add-token-name">Nom du Token (si image unique)</label>
                     <input type="text" id="add-token-name" placeholder="Laisser vide pour utiliser le nom du fichier" style="width: 100%;">
                 </div>
                 <div class="cs-field">
-                    <label>Catégorie</label>
+                    <label for="add-token-category">Catégorie</label>
                     <select id="add-token-category" style="width: 100%; background: #222; color: #fff; padding: 6px; border: 1px solid #444; border-radius: 4px;">
                         <option value="Personnages joueurs (PJ)">Personnages joueurs (PJ)</option>
                         <option value="Alliés et PNJ">Alliés et PNJ</option>
@@ -616,7 +624,7 @@
                     </select>
                 </div>
                 <div class="cs-field">
-                    <label>Taille (sur la carte)</label>
+                    <label for="add-token-size">Taille (sur la carte)</label>
                     <select id="add-token-size" style="width: 100%; background: #222; color: #fff; padding: 6px; border: 1px solid #444; border-radius: 4px;">
                         <option value="1x1" selected>1 case (1x1)</option>
                         <option value="1x2">2 cases, Vertical (1x2)</option>
@@ -626,47 +634,47 @@
                 <div id="add-token-error" style="color: #ff4444; font-size: 0.9em; display: none;"></div>
             </div>
             <div class="cs-modal-actions" style="margin-top: 15px;">
-                <button id="add-token-modal-cancel" class="cs-btn-cancel">Annuler</button>
-                <button id="add-token-modal-confirm" class="cs-btn-confirm">Ajouter</button>
+                <button id="add-token-modal-cancel" type="button" command="close" commandfor="add-token-modal" class="cs-btn-cancel">Annuler</button>
+                <button id="add-token-modal-confirm" type="button" class="cs-btn-confirm">Ajouter</button>
             </div>
         </div>
-    </div>
+    </dialog>
 
-    <script src="/libs/webrtc/adapter.min.js?v=9.0.6"></script>
-    <script src="/libs/fabric/fabric.min.js?v=6.0.0"></script>
-    <script src="/navigation.js?v=1.2" defer></script>
-    <script src="/game-systems.js?v=1.2" defer></script>
-    <script src="/script.min.js?v=1.3" defer></script>
-    <script src="/images.js?v=1.2" defer></script>
-    <script src="/fabric-whiteboard.js?v=1.9" defer></script>
-    <script src="/music.js?v=1.2" defer></script>
-    <script src="/libs/easymde/easymde.min.js?v=2.21.0"></script>
-    <script src="/libs/showdown/showdown.min.js?v=2.1.0"></script>
-    <script src="wiki.js?v=1.2" defer></script>
     <!-- Modale de confirmation de suppression de personnage -->
-    <div id="cs-delete-confirm-modal" class="cs-modal-overlay" style="display: none; z-index: 10002;">
+    <dialog id="cs-delete-confirm-modal" class="cs-modal-overlay" closedby="any" aria-labelledby="cs-delete-confirm-title">
         <div class="cs-modal-content">
-            <h3 style="color: #ff4444;">Supprimer le personnage</h3>
+            <h3 id="cs-delete-confirm-title" style="color: #ff4444;">Supprimer le personnage</h3>
             <p>Êtes-vous sûr de vouloir supprimer définitivement ce personnage ? Cette action est irréversible.</p>
             <div class="cs-modal-actions">
-                <button id="cs-delete-confirm-cancel" class="cs-btn-cancel">Annuler</button>
-                <button id="cs-delete-confirm-accept" class="cs-btn-confirm" style="background-color: #8b0000;">Supprimer</button>
+                <button id="cs-delete-confirm-cancel" type="button" command="close" commandfor="cs-delete-confirm-modal" class="cs-btn-cancel" autofocus>Annuler</button>
+                <button id="cs-delete-confirm-accept" type="button" class="cs-btn-confirm" style="background-color: #8b0000;">Supprimer</button>
             </div>
         </div>
-    </div>
+    </dialog>
 
     <!-- Modale de confirmation de suppression du chat -->
-    <div id="chat-clear-confirm-modal" class="cs-modal-overlay" style="display: none; z-index: 10002;">
+    <dialog id="chat-clear-confirm-modal" class="cs-modal-overlay" closedby="any" aria-labelledby="chat-clear-confirm-title">
         <div class="cs-modal-content">
-            <h3 style="color: #ff4444;">Vider le chat</h3>
+            <h3 id="chat-clear-confirm-title" style="color: #ff4444;">Vider le chat</h3>
             <p>Êtes-vous sûr de vouloir effacer tout l'historique du chat pour tous les joueurs ? Cette action est irréversible.</p>
             <div class="cs-modal-actions">
-                <button id="chat-clear-confirm-cancel" class="cs-btn-cancel">Annuler</button>
-                <button id="chat-clear-confirm-accept" class="cs-btn-confirm" style="background-color: #8b0000;">Vider</button>
+                <button id="chat-clear-confirm-cancel" type="button" command="close" commandfor="chat-clear-confirm-modal" class="cs-btn-cancel" autofocus>Annuler</button>
+                <button id="chat-clear-confirm-accept" type="button" class="cs-btn-confirm" style="background-color: #8b0000;">Vider</button>
             </div>
         </div>
-    </div>
+    </dialog>
 
+    <script src="/libs/webrtc/adapter.min.js?v=9.0.6" defer></script>
+    <script src="/libs/fabric/fabric.min.js?v=6.0.0" defer></script>
+    <script src="/navigation.js?v=1.2" defer></script>
+    <script src="/game-systems.js?v=1.2" defer></script>
+    <script src="/script.min.js?v=1.3" defer fetchpriority="high"></script>
+    <script src="/images.js?v=1.2" defer></script>
+    <script src="/fabric-whiteboard.js?v=1.9" defer></script>
+    <script src="/music.js?v=1.2" defer fetchpriority="low"></script>
+    <script src="/libs/easymde/easymde.min.js?v=2.21.0" defer fetchpriority="low"></script>
+    <script src="/libs/showdown/showdown.min.js?v=2.1.0" defer fetchpriority="low"></script>
+    <script src="wiki.js?v=1.2" defer></script>
     <script src="character-sheet.js" defer></script>
 </body>
 </html>

@@ -65,16 +65,52 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // --- Safe HTML Sanitization (Sanitizer API setHTML with fallback) ---
+    let domPurifyPromise = null;
+    async function safeSetHTML(targetEl, untrustedHtml) {
+        if ('setHTML' in Element.prototype) {
+            targetEl.setHTML(untrustedHtml);
+            return;
+        }
+        try {
+            if (!domPurifyPromise) {
+                domPurifyPromise = import('https://cdn.jsdelivr.net/npm/dompurify@3.2.4/+esm').catch(() => null);
+            }
+            const mod = await domPurifyPromise;
+            if (mod && mod.default) {
+                targetEl.innerHTML = mod.default.sanitize(untrustedHtml);
+                return;
+            }
+        } catch (_) {
+            // Ignore import errors in offline/sandboxed environments and use DOM parser sanitizer below
+        }
+        const doc = new DOMParser().parseFromString(untrustedHtml, 'text/html');
+        doc.querySelectorAll('script, iframe, object, embed, form, meta, link, style, base').forEach(el => el.remove());
+        doc.querySelectorAll('*').forEach(el => {
+            [...el.attributes].forEach(attr => {
+                const name = attr.name.toLowerCase();
+                const val = attr.value.trim().toLowerCase();
+                if (name.startsWith('on') || ((name === 'href' || name === 'src' || name === 'xlink:href') && (val.startsWith('javascript:') || val.startsWith('data:text/html')))) {
+                    el.removeAttribute(attr.name);
+                }
+            });
+        });
+        targetEl.replaceChildren(...doc.body.childNodes);
+    }
+
     function renderPage(pageData) {
         currentPage = pageData;
         if (currentPage) {
             wikiTitle.textContent = currentPage.pageName.replace(/_/g, ' ');
-            wikiBody.innerHTML = markdownConverter.makeHtml(currentPage.content);
+            const rawHtml = markdownConverter.makeHtml(currentPage.content);
+            safeSetHTML(wikiBody, rawHtml);
             // Update select dropdown to show the current page
             pageSelect.value = `${currentPage.pageName}|${currentPage.isMJPage}`;
         } else {
             wikiTitle.textContent = 'Bienvenue sur le Wiki';
-            wikiBody.innerHTML = '<p>Sélectionnez une page dans le menu déroulant pour commencer, ou créez-en une nouvelle avec les boutons \'+\'.</p>';
+            const p = document.createElement('p');
+            p.textContent = "Sélectionnez une page dans le menu déroulant pour commencer, ou créez-en une nouvelle avec les boutons '+'.";
+            wikiBody.replaceChildren(p);
             pageSelect.value = "";
         }
         showViewer();
