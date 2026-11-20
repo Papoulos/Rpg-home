@@ -82,7 +82,9 @@ const defaultCharacterData = {
       "gainEffort": false,
       "advancedAbility": false,
       "moveTowardPerfection": false,
-      "extraSpecialAbility": false
+      "extraSpecialAbility": false,
+      "reduceArmorCost": false,
+      "addRecovery": false
     }
   }
 };
@@ -295,11 +297,13 @@ function renderCharacterSheet() {
 
     // Advancement
     document.getElementById('cs-adv-xp-available').value = characterData.advancement.pointsAvailable || 0;
-    document.getElementById('cs-adv-increasePool').checked = characterData.advancement.optionsUsed.increasePool;
-    document.getElementById('cs-adv-trainSkill').checked = characterData.advancement.optionsUsed.trainSkill;
-    document.getElementById('cs-adv-gainEffort').checked = characterData.advancement.optionsUsed.gainEffort;
-    document.getElementById('cs-adv-advancedAbility').checked = characterData.advancement.optionsUsed.advancedAbility;
-    document.getElementById('cs-adv-moveTowardPerfection').checked = characterData.advancement.optionsUsed.moveTowardPerfection;
+    document.getElementById('cs-adv-increasePool').checked = Boolean(characterData.advancement.optionsUsed.increasePool);
+    document.getElementById('cs-adv-trainSkill').checked = Boolean(characterData.advancement.optionsUsed.trainSkill);
+    document.getElementById('cs-adv-gainEffort').checked = Boolean(characterData.advancement.optionsUsed.gainEffort);
+    document.getElementById('cs-adv-advancedAbility').checked = Boolean(characterData.advancement.optionsUsed.advancedAbility);
+    document.getElementById('cs-adv-moveTowardPerfection').checked = Boolean(characterData.advancement.optionsUsed.moveTowardPerfection);
+    document.getElementById('cs-adv-reduceArmorCost').checked = Boolean(characterData.advancement.optionsUsed.reduceArmorCost);
+    document.getElementById('cs-adv-addRecovery').checked = Boolean(characterData.advancement.optionsUsed.addRecovery);
 }
 
 function updateCharacterDataFromInputs() {
@@ -368,6 +372,8 @@ function updateCharacterDataFromInputs() {
     characterData.advancement.optionsUsed.gainEffort = document.getElementById('cs-adv-gainEffort').checked;
     characterData.advancement.optionsUsed.advancedAbility = document.getElementById('cs-adv-advancedAbility').checked;
     characterData.advancement.optionsUsed.moveTowardPerfection = document.getElementById('cs-adv-moveTowardPerfection').checked;
+    characterData.advancement.optionsUsed.reduceArmorCost = document.getElementById('cs-adv-reduceArmorCost').checked;
+    characterData.advancement.optionsUsed.addRecovery = document.getElementById('cs-adv-addRecovery').checked;
 
     // Skills, Abilities, Weapons, Cyphers are dynamically updated on interaction
     saveToLocalStorage();
