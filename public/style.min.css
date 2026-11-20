@@ -677,6 +677,35 @@ div.login-overlay {
     z-index: 2;
 }
 
+.video-status-indicators {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.video-status-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(244, 67, 54, 0.85);
+    color: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+    pointer-events: auto;
+}
+
+.video-status-badge .material-symbols-outlined {
+    font-size: 15px;
+    line-height: 1;
+}
+
 .video-pools-bar {
     display: flex;
     align-items: center;

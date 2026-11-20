@@ -472,27 +472,44 @@
 
         const video = videoContainer.querySelector('video.peer-video');
         const avatarImg = videoContainer.querySelector('img.fallback-avatar');
+        const micOffBadge = videoContainer.querySelector('.video-status-mic-off');
+        const camOffBadge = videoContainer.querySelector('.video-status-cam-off');
         if (!video || !avatarImg) return;
 
         let showVideo = false;
+        let isVideoActive = false;
+        let isAudioActive = false;
         if (name === getUsername()) {
-            const videoTrack = localStream ? localStream.getVideoTracks()[0] : null;
-            showVideo = Boolean(videoTrack && videoTrack.enabled && videoTrack.readyState !== 'ended');
+            const localState = getLocalMediaState();
+            isVideoActive = localState.videoEnabled;
+            isAudioActive = localState.audioEnabled;
+            showVideo = isVideoActive;
         } else {
             const rStream = remoteStreams[name];
             const videoTrack = rStream ? rStream.getVideoTracks().find(t => t.readyState !== 'ended') : null;
+            const audioTrack = rStream ? rStream.getAudioTracks().find(t => t.readyState !== 'ended') : null;
             const mState = peerMediaStates[name];
-            if (videoTrack) {
-                if (mState !== undefined && mState !== null) {
-                    showVideo = Boolean(mState.hasVideo !== false && mState.videoEnabled !== false);
-                } else {
-                    showVideo = !videoTrack.muted;
-                }
+
+            if (mState !== undefined && mState !== null) {
+                isVideoActive = Boolean(mState.hasVideo !== false && mState.videoEnabled !== false);
+                isAudioActive = Boolean(mState.hasAudio !== false && mState.audioEnabled !== false);
+                showVideo = Boolean(videoTrack) && isVideoActive;
+            } else {
+                isVideoActive = Boolean(videoTrack && !videoTrack.muted);
+                isAudioActive = Boolean(audioTrack && !audioTrack.muted);
+                showVideo = isVideoActive;
             }
         }
 
         video.style.display = showVideo ? 'block' : 'none';
         avatarImg.style.display = showVideo ? 'none' : 'block';
+
+        if (micOffBadge) {
+            micOffBadge.style.display = isAudioActive ? 'none' : 'inline-flex';
+        }
+        if (camOffBadge) {
+            camOffBadge.style.display = isVideoActive ? 'none' : 'inline-flex';
+        }
 
         if (showVideo && video.paused && video.srcObject) {
             video.play().catch(() => {});
@@ -554,6 +571,27 @@
             nameTag.classList.add('name-tag');
             nameTag.textContent = name;
             mediaWrapper.appendChild(nameTag);
+
+            const statusIndicators = document.createElement('div');
+            statusIndicators.classList.add('video-status-indicators');
+
+            const micOffBadge = document.createElement('span');
+            micOffBadge.classList.add('video-status-badge', 'video-status-mic-off');
+            micOffBadge.title = 'Micro désactivé';
+            micOffBadge.setAttribute('aria-label', 'Micro désactivé');
+            micOffBadge.style.display = 'none';
+            micOffBadge.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">mic_off</span>';
+
+            const camOffBadge = document.createElement('span');
+            camOffBadge.classList.add('video-status-badge', 'video-status-cam-off');
+            camOffBadge.title = 'Caméra désactivée';
+            camOffBadge.setAttribute('aria-label', 'Caméra désactivée');
+            camOffBadge.style.display = 'none';
+            camOffBadge.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">videocam_off</span>';
+
+            statusIndicators.appendChild(micOffBadge);
+            statusIndicators.appendChild(camOffBadge);
+            mediaWrapper.appendChild(statusIndicators);
 
             videoContainer.appendChild(mediaWrapper);
 
@@ -1163,6 +1201,7 @@
                     if (data.username && data.username !== getUsername()) {
                         if (data.mediaState) {
                             peerMediaStates[data.username] = data.mediaState;
+                            updateVideoVisibility(data.username);
                         }
                         enqueueSignaling(async () => {
                             if (!isLoggedIn || !getUsername()) return;
@@ -1519,6 +1558,7 @@
                 muteMicBtn.title = audioTrack.enabled ? "Couper le micro" : "Activer le micro";
                 const icon = muteMicBtn.querySelector('.material-symbols-outlined');
                 if (icon) icon.textContent = audioTrack.enabled ? 'mic' : 'mic_off';
+                updateVideoVisibility(getUsername());
                 sendMediaState();
             }
         });
