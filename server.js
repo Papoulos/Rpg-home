@@ -204,14 +204,22 @@ const storage = multer.diskStorage({
 });
 const upload = multer({
     storage: storage,
-    limits: { fileSize: 50 * 1024 * 1024 } // 50 MB limit
+    limits: { fileSize: 100 * 1024 * 1024 } // 100 MB limit for MP3 music files
 });
 
-app.post('/upload-music', upload.single('musicFile'), (req, res) => {
-    if (!req.file) {
-        return res.status(400).send('No file uploaded.');
-    }
-    res.json({ url: '/music/' + req.file.filename, filename: path.basename(req.file.originalname) });
+app.post('/upload-music', (req, res) => {
+    upload.single('musicFile')(req, res, (err) => {
+        if (err) {
+            if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+                return res.status(413).json({ error: 'Fichier MP3 trop volumineux (limite maximale : 100 Mo).' });
+            }
+            return res.status(400).json({ error: err.message || 'Erreur lors de l\'upload.' });
+        }
+        if (!req.file) {
+            return res.status(400).send('No file uploaded.');
+        }
+        res.json({ url: '/music/' + req.file.filename, filename: path.basename(req.file.originalname) });
+    });
 });
 
 app.post('/download-music-url', async (req, res) => {

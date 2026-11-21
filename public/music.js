@@ -191,7 +191,17 @@
                 method: 'POST',
                 body: formData
             });
-            if (!response.ok) throw new Error('Upload failed');
+            if (!response.ok) {
+                if (response.status === 413) {
+                    throw new Error(`Fichier trop volumineux (${(file.size / (1024 * 1024)).toFixed(1)} Mo) - limite dépassée côté serveur ou proxy (413).`);
+                }
+                let errorMsg = `Upload failed (${response.status})`;
+                try {
+                    const errData = await response.json();
+                    if (errData && errData.error) errorMsg = errData.error;
+                } catch (_) { /* ignore non-JSON body */ }
+                throw new Error(errorMsg);
+            }
             const data = await response.json();
             sendMusicControl('playlist-add', { videoId: data.url, title: data.filename, type: 'local', url: data.url });
         } catch (err) {

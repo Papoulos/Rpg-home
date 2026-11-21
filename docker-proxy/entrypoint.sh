@@ -43,6 +43,13 @@ server {
     }
 }
 CONF
+else
+  echo "Configuration Nginx existante détectée : mise à jour de client_max_body_size à 250M..."
+  if grep -q "client_max_body_size" "$NGINX_CONF"; then
+    sed -i 's/client_max_body_size[^;]*;/client_max_body_size 250M;/g' "$NGINX_CONF"
+  else
+    sed -i 's/location \/ {/location \/ {\n        client_max_body_size 250M;/g' "$NGINX_CONF"
+  fi
 fi
 
 # Démarrer Nginx en arrière-plan temporairement pour Certbot
