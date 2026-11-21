@@ -108,6 +108,8 @@ if [ ! -f /etc/nginx/sites-available/rpg-home ]; then
 server {
     listen 80;
     server_name $DOMAIN;
+    client_max_body_size 250M;
+
     location / {
         proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
@@ -121,6 +123,13 @@ EOF
   ln -sf /etc/nginx/sites-available/rpg-home /etc/nginx/sites-enabled/
   rm -f /etc/nginx/sites-enabled/default
   systemctl restart nginx
+else
+  if grep -q "client_max_body_size" /etc/nginx/sites-available/rpg-home; then
+    sed -i 's/client_max_body_size[^;]*;/client_max_body_size 250M;/g' /etc/nginx/sites-available/rpg-home
+  else
+    sed -i 's/location \/ {/location \/ {\n        client_max_body_size 250M;/g' /etc/nginx/sites-available/rpg-home
+  fi
+  nginx -t && systemctl reload nginx
 fi
 
 # 4. GESTION DU CERTIFICAT SSL (Let's Encrypt)
